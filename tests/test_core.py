@@ -27,6 +27,28 @@ class T(unittest.TestCase):
         for f in fields_for("game"): self.assertIsInstance(f.choices,tuple)
     def test_fixed_offline(self):
         p=ProductInput("app","A","Offline",price_mode="free"); apply_fixed_rules(p); self.assertEqual(p.fields["requires_internet"].value,"no")
+
+    def test_app_type_selects_fixed_preset(self):
+        p=ProductInput("app","A","x",price_mode="paid",submission_kind="update")
+        apply_fixed_rules(p)
+        self.assertEqual(p.fields["product_type"].value,"app")
+        self.assertEqual(p.fields["visibility"].value,"discoverable")
+        self.assertEqual(p.fields["free_trial"].value,"none")
+        self.assertEqual(p.fields["publish_hold"].value,"manual_publish")
+        self.assertEqual(p.fields["submission_kind"].value,"update")
+        self.assertTrue(all(p.fields[k].mode==ValueMode.FIXED for k in ("product_type","visibility","free_trial","publish_hold","submission_kind")))
+
+    def test_game_type_selects_game_fixed_preset(self):
+        p=ProductInput("game","G","x",price_mode="paid",submission_kind="new")
+        apply_fixed_rules(p)
+        self.assertEqual(p.fields["product_type"].value,"game")
+        self.assertEqual(p.fields["submission_kind"].value,"new")
+        self.assertEqual(p.fields["visibility"].value,"discoverable")
+
+    def test_security_fields_are_never_fixed_by_type_preset(self):
+        p=ProductInput("app","A","x")
+        apply_fixed_rules(p)
+        self.assertTrue(all(k not in p.fields for k in SECURITY_CONFIRM_KEYS))
     def test_invalid_choice_from_ollama(self):
         p=ProductInput("app","A","x"); apply_answer(p,{"choices":{"contains_ads":{"value":"maybe","confidence":.99}}}); self.assertEqual(p.fields["contains_ads"].mode,ValueMode.REVIEW)
     def test_sensitive_confidence(self):
@@ -76,6 +98,28 @@ class T(unittest.TestCase):
         with tempfile.TemporaryDirectory() as d: self.assertTrue(any(x.startswith("packages:upload") for x in dryrun_uploader(product(Path(d)))))
     def test_report(self):
         r=QueueReport([ProductResult("A","DONE"),ProductResult("B","HOLD")]); s=render_markdown(r); self.assertIn("| DONE | 1 |",s); self.assertIn("| HOLD | 1 |",s)
+
+    def test_single_result_summary(self):
+        r=QueueReport([ProductResult("A","DONE")])
+        s=r.summary()
+        self.assertEqual(s["mode"],"single")
+        self.assertEqual(s["label"],"成功")
+        self.assertIn("## 成功",render_markdown(r))
+
+    def test_batch_result_summary(self):
+        r=QueueReport([
+            ProductResult("A","DONE"),
+            ProductResult("B","DONE"),
+            ProductResult("C","HOLD"),
+            ProductResult("D","ERROR"),
+            ProductResult("E","UNKNOWN"),
+        ])
+        s=r.summary()
+        self.assertEqual(s["mode"],"batch")
+        self.assertEqual((s["total"],s["success"],s["hold"],s["failed"],s["unknown"]),(5,2,1,1,1))
+        text=render_markdown(r)
+        self.assertIn("総件数 5件",text)
+        self.assertIn("成功 2件",text)
 
     def test_no_trailer_is_clean_and_not_uploaded(self):
         with tempfile.TemporaryDirectory() as d:
