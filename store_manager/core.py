@@ -3,6 +3,7 @@ from dataclasses import dataclass, field, asdict
 from enum import Enum
 from pathlib import Path
 from typing import Any, Callable
+import hashlib
 import json
 
 class ValueMode(str, Enum):
@@ -15,7 +16,7 @@ class ChoiceField:
     key:str; label:str; choices:tuple[str,...]; required:bool=False; sensitive:bool=False; section:str=""; max_selections:int=1
 @dataclass
 class FieldValue:
-    key:str; mode:ValueMode=ValueMode.OLLAMA; value:Any=None; source:str=""; confidence:float|None=None; rationale:str=""
+    key:str; mode:ValueMode=ValueMode.OLLAMA; value:Any=None; source:str=""; confidence:float|None=None; rationale:str=""; confirmed:bool=False
 @dataclass
 class TrailerAsset:
     video_path:str=""
@@ -24,7 +25,7 @@ class TrailerAsset:
 
 @dataclass
 class ProductInput:
-    product_type:str; product_name:str; app_summary:str; repository:str=""; package_path:str=""; images_dir:str=""; store_product_id:str=""; price_mode:str="manual"; price_value:str=""; market_preset:str=""; fields:dict[str,FieldValue]=field(default_factory=dict); trailers:list[TrailerAsset]=field(default_factory=list); hero_art_path:str=""
+    product_type:str; product_name:str; app_summary:str; repository:str=""; package_path:str=""; images_dir:str=""; store_product_id:str=""; price_mode:str="manual"; price_value:str=""; market_preset:str=""; fields:dict[str,FieldValue]=field(default_factory=dict); trailers:list[TrailerAsset]=field(default_factory=list); hero_art_path:str=""; security_package_sha256:str=""
     def to_dict(self):
         d=asdict(self)
         for v in d.get("fields",{}).values():
@@ -65,11 +66,36 @@ COMMON_FIELDS=(
  ChoiceField("uses_external_accounts","External account required",("yes","no"),False,True,"properties"),
  ChoiceField("has_in_app_purchases","In-app purchases",("yes","no"),False,True,"properties"),
  ChoiceField("contains_ads","Advertising",("yes","no"),False,True,"properties"),
+ ChoiceField("security_external_services","External API / cloud communication",("yes","no"),True,True,"security"),
+ ChoiceField("security_local_file_access","Accesses user files or folders",("yes","no"),True,True,"security"),
+ ChoiceField("security_camera","Uses camera",("yes","no"),True,True,"security"),
+ ChoiceField("security_microphone","Uses microphone",("yes","no"),True,True,"security"),
+ ChoiceField("security_location","Uses location",("yes","no"),True,True,"security"),
+ ChoiceField("security_restricted_capabilities","Declares restricted capabilities",("yes","no"),True,True,"security"),
+ ChoiceField("security_non_microsoft_driver_service","Depends on non-Microsoft driver or NT service",("yes","no"),True,True,"security"),
+)
+SECURITY_CONFIRM_KEYS=(
+ "collects_personal_data",
+ "uses_external_accounts",
+ "security_external_services",
+ "security_local_file_access",
+ "security_camera",
+ "security_microphone",
+ "security_location",
+ "security_restricted_capabilities",
+ "security_non_microsoft_driver_service",
 )
 APP_FIELDS=(ChoiceField("primary_category","Primary category",APP_CATEGORIES,True,False,"properties"),ChoiceField("requires_internet","Internet connection",("yes","no"),False,False,"properties"),ChoiceField("background_activity","Background activity",("yes","no"),False,False,"properties"))
 GAME_FIELDS=(ChoiceField("game_genres","Game genres",GAME_GENRES,True,False,"properties",3),ChoiceField("online_multiplayer","Online multiplayer",("yes","no"),False,True,"properties"),ChoiceField("user_generated_content","User-generated content",("yes","no"),False,True,"age_ratings"),ChoiceField("violence","Violence",("yes","no"),True,True,"age_ratings"),ChoiceField("gambling","Gambling",("yes","no"),True,True,"age_ratings"),ChoiceField("sexual_content","Sexual content",("yes","no"),True,True,"age_ratings"),ChoiceField("drugs_alcohol_tobacco","Drugs/alcohol/tobacco",("yes","no"),True,True,"age_ratings"),ChoiceField("strong_language","Strong language",("yes","no"),True,True,"age_ratings"))
 TEXT_FIELDS={"description":{"required":True,"max_chars":10000},"whats_new":{"required":False,"max_chars":1500},"features":{"required":False},"support_url":{"required":False},"privacy_policy_url":{"required":False},"certification_notes":{"required":False}}
 PACKAGE_EXTENSIONS={".msix",".msixupload",".msixbundle",".appx",".appxupload",".appxbundle"}
+
+def file_sha256(path:str):
+    h=hashlib.sha256()
+    with open(path,"rb") as f:
+        for chunk in iter(lambda:f.read(1024*1024),b""):
+            h.update(chunk)
+    return h.hexdigest()
 
 def fields_for(kind:str):
     if kind=="app": return COMMON_FIELDS+APP_FIELDS
@@ -113,6 +139,14 @@ def validate_product(p:ProductInput):
         if fv.value is not None:
             vals=fv.value if isinstance(fv.value,list) else [fv.value]
             if len(vals)>d.max_selections or any(v not in d.choices for v in vals): out.append(Finding("INVALID_CHOICE",f"Invalid value for {d.label}: {fv.value}",Severity.HOLD,k))
+        if k in SECURITY_CONFIRM_KEYS and not fv.confirmed:
+            out.append(Finding("SECURITY_CONFIRM_REQUIRED",f"Security confirmation required: {d.label}",Severity.HOLD,k))
+    if p.package_path and Path(p.package_path).is_file():
+        current_sha=file_sha256(p.package_path)
+        if not p.security_package_sha256:
+            out.append(Finding("SECURITY_PACKAGE_CONFIRM_REQUIRED","Security answers must be confirmed against the selected package",Severity.HOLD,"security_package_sha256"))
+        elif current_sha!=p.security_package_sha256:
+            out.append(Finding("SECURITY_PACKAGE_CHANGED","Package changed after security confirmation; review security settings again",Severity.HOLD,"security_package_sha256"))
     desc=p.fields.get("description")
     if not desc or desc.mode==ValueMode.REVIEW or not str(desc.value or "").strip(): out.append(Finding("DESCRIPTION_REQUIRED","Store description is required",Severity.HOLD,"description"))
     elif len(str(desc.value))>10000: out.append(Finding("DESCRIPTION_TOO_LONG","Description exceeds 10,000 characters",Severity.HOLD,"description"))
