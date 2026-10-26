@@ -86,11 +86,13 @@ def build_dry_plan(p:ProductInput):
     plan=[
         *start.actions,
         "submission:start_or_update",
+        "security_profile:require_confirmed_for_selected_package",
         "pricing_availability:fill_verified",
         "properties:fill_verified",
         "age_ratings:answer_visible_questions",
         f"packages:upload:{p.package_path}",
         "packages:wait_validation",
+        "restricted_capabilities:compare_detected_to_confirmed_security_profile",
         "store_listings:fill_text_and_screenshots",
     ]
     if p.trailers:
