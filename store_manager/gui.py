@@ -11,6 +11,7 @@ from .core import (
     FieldValue,
     ProductInput,
     TrailerAsset,
+    SECURITY_CONFIRM_KEYS,
     Severity,
     ValueMode,
     apply_fixed_rules,
@@ -18,6 +19,7 @@ from .core import (
     render_markdown,
     run_queue,
     validate_product,
+    file_sha256,
 )
 from .github_context import fetch_context
 from .ollama import complete_product
@@ -35,6 +37,18 @@ MODE_LABELS = {
     ValueMode.REVIEW: "要確認",
 }
 LABEL_MODES = {v: k for k, v in MODE_LABELS.items()}
+SECURITY_LABELS = {
+    "collects_personal_data": "個人情報へアクセス・収集・送信しますか",
+    "uses_external_accounts": "外部アカウント / ログインを使用しますか",
+    "security_external_services": "外部API / クラウドへ通信しますか",
+    "security_local_file_access": "ユーザーのファイル / フォルダへアクセスしますか",
+    "security_camera": "カメラを使用しますか",
+    "security_microphone": "マイクを使用しますか",
+    "security_location": "位置情報を使用しますか",
+    "security_restricted_capabilities": "制限付きCapabilityを宣言していますか",
+    "security_non_microsoft_driver_service": "Microsoft以外のドライバー / NT Serviceに依存しますか",
+}
+
 TEXT_LABELS = {
     "description": "Store説明文",
     "whats_new": "更新内容",
@@ -63,6 +77,7 @@ class App(tk.Tk):
         self.status_text = tk.StringVar(value="入力待ち")
         self.package_status = tk.StringVar(value="未選択")
         self.images_status = tk.StringVar(value="未選択")
+        self.security_status = tk.StringVar(value="未確認")
         self.review_only = tk.BooleanVar(value=True)
         self.ollama_url = tk.StringVar(value="http://127.0.0.1:11434/api/generate")
         self.ollama_model = tk.StringVar(value="qwen3:8b")
@@ -131,7 +146,7 @@ class App(tk.Tk):
     def _build_main(self):
         tab = self.main_tab
         tab.columnconfigure(0, weight=1)
-        tab.rowconfigure(2, weight=1)
+        tab.rowconfigure(3, weight=1)
 
         top = ttk.LabelFrame(tab, text=" 製品 ", style="Section.TLabelframe", padding=12)
         top.grid(row=0, column=0, sticky="ew", pady=(0, 10))
@@ -158,8 +173,19 @@ class App(tk.Tk):
         self._path_row(files, 0, "MSIX / MSIXUPLOAD", self.package, False, self.package_status)
         self._path_row(files, 1, "商品画像フォルダ", self.images, True, self.images_status)
 
+        security = ttk.LabelFrame(tab, text=" セキュリティ確認（必須） ", style="Section.TLabelframe", padding=12)
+        security.grid(row=2, column=0, sticky="ew", pady=(0, 10))
+        security.columnconfigure(1, weight=1)
+        ttk.Label(
+            security,
+            text="プライバシー・権限・外部通信などを確認します。AI候補だけでは完了扱いになりません。",
+            foreground="#5B6470",
+        ).grid(row=0, column=0, columnspan=2, sticky="w")
+        ttk.Label(security, textvariable=self.security_status, font=("Segoe UI", 10, "bold")).grid(row=1, column=0, sticky="w", pady=(8, 0))
+        ttk.Button(security, text="セキュリティ設定を確認…", command=self.open_security_settings, style="Primary.TButton").grid(row=1, column=1, sticky="e", pady=(8, 0))
+
         body = ttk.LabelFrame(tab, text=" アプリ / ゲームの内容 ", style="Section.TLabelframe", padding=12)
-        body.grid(row=2, column=0, sticky="nsew", pady=(0, 10))
+        body.grid(row=3, column=0, sticky="nsew", pady=(0, 10))
         body.rowconfigure(1, weight=1)
         body.columnconfigure(0, weight=1)
         ttk.Label(
@@ -171,7 +197,7 @@ class App(tk.Tk):
         self.summary.grid(row=1, column=0, sticky="nsew")
 
         bottom = ttk.Frame(tab)
-        bottom.grid(row=3, column=0, sticky="ew")
+        bottom.grid(row=4, column=0, sticky="ew")
         ttk.Label(bottom, text="価格").pack(side="left")
         ttk.Radiobutton(bottom, text="有料", value="paid", variable=self.price).pack(side="left", padx=(10, 3))
         ttk.Radiobutton(bottom, text="無料", value="free", variable=self.price).pack(side="left", padx=3)
@@ -184,7 +210,7 @@ class App(tk.Tk):
         self.upload_btn.pack(side="right")
 
         links = ttk.Frame(tab)
-        links.grid(row=4, column=0, sticky="ew", pady=(10, 0))
+        links.grid(row=5, column=0, sticky="ew", pady=(10, 0))
         ttk.Label(links, text="開始画面:", foreground="#5B6470").pack(side="left")
         ttk.Button(
             links,
@@ -284,6 +310,13 @@ class App(tk.Tk):
         if selected:
             var.set(selected)
             status_var.set("選択済み" if Path(selected).exists() else "要確認")
+            if var is self.package:
+                self.security_status.set("再確認が必要")
+                if self.current_product:
+                    self.current_product.security_package_sha256=""
+                    for key in SECURITY_CONFIRM_KEYS:
+                        if key in self.current_product.fields:
+                            self.current_product.fields[key].confirmed=False
 
     def _build_product(self):
         p = ProductInput(
@@ -297,6 +330,7 @@ class App(tk.Tk):
             price_value=self.price_value.get().strip(),
             trailers=[TrailerAsset(t.video_path,t.title,t.thumbnail_path) for t in self.trailers],
             hero_art_path=self.hero_art.get().strip(),
+            security_package_sha256=self.current_product.security_package_sha256 if self.current_product and self.current_product.product_type == self.kind.get() else "",
         )
         if self.current_product and self.current_product.product_type == p.product_type:
             p.fields = {k: FieldValue(**{
@@ -306,6 +340,7 @@ class App(tk.Tk):
                 "source": v.source,
                 "confidence": v.confidence,
                 "rationale": v.rationale,
+                "confirmed": v.confirmed,
             }) for k, v in self.current_product.fields.items()}
         for f in fields_for(p.product_type):
             p.fields.setdefault(f.key, FieldValue(f.key, ValueMode.OLLAMA, None, "pending"))
@@ -530,6 +565,88 @@ class App(tk.Tk):
 
         ttk.Button(body, text="反映", command=save, style="Primary.TButton").pack(anchor="e", pady=(10, 0))
 
+
+
+    def open_security_settings(self):
+        if not self.package.get().strip() or not Path(self.package.get().strip()).is_file():
+            messagebox.showwarning("セキュリティ確認", "先にMSIX / MSIXUPLOADを選択してください。")
+            return
+
+        p=self._build_product()
+        win=tk.Toplevel(self)
+        win.title("セキュリティ確認（必須）")
+        win.geometry("760x650")
+        win.transient(self)
+        win.grab_set()
+
+        body=ttk.Frame(win,padding=18)
+        body.pack(fill="both",expand=True)
+        ttk.Label(body,text="セキュリティ・プライバシー確認",font=("Segoe UI",14,"bold")).pack(anchor="w")
+        ttk.Label(
+            body,
+            text="すべて必須です。AIが候補を作成していても、ここで確認済みにしない限りアップロード準備完了にはなりません。",
+            foreground="#5B6470",
+            wraplength=700,
+        ).pack(anchor="w",pady=(3,12))
+
+        form=ttk.Frame(body)
+        form.pack(fill="both",expand=True)
+        form.columnconfigure(0,weight=1)
+        values={}
+        for row,key in enumerate(SECURITY_CONFIRM_KEYS):
+            ttk.Label(form,text=SECURITY_LABELS[key],wraplength=500).grid(row=row,column=0,sticky="w",pady=5)
+            current=p.fields.get(key)
+            var=tk.StringVar(value=str(current.value) if current and current.value in {"yes","no"} else "")
+            values[key]=var
+            ttk.Combobox(form,textvariable=var,state="readonly",values=("yes","no"),width=12).grid(row=row,column=1,sticky="e",pady=5)
+
+        privacy_var=tk.StringVar(value=str(p.fields.get("privacy_policy_url").value) if p.fields.get("privacy_policy_url") and p.fields.get("privacy_policy_url").value else "")
+        privacy_row=len(SECURITY_CONFIRM_KEYS)
+        ttk.Label(form,text="プライバシーポリシーURL（個人情報=Yesの場合必須）",wraplength=500).grid(row=privacy_row,column=0,sticky="w",pady=5)
+        ttk.Entry(form,textvariable=privacy_var,width=38).grid(row=privacy_row,column=1,sticky="e",pady=5)
+
+        ttk.Separator(body).pack(fill="x",pady=10)
+        ttk.Label(
+            body,
+            text="この確認は現在選択されているパッケージのSHA-256に紐づきます。MSIXを変更すると再確認が必要です。",
+            foreground="#5B6470",
+        ).pack(anchor="w")
+
+        def save():
+            missing=[SECURITY_LABELS[k] for k,v in values.items() if v.get() not in {"yes","no"}]
+            if missing:
+                messagebox.showwarning("未回答","すべてのセキュリティ項目を回答してください。",parent=win)
+                return
+            if values["collects_personal_data"].get()=="yes" and not privacy_var.get().strip():
+                messagebox.showwarning("プライバシーポリシー","個人情報を扱う場合はURLが必要です。",parent=win)
+                return
+            for key,var in values.items():
+                p.fields[key]=FieldValue(
+                    key=key,
+                    mode=ValueMode.MANUAL,
+                    value=var.get(),
+                    source="security-ui",
+                    confidence=1.0,
+                    rationale="必須セキュリティ確認",
+                    confirmed=True,
+                )
+            if privacy_var.get().strip():
+                p.fields["privacy_policy_url"]=FieldValue(
+                    key="privacy_policy_url",
+                    mode=ValueMode.MANUAL,
+                    value=privacy_var.get().strip(),
+                    source="security-ui",
+                    confidence=1.0,
+                    rationale="必須セキュリティ確認",
+                    confirmed=True,
+                )
+            p.security_package_sha256=file_sha256(p.package_path)
+            self.current_product=p
+            self.security_status.set("確認済み")
+            self.render_review()
+            win.destroy()
+
+        ttk.Button(body,text="確認済みにする",command=save,style="Primary.TButton").pack(anchor="e",pady=(12,0))
 
     def open_trailer_settings(self):
         win = tk.Toplevel(self)
