@@ -25,7 +25,7 @@ class TrailerAsset:
 
 @dataclass
 class ProductInput:
-    product_type:str; product_name:str; app_summary:str; repository:str=""; package_path:str=""; images_dir:str=""; store_product_id:str=""; price_mode:str="manual"; price_value:str=""; market_preset:str=""; fields:dict[str,FieldValue]=field(default_factory=dict); trailers:list[TrailerAsset]=field(default_factory=list); hero_art_path:str=""; security_package_sha256:str=""
+    product_type:str; product_name:str; app_summary:str; repository:str=""; package_path:str=""; images_dir:str=""; store_product_id:str=""; price_mode:str="manual"; price_value:str=""; market_preset:str=""; fields:dict[str,FieldValue]=field(default_factory=dict); trailers:list[TrailerAsset]=field(default_factory=list); hero_art_path:str=""; security_package_sha256:str=""; submission_kind:str="update"
     def to_dict(self):
         d=asdict(self)
         for v in d.get("fields",{}).values():
@@ -55,6 +55,21 @@ GAME_GENRES=("Action + adventure","Card + board","Casino","Classics","Educationa
 VISIBILITY_CHOICES=("discoverable","direct_link_only")
 FREE_TRIAL_CHOICES=("none","1_day","7_days","15_days","30_days","unlimited")
 PUBLISH_HOLD_CHOICES=("as_soon_as_certified","manual_publish","specific_date")
+
+# Stable Store choices applied automatically by product type.
+# Security/privacy declarations are intentionally excluded and always require confirmation.
+APP_FIXED_PRESET={
+ "product_type":"app",
+ "visibility":"discoverable",
+ "free_trial":"none",
+ "publish_hold":"manual_publish",
+}
+GAME_FIXED_PRESET={
+ "product_type":"game",
+ "visibility":"discoverable",
+ "free_trial":"none",
+ "publish_hold":"manual_publish",
+}
 COMMON_FIELDS=(
  ChoiceField("product_type","Product type",("app","game"),True),
  ChoiceField("submission_kind","Submission kind",("new","update"),True),
@@ -102,17 +117,33 @@ def fields_for(kind:str):
     if kind=="game": return COMMON_FIELDS+GAME_FIELDS
     raise ValueError("product_type must be app or game")
 
+def fixed_preset_for(kind:str):
+    if kind=="app": return dict(APP_FIXED_PRESET)
+    if kind=="game": return dict(GAME_FIXED_PRESET)
+    raise ValueError("product_type must be app or game")
+
 def apply_fixed_rules(p:ProductInput):
-    defs={f.key:f for f in fields_for(p.product_type)}; proposed={"product_type":p.product_type}
-    if p.price_mode in {"free","paid"}: proposed["pricing_model"]=p.price_mode
+    defs={f.key:f for f in fields_for(p.product_type)}
+    proposed=fixed_preset_for(p.product_type)
+    proposed["submission_kind"]=p.submission_kind
+    if p.price_mode in {"free","paid"}:
+        proposed["pricing_model"]=p.price_mode
+
     text=(p.app_summary or "").lower()
-    if any(x in text for x in ("offline","no internet","オフライン","インターネット不要")): proposed["requires_internet"]="no"
-    elif any(x in text for x in ("api","cloud","online","web","クラウド","インターネット")): proposed["requires_internet"]="yes"
+    if p.product_type=="app":
+        if any(x in text for x in ("offline","no internet","オフライン","インターネット不要")):
+            proposed["requires_internet"]="no"
+        elif any(x in text for x in ("api","cloud","online","web","クラウド","インターネット")):
+            proposed["requires_internet"]="yes"
+
     for k,v in proposed.items():
-        if k not in defs: continue
+        if k not in defs or k in SECURITY_CONFIRM_KEYS:
+            continue
         cur=p.fields.get(k)
-        if cur and cur.mode in {ValueMode.MANUAL,ValueMode.FIXED,ValueMode.BLANK,ValueMode.REVIEW}: continue
-        p.fields[k]=FieldValue(k,ValueMode.FIXED,v,"rule",1.0,"deterministic")
+        # Explicit manual/blank/review values are never overwritten.
+        if cur and cur.mode in {ValueMode.MANUAL,ValueMode.BLANK,ValueMode.REVIEW}:
+            continue
+        p.fields[k]=FieldValue(k,ValueMode.FIXED,v,f"{p.product_type}_preset",1.0,"product-type fixed preset",True)
 
 def validate_product(p:ProductInput):
     out=[]
@@ -203,8 +234,22 @@ class QueuePolicy:
 @dataclass
 class QueueReport:
     results:list[ProductResult]=field(default_factory=list); stopped_early:bool=False; stop_reason:str=""
+    def counts(self):
+        values={"DONE":0,"HOLD":0,"UNKNOWN":0,"ERROR":0,"AUTH_ERROR":0}
+        for r in self.results:
+            values[r.status]=values.get(r.status,0)+1
+        return values
+    def summary(self):
+        c=self.counts()
+        total=len(self.results)
+        failed=c.get("ERROR",0)+c.get("AUTH_ERROR",0)
+        if total==1:
+            status=self.results[0].status if self.results else "EMPTY"
+            label={"DONE":"成功","HOLD":"要修正","UNKNOWN":"不明","ERROR":"失敗","AUTH_ERROR":"認証失敗"}.get(status,status)
+            return {"mode":"single","total":total,"success":c["DONE"],"hold":c["HOLD"],"failed":failed,"unknown":c["UNKNOWN"],"label":label}
+        return {"mode":"batch","total":total,"success":c["DONE"],"hold":c["HOLD"],"failed":failed,"unknown":c["UNKNOWN"],"label":f"総合結果: {total}件"}
     def to_dict(self):
-        return {"stopped_early":self.stopped_early,"stop_reason":self.stop_reason,"results":[{"product_name":r.product_name,"status":r.status,"findings":[{"code":f.code,"message":f.message,"severity":f.severity.value,"field":f.field} for f in r.findings],"actions":r.actions} for r in self.results]}
+        return {"stopped_early":self.stopped_early,"stop_reason":self.stop_reason,"summary":self.summary(),"results":[{"product_name":r.product_name,"status":r.status,"findings":[{"code":f.code,"message":f.message,"severity":f.severity.value,"field":f.field} for f in r.findings],"actions":r.actions} for r in self.results]}
 
 def run_queue(products:list[ProductInput],uploader:Callable[[ProductInput],list[str]],policy:QueuePolicy|None=None):
     policy=policy or QueuePolicy(); report=QueueReport()
@@ -227,9 +272,17 @@ def run_queue(products:list[ProductInput],uploader:Callable[[ProductInput],list[
     return report
 
 def render_markdown(report:QueueReport):
-    counts={}
-    for r in report.results: counts[r.status]=counts.get(r.status,0)+1
-    lines=["# Microsoft Store 夜間処理レポート","","| 状態 | 件数 |","|---|---:|"]+[f"| {s} | {counts.get(s,0)} |" for s in ("DONE","HOLD","UNKNOWN","ERROR","AUTH_ERROR")]
+    counts=report.counts()
+    summary=report.summary()
+    if summary["mode"]=="single":
+        lines=["# Microsoft Store 実行結果","",f"## {summary['label']}"]
+    else:
+        lines=[
+            "# Microsoft Store 総合結果",
+            "",
+            f"**総件数 {summary['total']}件 / 成功 {summary['success']}件 / HOLD {summary['hold']}件 / 失敗 {summary['failed']}件 / 不明 {summary['unknown']}件**",
+        ]
+    lines += ["","| 状態 | 件数 |","|---|---:|"]+[f"| {s} | {counts.get(s,0)} |" for s in ("DONE","HOLD","UNKNOWN","ERROR","AUTH_ERROR")]
     for r in report.results:
         lines += ["",f"## {r.product_name} — {r.status}"]+[f"- **{f.severity.value.upper()} / {f.code}**: {f.message}" for f in r.findings]
     return "\n".join(lines)+"\n"
