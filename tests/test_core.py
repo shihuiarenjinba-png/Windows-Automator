@@ -81,6 +81,27 @@ class T(unittest.TestCase):
     def test_queue_continues_after_hold(self):
         with tempfile.TemporaryDirectory() as d:
             t=Path(d); a=product(t); a.package_path=""; b=product(t); b.product_name="B"; r=run_queue([a,b],dryrun_uploader); self.assertEqual([x.status for x in r.results],["HOLD","DONE"])
+
+    def test_duplicate_product_is_held_and_queue_continues(self):
+        with tempfile.TemporaryDirectory() as d:
+            root=Path(d)
+            a=product(root)
+            b=ProductInput.from_dict(a.to_dict())
+            c=product(root); c.product_name="Other"
+            other_pkg=root/"other.msix"; other_pkg.write_bytes(b"OTHER")
+            c.package_path=str(other_pkg); c.security_package_sha256=file_sha256(str(other_pkg))
+            r=run_queue([a,b,c],dryrun_uploader)
+            self.assertEqual([x.status for x in r.results],["DONE","HOLD","DONE"])
+            self.assertTrue(any(f.code=="DUPLICATE_PRODUCT" for f in r.results[1].findings))
+
+    def test_same_package_for_different_products_is_held(self):
+        with tempfile.TemporaryDirectory() as d:
+            root=Path(d)
+            a=product(root)
+            b=ProductInput.from_dict(a.to_dict()); b.product_name="Different"
+            r=run_queue([a,b],dryrun_uploader)
+            self.assertEqual([x.status for x in r.results],["DONE","HOLD"])
+            self.assertTrue(any(f.code=="DUPLICATE_PACKAGE" for f in r.results[1].findings))
     def test_auth_stops(self):
         with tempfile.TemporaryDirectory() as d:
             p=product(Path(d))
