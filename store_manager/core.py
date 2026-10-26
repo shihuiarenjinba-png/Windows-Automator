@@ -251,10 +251,32 @@ class QueueReport:
     def to_dict(self):
         return {"stopped_early":self.stopped_early,"stop_reason":self.stop_reason,"summary":self.summary(),"results":[{"product_name":r.product_name,"status":r.status,"findings":[{"code":f.code,"message":f.message,"severity":f.severity.value,"field":f.field} for f in r.findings],"actions":r.actions} for r in self.results]}
 
+def queue_product_key(p:ProductInput):
+    if p.store_product_id.strip():
+        return "store:"+p.store_product_id.strip().casefold()
+    return f"{p.product_type}:{p.product_name.strip().casefold()}"
+
 def run_queue(products:list[ProductInput],uploader:Callable[[ProductInput],list[str]],policy:QueuePolicy|None=None):
     policy=policy or QueuePolicy(); report=QueueReport()
+    seen_products=set()
+    seen_packages={}
     for p in products:
-        findings=validate_product(p)
+        findings=[]
+        product_key=queue_product_key(p)
+        if product_key in seen_products:
+            findings.append(Finding("DUPLICATE_PRODUCT","Same product appears more than once in this queue",Severity.HOLD,"product_name"))
+        else:
+            seen_products.add(product_key)
+
+        if p.package_path and Path(p.package_path).is_file():
+            package_sha=file_sha256(p.package_path)
+            prior=seen_packages.get(package_sha)
+            if prior and prior!=product_key:
+                findings.append(Finding("DUPLICATE_PACKAGE","Same package file is assigned to multiple products",Severity.HOLD,"package_path"))
+            else:
+                seen_packages[package_sha]=product_key
+
+        findings.extend(validate_product(p))
         if any(f.severity==Severity.HOLD for f in findings):
             report.results.append(ProductResult(p.product_name,"HOLD",findings,[]))
             if not policy.continue_after_product_hold: report.stopped_early=True; report.stop_reason="product_hold"; break
