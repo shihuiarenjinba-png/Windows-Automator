@@ -62,6 +62,32 @@ class T(unittest.TestCase):
     def test_report(self):
         r=QueueReport([ProductResult("A","DONE"),ProductResult("B","HOLD")]); s=render_markdown(r); self.assertIn("| DONE | 1 |",s); self.assertIn("| HOLD | 1 |",s)
 
+    def test_no_trailer_is_clean_and_not_uploaded(self):
+        with tempfile.TemporaryDirectory() as d:
+            p=product(Path(d))
+            self.assertEqual(p.trailers,[])
+            self.assertFalse(any(f.code.startswith("TRAILER_") for f in validate_product(p)))
+            self.assertFalse(any("trailer:" in x for x in dryrun_uploader(p)))
+
+    def test_optional_trailer_is_validated_only_when_present(self):
+        with tempfile.TemporaryDirectory() as d:
+            root=Path(d); p=product(root)
+            video=root/"t.mp4"; video.write_bytes(b"x")
+            thumb=root/"t.png"; thumb.write_bytes(b"x")
+            p.trailers=[TrailerAsset(str(video),"Demo",str(thumb))]
+            findings=validate_product(p)
+            self.assertFalse(any(f.code in {"TRAILER_VIDEO_MISSING","TRAILER_TITLE_MISSING","TRAILER_THUMBNAIL_MISSING"} for f in findings))
+            self.assertTrue(any("trailer:0:upload" in x for x in dryrun_uploader(p)))
+
+    def test_game_trailer_requires_hero_art_but_no_video_does_not(self):
+        with tempfile.TemporaryDirectory() as d:
+            root=Path(d); p=product(root,"game")
+            self.assertFalse(any(f.code=="TRAILER_HERO_ART_REQUIRED" for f in validate_product(p)))
+            video=root/"t.mp4"; video.write_bytes(b"x")
+            thumb=root/"t.png"; thumb.write_bytes(b"x")
+            p.trailers=[TrailerAsset(str(video),"Demo",str(thumb))]
+            self.assertTrue(any(f.code=="TRAILER_HERO_ART_REQUIRED" for f in validate_product(p)))
+
     def test_overview_update_simulation_exact_match(self):
         s=simulate_overview_start("Daymark AI","update",("Daymark AI","Other"))
         self.assertTrue(s.safe_to_continue)
