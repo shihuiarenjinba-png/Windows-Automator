@@ -17,8 +17,10 @@ def product(tmp,kind="app"):
         elif f.key=="primary_category": val="Productivity"
         elif f.key=="game_genres": val=["Strategy"]
         else: val="no"
-        p.fields[f.key]=FieldValue(f.key,ValueMode.MANUAL,val,"test")
-    p.fields["description"]=FieldValue("description",ValueMode.MANUAL,"Description","test"); return p
+        p.fields[f.key]=FieldValue(f.key,ValueMode.MANUAL,val,"test",1.0,"test",f.key in SECURITY_CONFIRM_KEYS)
+    p.fields["description"]=FieldValue("description",ValueMode.MANUAL,"Description","test")
+    p.security_package_sha256=file_sha256(str(pkg))
+    return p
 class T(unittest.TestCase):
     def test_catalogs(self): self.assertIn("Productivity",APP_CATEGORIES); self.assertIn("Strategy",GAME_GENRES)
     def test_options_are_tuples(self):
@@ -29,6 +31,19 @@ class T(unittest.TestCase):
         p=ProductInput("app","A","x"); apply_answer(p,{"choices":{"contains_ads":{"value":"maybe","confidence":.99}}}); self.assertEqual(p.fields["contains_ads"].mode,ValueMode.REVIEW)
     def test_sensitive_confidence(self):
         p=ProductInput("game","G","x"); apply_answer(p,{"choices":{"violence":{"value":"no","confidence":.8}}}); self.assertEqual(p.fields["violence"].mode,ValueMode.REVIEW)
+
+    def test_ai_security_answer_is_not_confirmed(self):
+        p=ProductInput("app","A","x")
+        for f in fields_for("app"):
+            p.fields[f.key]=FieldValue(f.key,ValueMode.OLLAMA,"no","ollama",.99,"candidate")
+        self.assertTrue(any(f.code=="SECURITY_CONFIRM_REQUIRED" for f in validate_product(p)))
+
+    def test_package_change_invalidates_security_confirmation(self):
+        with tempfile.TemporaryDirectory() as d:
+            root=Path(d); p=product(root)
+            changed=root/"changed.msix"; changed.write_bytes(b"DIFFERENT")
+            p.package_path=str(changed)
+            self.assertTrue(any(f.code=="SECURITY_PACKAGE_CHANGED" for f in validate_product(p)))
     def test_exact_visible_option_only(self):
         self.assertEqual(choose_exact_option(["Yes","No"],"Yes"),"Yes"); self.assertRaises(OptionMismatch,choose_exact_option,["Yes always","No"],"Yes")
     def test_live_question_rejects_unknown(self):
