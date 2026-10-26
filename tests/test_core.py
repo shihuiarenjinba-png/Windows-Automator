@@ -1,7 +1,7 @@
 import tempfile,unittest
 from pathlib import Path
 from store_manager.core import *
-from store_manager.partner_center import choose_exact_option,OptionMismatch,dryrun_uploader
+from store_manager.partner_center import choose_exact_option,OptionMismatch,dryrun_uploader,simulate_overview_start,PARTNER_CENTER_APPS_GAMES_URL
 from store_manager.ollama import apply_answer
 
 def product(tmp,kind="app"):
@@ -61,4 +61,22 @@ class T(unittest.TestCase):
         with tempfile.TemporaryDirectory() as d: self.assertTrue(any(x.startswith("packages:upload") for x in dryrun_uploader(product(Path(d)))))
     def test_report(self):
         r=QueueReport([ProductResult("A","DONE"),ProductResult("B","HOLD")]); s=render_markdown(r); self.assertIn("| DONE | 1 |",s); self.assertIn("| HOLD | 1 |",s)
+
+    def test_overview_update_simulation_exact_match(self):
+        s=simulate_overview_start("Daymark AI","update",("Daymark AI","Other"))
+        self.assertTrue(s.safe_to_continue)
+        self.assertEqual(s.start_url,PARTNER_CENTER_APPS_GAMES_URL)
+        self.assertIn("search_exact:Daymark AI",s.actions)
+        self.assertIn("open_exact_product:Daymark AI",s.actions)
+
+    def test_overview_update_simulation_rejects_missing_or_ambiguous_match(self):
+        s=simulate_overview_start("Daymark AI","update",("Other",))
+        self.assertFalse(s.safe_to_continue)
+        self.assertEqual(s.hold_reason,"product_not_uniquely_matched")
+
+    def test_overview_new_product_path(self):
+        s=simulate_overview_start("New Product","new",())
+        self.assertTrue(s.safe_to_continue)
+        self.assertIn("click:new_product",s.actions)
+        self.assertIn("reserve_name:New Product",s.actions)
 if __name__=="__main__": unittest.main()
