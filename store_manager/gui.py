@@ -10,6 +10,7 @@ from tkinter import filedialog, messagebox, ttk
 from .core import (
     FieldValue,
     ProductInput,
+    TrailerAsset,
     Severity,
     ValueMode,
     apply_fixed_rules,
@@ -66,6 +67,8 @@ class App(tk.Tk):
         self.ollama_url = tk.StringVar(value="http://127.0.0.1:11434/api/generate")
         self.ollama_model = tk.StringVar(value="qwen3:8b")
         self.github_token = tk.StringVar()
+        self.hero_art = tk.StringVar()
+        self.trailers: list[TrailerAsset] = []
 
         self.current_product: ProductInput | None = None
         self.queue: list[ProductInput] = []
@@ -292,6 +295,8 @@ class App(tk.Tk):
             self.images.get().strip(),
             price_mode=self.price.get(),
             price_value=self.price_value.get().strip(),
+            trailers=[TrailerAsset(t.video_path,t.title,t.thumbnail_path) for t in self.trailers],
+            hero_art_path=self.hero_art.get().strip(),
         )
         if self.current_product and self.current_product.product_type == p.product_type:
             p.fields = {k: FieldValue(**{
@@ -525,6 +530,94 @@ class App(tk.Tk):
 
         ttk.Button(body, text="反映", command=save, style="Primary.TButton").pack(anchor="e", pady=(10, 0))
 
+
+    def open_trailer_settings(self):
+        win = tk.Toplevel(self)
+        win.title("動画設定（任意）")
+        win.geometry("760x500")
+        win.transient(self)
+        win.grab_set()
+
+        body = ttk.Frame(win, padding=16)
+        body.pack(fill="both", expand=True)
+        ttk.Label(body, text="動画は任意です", font=("Segoe UI", 13, "bold")).pack(anchor="w")
+        ttk.Label(
+            body,
+            text="何も追加しなければStoreへ動画を送りません。必要な製品だけ追加してください。",
+            foreground="#5B6470",
+        ).pack(anchor="w", pady=(2, 10))
+
+        cols=("video","title","thumb")
+        tree=ttk.Treeview(body,columns=cols,show="headings",height=10)
+        for c,text,width in (("video","動画",250),("title","タイトル",220),("thumb","サムネイル",220)):
+            tree.heading(c,text=text)
+            tree.column(c,width=width,anchor="w")
+        tree.pack(fill="both",expand=True)
+
+        def refresh():
+            for x in tree.get_children():
+                tree.delete(x)
+            for i,t in enumerate(self.trailers):
+                tree.insert("", "end", iid=str(i), values=(Path(t.video_path).name if t.video_path else "", t.title, Path(t.thumbnail_path).name if t.thumbnail_path else ""))
+
+        def add():
+            video=filedialog.askopenfilename(parent=win,filetypes=[("Trailer video","*.mp4 *.mov"),("All files","*.*")])
+            if not video:
+                return
+            thumb=filedialog.askopenfilename(parent=win,title="サムネイルPNGを選択",filetypes=[("PNG","*.png"),("All files","*.*")])
+            if not thumb:
+                return
+            title_win=tk.Toplevel(win)
+            title_win.title("動画タイトル")
+            title_win.geometry("420x150")
+            title_win.transient(win)
+            title_win.grab_set()
+            frm=ttk.Frame(title_win,padding=14)
+            frm.pack(fill="both",expand=True)
+            title_var=tk.StringVar(value=Path(video).stem)
+            ttk.Label(frm,text="タイトル").pack(anchor="w")
+            ttk.Entry(frm,textvariable=title_var).pack(fill="x",pady=6)
+            def save_title():
+                if not title_var.get().strip():
+                    messagebox.showwarning("動画","タイトルを入力してください。",parent=title_win)
+                    return
+                self.trailers.append(TrailerAsset(video,title_var.get().strip(),thumb))
+                title_win.destroy()
+                refresh()
+            ttk.Button(frm,text="追加",command=save_title,style="Primary.TButton").pack(anchor="e",pady=6)
+
+        def remove():
+            indexes=sorted((int(x) for x in tree.selection()),reverse=True)
+            for i in indexes:
+                if 0<=i<len(self.trailers):
+                    self.trailers.pop(i)
+            refresh()
+
+        buttons=ttk.Frame(body)
+        buttons.pack(fill="x",pady=8)
+        ttk.Button(buttons,text="動画を追加",command=add).pack(side="left")
+        ttk.Button(buttons,text="選択を削除",command=remove).pack(side="left",padx=6)
+
+        hero=ttk.LabelFrame(body,text="ゲームで動画を使う場合のみ",padding=10)
+        hero.pack(fill="x",pady=(8,0))
+        hero.columnconfigure(1,weight=1)
+        ttk.Label(hero,text="16:9 Super hero art").grid(row=0,column=0,sticky="w")
+        ttk.Entry(hero,textvariable=self.hero_art).grid(row=0,column=1,sticky="ew",padx=6)
+        ttk.Button(hero,text="参照",command=lambda:self._pick_hero(win)).grid(row=0,column=2)
+        ttk.Label(hero,text="動画を使わない場合は空欄で構いません。",foreground="#5B6470").grid(row=1,column=0,columnspan=3,sticky="w",pady=(5,0))
+
+        def close():
+            if hasattr(self,"media_status"):
+                self.media_status.configure(text=f"{len(self.trailers)}本設定" if self.trailers else "使用しない")
+            win.destroy()
+        ttk.Button(body,text="完了",command=close,style="Primary.TButton").pack(anchor="e",pady=(10,0))
+        refresh()
+
+    def _pick_hero(self,parent):
+        path=filedialog.askopenfilename(parent=parent,filetypes=[("PNG","*.png"),("All files","*.*")])
+        if path:
+            self.hero_art.set(path)
+
     def _settings_values(self):
         return {"url": self.ollama_url.get().strip(), "model": self.ollama_model.get().strip() or "qwen3:8b", "token": self.github_token.get().strip()}
 
@@ -544,8 +637,15 @@ class App(tk.Tk):
         ttk.Entry(body, textvariable=self.ollama_model).grid(row=2, column=1, sticky="ew", pady=6)
         ttk.Label(body, text="GitHub token").grid(row=3, column=0, sticky="w", pady=6)
         ttk.Entry(body, textvariable=self.github_token, show="•").grid(row=3, column=1, sticky="ew", pady=6)
-        ttk.Label(body, text="トークンは保存せず、GitHub読取だけに使用します。Ollamaには渡しません。", foreground="#5B6470").grid(row=4, column=0, columnspan=2, sticky="w", pady=(10, 0))
-        ttk.Button(body, text="Ollamaで現在の空欄を補完", command=lambda: (win.destroy(), self.ollama_fill()), style="Primary.TButton").grid(row=5, column=1, sticky="e", pady=(20, 0))
+        ttk.Label(body, text="動画（任意）").grid(row=4, column=0, sticky="w", pady=6)
+        media_row = ttk.Frame(body)
+        media_row.grid(row=4, column=1, sticky="ew", pady=6)
+        self.media_status = ttk.Label(media_row, text=f"{len(self.trailers)}本設定" if self.trailers else "使用しない")
+        self.media_status.pack(side="left")
+        ttk.Button(media_row, text="動画設定…", command=self.open_trailer_settings).pack(side="right")
+        ttk.Label(body, text="動画は完全に任意です。未設定なら動画関連のチェックもアップロードも行いません。", foreground="#5B6470").grid(row=5, column=0, columnspan=2, sticky="w", pady=(8, 0))
+        ttk.Label(body, text="トークンは保存せず、GitHub読取だけに使用します。Ollamaには渡しません。", foreground="#5B6470").grid(row=6, column=0, columnspan=2, sticky="w", pady=(4, 0))
+        ttk.Button(body, text="Ollamaで現在の空欄を補完", command=lambda: (win.destroy(), self.ollama_fill()), style="Primary.TButton").grid(row=7, column=1, sticky="e", pady=(16, 0))
 
 
 def main():
