@@ -17,8 +17,14 @@ class ChoiceField:
 class FieldValue:
     key:str; mode:ValueMode=ValueMode.OLLAMA; value:Any=None; source:str=""; confidence:float|None=None; rationale:str=""
 @dataclass
+class TrailerAsset:
+    video_path:str=""
+    title:str=""
+    thumbnail_path:str=""
+
+@dataclass
 class ProductInput:
-    product_type:str; product_name:str; app_summary:str; repository:str=""; package_path:str=""; images_dir:str=""; store_product_id:str=""; price_mode:str="manual"; price_value:str=""; market_preset:str=""; fields:dict[str,FieldValue]=field(default_factory=dict)
+    product_type:str; product_name:str; app_summary:str; repository:str=""; package_path:str=""; images_dir:str=""; store_product_id:str=""; price_mode:str="manual"; price_value:str=""; market_preset:str=""; fields:dict[str,FieldValue]=field(default_factory=dict); trailers:list[TrailerAsset]=field(default_factory=list); hero_art_path:str=""
     def to_dict(self):
         d=asdict(self)
         for v in d.get("fields",{}).values():
@@ -29,7 +35,9 @@ class ProductInput:
         d=dict(d); fs={}
         for k,v in (d.get("fields") or {}).items():
             v=dict(v); v["mode"]=ValueMode(v.get("mode","ollama")); fs[k]=FieldValue(**v)
-        d["fields"]=fs; return cls(**d)
+        d["fields"]=fs
+        d["trailers"]=[x if isinstance(x,TrailerAsset) else TrailerAsset(**x) for x in (d.get("trailers") or [])]
+        return cls(**d)
     @classmethod
     def load(cls,path): return cls.from_dict(json.loads(Path(path).read_text(encoding="utf-8")))
     def save(self,path):
@@ -110,6 +118,34 @@ def validate_product(p:ProductInput):
     elif len(str(desc.value))>10000: out.append(Finding("DESCRIPTION_TOO_LONG","Description exceeds 10,000 characters",Severity.HOLD,"description"))
     personal=p.fields.get("collects_personal_data"); privacy=p.fields.get("privacy_policy_url")
     if personal and personal.value=="yes" and not str(privacy.value if privacy else "").strip(): out.append(Finding("PRIVACY_POLICY","Privacy policy URL required by declaration",Severity.HOLD,"privacy_policy_url"))
+
+    # Trailers are fully optional. No trailer means no warning and no HOLD.
+    for i,t in enumerate(p.trailers):
+        prefix=f"trailers[{i}]"
+        if not t.video_path and not t.title and not t.thumbnail_path:
+            continue
+        video=Path(t.video_path)
+        thumb=Path(t.thumbnail_path)
+        if not t.video_path:
+            out.append(Finding("TRAILER_VIDEO_MISSING","Optional trailer was enabled but video file is missing",Severity.HOLD,prefix+".video_path"))
+        elif video.suffix.lower() not in {".mp4",".mov"}:
+            out.append(Finding("TRAILER_VIDEO_TYPE","Trailer must be MP4 or MOV",Severity.HOLD,prefix+".video_path"))
+        elif not video.exists():
+            out.append(Finding("TRAILER_VIDEO_NOT_FOUND","Trailer video file does not exist",Severity.HOLD,prefix+".video_path"))
+        if not t.title.strip():
+            out.append(Finding("TRAILER_TITLE_MISSING","Trailer title is required when a trailer is used",Severity.HOLD,prefix+".title"))
+        if not t.thumbnail_path:
+            out.append(Finding("TRAILER_THUMBNAIL_MISSING","Trailer thumbnail is required when a trailer is used",Severity.HOLD,prefix+".thumbnail_path"))
+        elif thumb.suffix.lower()!=".png":
+            out.append(Finding("TRAILER_THUMBNAIL_TYPE","Trailer thumbnail must be PNG",Severity.HOLD,prefix+".thumbnail_path"))
+        elif not thumb.exists():
+            out.append(Finding("TRAILER_THUMBNAIL_NOT_FOUND","Trailer thumbnail file does not exist",Severity.HOLD,prefix+".thumbnail_path"))
+    if p.product_type=="game" and any(t.video_path or t.title or t.thumbnail_path for t in p.trailers):
+        hero=Path(p.hero_art_path) if p.hero_art_path else None
+        if not hero:
+            out.append(Finding("TRAILER_HERO_ART_REQUIRED","Game trailer enabled: 16:9 Super hero art is required for Store trailer display",Severity.HOLD,"hero_art_path"))
+        elif hero.suffix.lower()!=".png" or not hero.exists():
+            out.append(Finding("TRAILER_HERO_ART_INVALID","Super hero art must be an existing PNG file",Severity.HOLD,"hero_art_path"))
     return out
 
 @dataclass(frozen=True)
