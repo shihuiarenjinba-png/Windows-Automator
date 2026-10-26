@@ -78,6 +78,8 @@ class App(tk.Tk):
         self.package_status = tk.StringVar(value="未選択")
         self.images_status = tk.StringVar(value="未選択")
         self.security_status = tk.StringVar(value="未確認")
+        self.preset_status = tk.StringVar(value="アプリ用固定ルール")
+        self.result_summary_text = tk.StringVar(value="未実行")
         self.review_only = tk.BooleanVar(value=True)
         self.ollama_url = tk.StringVar(value="http://127.0.0.1:11434/api/generate")
         self.ollama_model = tk.StringVar(value="qwen3:8b")
@@ -91,6 +93,9 @@ class App(tk.Tk):
 
         self._configure_styles()
         self._build()
+        self.kind.trace_add("write", lambda *_: self._refresh_preset_status())
+        self.submission_kind.trace_add("write", lambda *_: self._refresh_preset_status())
+        self._refresh_preset_status()
 
     def _configure_styles(self):
         style = ttk.Style(self)
@@ -151,12 +156,14 @@ class App(tk.Tk):
         top = ttk.LabelFrame(tab, text=" 製品 ", style="Section.TLabelframe", padding=12)
         top.grid(row=0, column=0, sticky="ew", pady=(0, 10))
         top.columnconfigure(1, weight=1)
+        top.columnconfigure(2, weight=0)
 
         ttk.Label(top, text="種類", width=16).grid(row=0, column=0, sticky="w", pady=5)
         row = ttk.Frame(top)
         row.grid(row=0, column=1, sticky="w")
         ttk.Radiobutton(row, text="アプリ", variable=self.kind, value="app").pack(side="left")
         ttk.Radiobutton(row, text="ゲーム", variable=self.kind, value="game").pack(side="left", padx=(18, 0))
+        ttk.Label(top, textvariable=self.preset_status, foreground="#1769AA").grid(row=0, column=2, sticky="e", padx=(20,0))
 
         ttk.Label(top, text="処理", width=16).grid(row=1, column=0, sticky="w", pady=5)
         row = ttk.Frame(top)
@@ -223,6 +230,13 @@ class App(tk.Tk):
             foreground="#5B6470",
         ).pack(side="right")
 
+
+    def _refresh_preset_status(self):
+        kind_label="アプリ" if self.kind.get()=="app" else "ゲーム"
+        mode_label="既存更新" if self.submission_kind.get()=="update" else "新規"
+        self.preset_status.set(f"{kind_label}用固定ルール / {mode_label}")
+        self.status_text.set(f"{kind_label}用固定ルールを自動選択")
+
     def _build_queue(self):
         top = ttk.Frame(self.queue_tab)
         top.pack(fill="x", pady=(0, 8))
@@ -245,6 +259,10 @@ class App(tk.Tk):
         self.queue_tree.tag_configure("hold", background="#FFF4D6")
         self.queue_tree.tag_configure("ready", background="#EAF5EA")
         self.queue_tree.pack(fill="both", expand=True)
+
+        summary = ttk.LabelFrame(self.queue_tab, text=" 総合結果 ", style="Section.TLabelframe", padding=10)
+        summary.pack(fill="x", pady=(10,0))
+        ttk.Label(summary, textvariable=self.result_summary_text, font=("Segoe UI", 12, "bold")).pack(side="left")
 
         buttons = ttk.Frame(self.queue_tab)
         buttons.pack(fill="x", pady=10)
@@ -331,6 +349,7 @@ class App(tk.Tk):
             trailers=[TrailerAsset(t.video_path,t.title,t.thumbnail_path) for t in self.trailers],
             hero_art_path=self.hero_art.get().strip(),
             security_package_sha256=self.current_product.security_package_sha256 if self.current_product and self.current_product.product_type == self.kind.get() else "",
+            submission_kind=self.submission_kind.get(),
         )
         if self.current_product and self.current_product.product_type == p.product_type:
             p.fields = {k: FieldValue(**{
@@ -468,9 +487,19 @@ class App(tk.Tk):
         text = render_markdown(self.last_report)
         self.queue_report.delete("1.0", "end")
         self.queue_report.insert("1.0", text)
-        done = sum(1 for r in self.last_report.results if r.status == "DONE")
-        hold = sum(1 for r in self.last_report.results if r.status == "HOLD")
-        self.status_text.set(f"全体事前確認完了 / DONE {done} / HOLD {hold}")
+        summary=self.last_report.summary()
+        if summary["mode"]=="single":
+            self.result_summary_text.set(f"実行結果: {summary['label']}")
+            self.status_text.set(f"1件の処理結果 / {summary['label']}")
+        else:
+            self.result_summary_text.set(
+                f"総件数 {summary['total']}件   成功 {summary['success']}件   HOLD {summary['hold']}件   "
+                f"失敗 {summary['failed']}件   不明 {summary['unknown']}件"
+            )
+            self.status_text.set(
+                f"総合結果 / 成功 {summary['success']}件・HOLD {summary['hold']}件・"
+                f"失敗 {summary['failed']}件・不明 {summary['unknown']}件"
+            )
 
     def render_review(self):
         for item in self.review_tree.get_children():
