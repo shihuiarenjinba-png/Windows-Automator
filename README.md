@@ -39,3 +39,23 @@ python -m unittest discover -s tests -v
 - https://learn.microsoft.com/windows/apps/publish/publish-your-app/msix/age-ratings
 - https://learn.microsoft.com/windows/apps/publish/publish-your-app/msix/add-and-edit-store-listing-info
 - https://learn.microsoft.com/windows/apps/publish/msstore-dev-cli/overview
+
+
+## Windows GUI
+
+起動:
+
+```powershell
+python -m store_manager.gui
+```
+
+通常操作は4画面です。
+
+1. **製品とファイル** — アプリ/ゲーム、製品名、GitHub、内容、MSIX/MSIXUPLOAD、画像、価格
+2. **自動入力・要確認** — 裏側で選ばれたStore回答を確認。普段は触らず、修正が必要な行だけダブルクリック
+3. **夜間キュー** — 複数製品を並べ、HOLDがあっても次製品へ進む前提で事前確認
+4. **結果・設定** — DONE/HOLD等のレポート、Ollama URL/model、GitHub token入力
+
+GitHub tokenはGUIから保存せず、GitHubコンテキスト取得だけに使用し、Ollamaへ渡しません。
+
+現在の「下書きアップロード」は無効です。Partner Center実画面のselectorをコード担当が確認し、誤操作防止条件を満たした後に有効化します。
