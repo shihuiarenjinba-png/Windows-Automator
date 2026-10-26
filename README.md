@@ -59,3 +59,16 @@ python -m store_manager.gui
 GitHub tokenはGUIから保存せず、GitHubコンテキスト取得だけに使用し、Ollamaへ渡しません。
 
 現在の「下書きアップロード」は無効です。Partner Center実画面のselectorをコード担当が確認し、誤操作防止条件を満たした後に有効化します。
+
+
+## Optional trailers
+
+Video is **optional**. The normal workflow does not show trailer controls and does not warn when no trailer is configured.
+
+If a trailer is intentionally added from **詳細設定 → 動画設定**, validation is enabled for that trailer only:
+- MP4 or MOV video
+- title
+- PNG thumbnail
+- for game listings using a trailer, 16:9 Super hero art
+
+If no trailer is configured, the Partner Center plan skips all trailer upload actions.
