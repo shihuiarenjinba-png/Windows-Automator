@@ -456,6 +456,14 @@ class App(tk.Tk):
         if not p.product_name:
             messagebox.showwarning("製品名", "製品名を入力してください。")
             return
+
+        new_key=(p.store_product_id.strip().casefold() if p.store_product_id.strip() else f"{p.product_type}:{p.product_name.strip().casefold()}")
+        for existing in self.queue:
+            existing_key=(existing.store_product_id.strip().casefold() if existing.store_product_id.strip() else f"{existing.product_type}:{existing.product_name.strip().casefold()}")
+            if existing_key==new_key:
+                messagebox.showwarning("重複", "同じ製品がすでに夜間キューにあります。")
+                return
+
         self.queue.append(ProductInput.from_dict(p.to_dict()))
         self.render_queue()
         self.notebook.select(self.queue_tab)
