@@ -1,0 +1,13 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "windows-automator-store-submission"
+version = "0.6.0"
+description = "Microsoft Store submission automation foundation"
+requires-python = ">=3.11"
+
+[project.scripts]
+store-submit = "store_manager.cli:main"
+store-submit-gui = "store_manager.gui:main"
