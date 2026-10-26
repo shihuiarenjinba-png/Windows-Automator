@@ -109,7 +109,12 @@ class T(unittest.TestCase):
             r=run_queue([p,p],up); self.assertTrue(r.stopped_early); self.assertEqual(len(r.results),1)
     def test_ambiguous_continues(self):
         with tempfile.TemporaryDirectory() as d:
-            t=Path(d); a=product(t); b=product(t); b.product_name="B"; n={"i":0}
+            root=Path(d)
+            a=product(root)
+            b=product(root); b.product_name="B"
+            second=root/"b.msix"; second.write_bytes(b"B")
+            b.package_path=str(second); b.security_package_sha256=file_sha256(str(second))
+            n={"i":0}
             def up(_):
                 n["i"]+=1
                 if n["i"]==1: raise AmbiguousWriteError("unknown")
