@@ -36,6 +36,7 @@ class T(unittest.TestCase):
         self.assertEqual(p.fields["free_trial"].value,"none")
         self.assertEqual(p.fields["publish_hold"].value,"manual_publish")
         self.assertEqual(p.fields["submission_kind"].value,"update")
+        self.assertEqual(p.market_preset,"all_markets")
         self.assertTrue(all(p.fields[k].mode==ValueMode.FIXED for k in ("product_type","visibility","free_trial","publish_hold","submission_kind")))
 
     def test_game_type_selects_game_fixed_preset(self):
