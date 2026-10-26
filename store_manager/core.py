@@ -125,6 +125,8 @@ def fixed_preset_for(kind:str):
 def apply_fixed_rules(p:ProductInput):
     defs={f.key:f for f in fields_for(p.product_type)}
     proposed=fixed_preset_for(p.product_type)
+    if not p.market_preset:
+        p.market_preset="all_markets"
     proposed["submission_kind"]=p.submission_kind
     if p.price_mode in {"free","paid"}:
         proposed["pricing_model"]=p.price_mode
