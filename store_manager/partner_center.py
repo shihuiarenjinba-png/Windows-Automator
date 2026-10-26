@@ -83,7 +83,7 @@ def simulate_overview_start(product_name:str, submission_kind:str="update", visi
 
 def build_dry_plan(p:ProductInput):
     start=simulate_overview_start(p.product_name, "update")
-    return [
+    plan=[
         *start.actions,
         "submission:start_or_update",
         "pricing_availability:fill_verified",
@@ -91,10 +91,17 @@ def build_dry_plan(p:ProductInput):
         "age_ratings:answer_visible_questions",
         f"packages:upload:{p.package_path}",
         "packages:wait_validation",
-        "store_listings:fill_text_and_assets",
-        "submission_options:fill_verified",
-        "review:save_draft_only",
+        "store_listings:fill_text_and_screenshots",
     ]
+    if p.trailers:
+        for i,t in enumerate(p.trailers):
+            plan.append(f"store_listings:trailer:{i}:upload:{t.video_path}")
+            plan.append(f"store_listings:trailer:{i}:thumbnail:{t.thumbnail_path}")
+            plan.append(f"store_listings:trailer:{i}:title:{t.title}")
+        if p.product_type=="game":
+            plan.append(f"store_listings:super_hero_art:{p.hero_art_path}")
+    plan += ["submission_options:fill_verified","review:save_draft_only"]
+    return plan
 
 def dryrun_uploader(p):
     return build_dry_plan(p)
