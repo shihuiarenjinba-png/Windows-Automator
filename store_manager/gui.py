@@ -88,6 +88,7 @@ class App(tk.Tk):
         self.trailers: list[TrailerAsset] = []
 
         self.current_product: ProductInput | None = None
+        self._last_kind = self.kind.get()
         self.queue: list[ProductInput] = []
         self.last_report = None
 
@@ -232,10 +233,28 @@ class App(tk.Tk):
 
 
     def _refresh_preset_status(self):
-        kind_label="アプリ" if self.kind.get()=="app" else "ゲーム"
+        kind=self.kind.get()
+        kind_label="アプリ" if kind=="app" else "ゲーム"
         mode_label="既存更新" if self.submission_kind.get()=="update" else "新規"
         self.preset_status.set(f"{kind_label}用固定ルール / {mode_label}")
-        self.status_text.set(f"{kind_label}用固定ルールを自動選択")
+
+        if self._last_kind != kind:
+            # Product-type-specific answers must never leak between app and game.
+            self.current_product=None
+            self.security_status.set("未確認")
+            if hasattr(self, "review_summary"):
+                self.review_summary.configure(text="まだ準備されていません")
+            self._last_kind=kind
+
+        # Materialize the fixed preset immediately in memory, not only as a label.
+        try:
+            p=self._build_product()
+            apply_fixed_rules(p)
+            self.current_product=p
+            self.render_review()
+            self.status_text.set(f"{kind_label}用固定ルールを適用済み")
+        except Exception:
+            self.status_text.set(f"{kind_label}用固定ルールを選択")
 
     def _build_queue(self):
         top = ttk.Frame(self.queue_tab)
@@ -258,6 +277,9 @@ class App(tk.Tk):
             self.queue_tree.column(c, width=width, anchor="w")
         self.queue_tree.tag_configure("hold", background="#FFF4D6")
         self.queue_tree.tag_configure("ready", background="#EAF5EA")
+        self.queue_tree.tag_configure("done", background="#EAF5EA")
+        self.queue_tree.tag_configure("error", background="#FDECEC")
+        self.queue_tree.tag_configure("unknown", background="#EEF1F5")
         self.queue_tree.pack(fill="both", expand=True)
 
         summary = ttk.LabelFrame(self.queue_tab, text=" 総合結果 ", style="Section.TLabelframe", padding=10)
@@ -487,6 +509,19 @@ class App(tk.Tk):
         text = render_markdown(self.last_report)
         self.queue_report.delete("1.0", "end")
         self.queue_report.insert("1.0", text)
+
+        # Reflect the actual result on each queued row.
+        label_map={"DONE":"成功","HOLD":"HOLD","UNKNOWN":"不明","ERROR":"失敗","AUTH_ERROR":"認証失敗"}
+        tag_map={"DONE":"done","HOLD":"hold","UNKNOWN":"unknown","ERROR":"error","AUTH_ERROR":"error"}
+        for index,result in enumerate(self.last_report.results):
+            iid=str(index)
+            if not self.queue_tree.exists(iid):
+                continue
+            values=list(self.queue_tree.item(iid,"values"))
+            if len(values)>=5:
+                values[4]=label_map.get(result.status,result.status)
+            self.queue_tree.item(iid,values=values,tags=(tag_map.get(result.status,"unknown"),))
+
         summary=self.last_report.summary()
         if summary["mode"]=="single":
             self.result_summary_text.set(f"実行結果: {summary['label']}")
