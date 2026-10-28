@@ -146,7 +146,7 @@ class T(unittest.TestCase):
         self.assertEqual((s["total"],s["success"],s["hold"],s["failed"],s["unknown"]),(5,2,1,1,1))
         text=render_markdown(r)
         self.assertIn("総件数 5件",text)
-        self.assertIn("成功 2件",text)
+        self.assertIn("Dry Run成功 2件",text)
 
     def test_no_trailer_is_clean_and_not_uploaded(self):
         with tempfile.TemporaryDirectory() as d:

@@ -25,7 +25,29 @@ class TrailerAsset:
 
 @dataclass
 class ProductInput:
-    product_type:str; product_name:str; app_summary:str; repository:str=""; package_path:str=""; images_dir:str=""; store_product_id:str=""; price_mode:str="manual"; price_value:str=""; market_preset:str=""; fields:dict[str,FieldValue]=field(default_factory=dict); trailers:list[TrailerAsset]=field(default_factory=list); hero_art_path:str=""; security_package_sha256:str=""; submission_kind:str="update"
+    product_type:str
+    product_name:str
+    app_summary:str
+    repository:str=""
+    package_path:str=""
+    images_dir:str=""
+    store_product_id:str=""
+    price_mode:str="manual"
+    price_value:str=""
+    market_preset:str=""
+    fields:dict[str,FieldValue]=field(default_factory=dict)
+    trailers:list[TrailerAsset]=field(default_factory=list)
+    hero_art_path:str=""
+    security_package_sha256:str=""
+    submission_kind:str="update"
+    source_sha:str=""
+    source_branch:str=""
+    identity_name:str=""
+    identity_publisher:str=""
+    package_version:str=""
+    checker_status:str=""
+    human_local_qa_pass:bool=False
+    draft_id:str=""
     def to_dict(self):
         d=asdict(self)
         for v in d.get("fields",{}).values():
@@ -48,7 +70,23 @@ class Finding:
     code:str; message:str; severity:Severity; field:str=""
 @dataclass
 class ProductResult:
-    product_name:str; status:str; findings:list[Finding]=field(default_factory=list); actions:list[str]=field(default_factory=list)
+    product_name:str
+    status:str
+    findings:list[Finding]=field(default_factory=list)
+    actions:list[str]=field(default_factory=list)
+    details:dict[str,Any]=field(default_factory=dict)
+
+@dataclass
+class UploadOutcome:
+    """Explicit uploader outcome.
+
+    Legacy/dry-run uploaders may still return ``list[str]``.  A live uploader
+    must return this type so the queue cannot turn a successful function call
+    into an unproven DRAFT_SAVED claim.
+    """
+    status:str
+    actions:list[str]=field(default_factory=list)
+    details:dict[str,Any]=field(default_factory=dict)
 
 APP_CATEGORIES=("Books + reference","Business","Developer tools","Education","Entertainment","Food + dining","Government + politics","Health + fitness","Kids + family","Lifestyle","Medical","Multimedia design","Music","Navigation + maps","News + weather","Personal finance","Personalization","Photo + video","Productivity","Security","Shopping","Social","Sports","Travel","Utilities + tools")
 GAME_GENRES=("Action + adventure","Card + board","Casino","Classics","Educational","Family + kids","Fighting","Multi-Player Online Battle Arena","Music","Other","Platformer","Puzzle + trivia","Racing + flying","Role playing","Shooter","Simulation","Sports","Strategy","Tools","Word")
@@ -230,6 +268,7 @@ def validate_live_answer(q:LiveQuestion,raw:dict,sensitive=True):
 
 class GlobalAuthError(RuntimeError): pass
 class AmbiguousWriteError(RuntimeError): pass
+class ProductHoldError(RuntimeError): pass
 @dataclass
 class QueuePolicy:
     continue_after_product_hold:bool=True; continue_after_product_error:bool=True; stop_on_global_auth_error:bool=True; stop_on_ambiguous_write:bool=False
@@ -237,7 +276,7 @@ class QueuePolicy:
 class QueueReport:
     results:list[ProductResult]=field(default_factory=list); stopped_early:bool=False; stop_reason:str=""
     def counts(self):
-        values={"DONE":0,"HOLD":0,"UNKNOWN":0,"ERROR":0,"AUTH_ERROR":0}
+        values={"DONE":0,"DRAFT_SAVED":0,"HOLD":0,"UNKNOWN":0,"ERROR":0,"AUTH_ERROR":0}
         for r in self.results:
             values[r.status]=values.get(r.status,0)+1
         return values
@@ -245,20 +284,26 @@ class QueueReport:
         c=self.counts()
         total=len(self.results)
         failed=c.get("ERROR",0)+c.get("AUTH_ERROR",0)
+        success=c.get("DONE",0)+c.get("DRAFT_SAVED",0)
         if total==1:
             status=self.results[0].status if self.results else "EMPTY"
-            label={"DONE":"成功","HOLD":"要修正","UNKNOWN":"不明","ERROR":"失敗","AUTH_ERROR":"認証失敗"}.get(status,status)
-            return {"mode":"single","total":total,"success":c["DONE"],"hold":c["HOLD"],"failed":failed,"unknown":c["UNKNOWN"],"label":label}
-        return {"mode":"batch","total":total,"success":c["DONE"],"hold":c["HOLD"],"failed":failed,"unknown":c["UNKNOWN"],"label":f"総合結果: {total}件"}
+            label={"DONE":"成功","DRAFT_SAVED":"下書き保存成功","HOLD":"要修正","UNKNOWN":"不明","ERROR":"失敗","AUTH_ERROR":"認証失敗"}.get(status,status)
+            return {"mode":"single","total":total,"success":success,"dry_run_done":c["DONE"],"draft_saved":c["DRAFT_SAVED"],"hold":c["HOLD"],"failed":failed,"unknown":c["UNKNOWN"],"label":label}
+        return {"mode":"batch","total":total,"success":success,"dry_run_done":c["DONE"],"draft_saved":c["DRAFT_SAVED"],"hold":c["HOLD"],"failed":failed,"unknown":c["UNKNOWN"],"label":f"総合結果: {total}件"}
     def to_dict(self):
-        return {"stopped_early":self.stopped_early,"stop_reason":self.stop_reason,"summary":self.summary(),"results":[{"product_name":r.product_name,"status":r.status,"findings":[{"code":f.code,"message":f.message,"severity":f.severity.value,"field":f.field} for f in r.findings],"actions":r.actions} for r in self.results]}
+        results=[]
+        for r in self.results:
+            item={"product_name":r.product_name,"status":r.status,"findings":[{"code":f.code,"message":f.message,"severity":f.severity.value,"field":f.field} for f in r.findings],"actions":r.actions}
+            item.update(r.details)
+            results.append(item)
+        return {"schema_version":2,"stopped_early":self.stopped_early,"stop_reason":self.stop_reason,"summary":self.summary(),"results":results}
 
 def queue_product_key(p:ProductInput):
     if p.store_product_id.strip():
         return "store:"+p.store_product_id.strip().casefold()
     return f"{p.product_type}:{p.product_name.strip().casefold()}"
 
-def run_queue(products:list[ProductInput],uploader:Callable[[ProductInput],list[str]],policy:QueuePolicy|None=None):
+def run_queue(products:list[ProductInput],uploader:Callable[[ProductInput],list[str]|UploadOutcome],policy:QueuePolicy|None=None):
     policy=policy or QueuePolicy(); report=QueueReport()
     seen_products=set()
     seen_packages={}
@@ -283,13 +328,23 @@ def run_queue(products:list[ProductInput],uploader:Callable[[ProductInput],list[
             report.results.append(ProductResult(p.product_name,"HOLD",findings,[]))
             if not policy.continue_after_product_hold: report.stopped_early=True; report.stop_reason="product_hold"; break
             continue
-        try: report.results.append(ProductResult(p.product_name,"DONE",findings,uploader(p)))
+        try:
+            outcome=uploader(p)
+            if isinstance(outcome,UploadOutcome):
+                if outcome.status not in {"DONE","DRAFT_SAVED","HOLD","UNKNOWN","ERROR"}:
+                    raise ValueError(f"Unsupported uploader outcome: {outcome.status}")
+                report.results.append(ProductResult(p.product_name,outcome.status,findings,outcome.actions,outcome.details))
+            else:
+                report.results.append(ProductResult(p.product_name,"DONE",findings,list(outcome)))
         except GlobalAuthError as e:
             report.results.append(ProductResult(p.product_name,"AUTH_ERROR",findings+[Finding("AUTH",str(e),Severity.FATAL)],[]))
             if policy.stop_on_global_auth_error: report.stopped_early=True; report.stop_reason="global_auth_error"; break
         except AmbiguousWriteError as e:
             report.results.append(ProductResult(p.product_name,"UNKNOWN",findings+[Finding("AMBIGUOUS_WRITE",str(e),Severity.HOLD)],[]))
             if policy.stop_on_ambiguous_write: report.stopped_early=True; report.stop_reason="ambiguous_write"; break
+        except ProductHoldError as e:
+            report.results.append(ProductResult(p.product_name,"HOLD",findings+[Finding("LIVE_GATE",str(e),Severity.HOLD)],[]))
+            if not policy.continue_after_product_hold: report.stopped_early=True; report.stop_reason="product_hold"; break
         except Exception as e:
             report.results.append(ProductResult(p.product_name,"ERROR",findings+[Finding("UPLOAD_ERROR",str(e),Severity.HOLD)],[]))
             if not policy.continue_after_product_error: report.stopped_early=True; report.stop_reason="product_error"; break
@@ -304,9 +359,9 @@ def render_markdown(report:QueueReport):
         lines=[
             "# Microsoft Store 総合結果",
             "",
-            f"**総件数 {summary['total']}件 / 成功 {summary['success']}件 / HOLD {summary['hold']}件 / 失敗 {summary['failed']}件 / 不明 {summary['unknown']}件**",
+            f"**総件数 {summary['total']}件 / DRAFT_SAVED {summary['draft_saved']}件 / Dry Run成功 {summary['dry_run_done']}件 / HOLD {summary['hold']}件 / 失敗 {summary['failed']}件 / 不明 {summary['unknown']}件**",
         ]
-    lines += ["","| 状態 | 件数 |","|---|---:|"]+[f"| {s} | {counts.get(s,0)} |" for s in ("DONE","HOLD","UNKNOWN","ERROR","AUTH_ERROR")]
+    lines += ["","| 状態 | 件数 |","|---|---:|"]+[f"| {s} | {counts.get(s,0)} |" for s in ("DONE","DRAFT_SAVED","HOLD","UNKNOWN","ERROR","AUTH_ERROR")]
     for r in report.results:
         lines += ["",f"## {r.product_name} — {r.status}"]+[f"- **{f.severity.value.upper()} / {f.code}**: {f.message}" for f in r.findings]
     return "\n".join(lines)+"\n"

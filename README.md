@@ -25,7 +25,7 @@ Yes/No、カテゴリ、ゲームジャンル等の選択問題は通常UIで毎
 5. Store listings
 6. Submission options
 
-本番selectorは推測せず、実画面確認後だけ有効化します。現時点はdraft準備・dry-runまでで、Submit for certificationは自動化しません。
+本番selectorは推測せず、実画面確認後だけ有効化します。ライブ実行のコード経路は追加済みですが、実アップロードでvalidation/Save/再読込のDOMを観測するまでは selector map が `write_enabled=false` のためfail-closedです。Submit for certification / Publishは自動化しません。
 
 ## Test
 ```powershell
@@ -58,7 +58,15 @@ python -m store_manager.gui
 
 GitHub tokenはGUIから保存せず、GitHubコンテキスト取得だけに使用し、Ollamaへ渡しません。
 
-現在の「下書きアップロード」は無効です。Partner Center実画面のselectorをコード担当が確認し、誤操作防止条件を満たした後に有効化します。
+現在の「下書きアップロード」は安全側で無効です。読み取り観測済みの画面契約は `docs/PARTNER_CENTER_SCREEN_MAPPING_20261029.md`、機械可読selectorは `docs/PARTNER_CENTER_MAP.json` を参照してください。
+
+ライブ経路を使うには、Store ID / source SHA / package SHA / Identity / Version、Windows-checker合格、人間の軽量QA、検証済みselector map、既存のログイン済みブラウザがすべて必要です。さらに実行時に `--execution-mode live --confirm-live-draft --cdp-url <endpoint>` を明示します。`DONE` はDry Runだけ、Save後の再読込と全セクション証拠を満たした場合だけ `DRAFT_SAVED` です。
+
+Playwrightは任意依存です。
+
+```powershell
+py -3.11 -m pip install -e ".[live]"
+```
 
 
 ## Optional trailers

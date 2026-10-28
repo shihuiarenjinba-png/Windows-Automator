@@ -519,8 +519,8 @@ class App(tk.Tk):
         self.queue_report.insert("1.0", text)
 
         # Reflect the actual result on each queued row.
-        label_map={"DONE":"成功","HOLD":"HOLD","UNKNOWN":"不明","ERROR":"失敗","AUTH_ERROR":"認証失敗"}
-        tag_map={"DONE":"done","HOLD":"hold","UNKNOWN":"unknown","ERROR":"error","AUTH_ERROR":"error"}
+        label_map={"DONE":"成功","DRAFT_SAVED":"下書き保存","HOLD":"HOLD","UNKNOWN":"不明","ERROR":"失敗","AUTH_ERROR":"認証失敗"}
+        tag_map={"DONE":"done","DRAFT_SAVED":"done","HOLD":"hold","UNKNOWN":"unknown","ERROR":"error","AUTH_ERROR":"error"}
         for index,result in enumerate(self.last_report.results):
             iid=str(index)
             if not self.queue_tree.exists(iid):
@@ -536,11 +536,11 @@ class App(tk.Tk):
             self.status_text.set(f"1件の処理結果 / {summary['label']}")
         else:
             self.result_summary_text.set(
-                f"総件数 {summary['total']}件   成功 {summary['success']}件   HOLD {summary['hold']}件   "
+                f"総件数 {summary['total']}件   下書き保存 {summary['draft_saved']}件   Dry Run成功 {summary['dry_run_done']}件   HOLD {summary['hold']}件   "
                 f"失敗 {summary['failed']}件   不明 {summary['unknown']}件"
             )
             self.status_text.set(
-                f"総合結果 / 成功 {summary['success']}件・HOLD {summary['hold']}件・"
+                f"総合結果 / 下書き保存 {summary['draft_saved']}件・Dry Run成功 {summary['dry_run_done']}件・HOLD {summary['hold']}件・"
                 f"失敗 {summary['failed']}件・不明 {summary['unknown']}件"
             )
 
