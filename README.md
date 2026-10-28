@@ -13,6 +13,26 @@ Microsoft Storeへのゲーム/アプリ登録作業を、最小入力・固定�
 
 Yes/No、カテゴリ、ゲームジャンル等の選択問題は通常UIで毎回操作せず、裏側で決定します。OllamaはMicrosoft側に実際に存在する選択肢からしか回答できない契約です。高影響の宣言は根拠不足ならREVIEWに残します。
 
+## Partner Center申請種類
+
+Partner Centerの `New product` に合わせて、次の4種類を固定テンプレートとして扱います。
+
+- `MSIX or PWA app`
+- `EXE or MSI app`
+- `GDK game`
+- `MSIX or PWA game`
+
+UIで申請種類を選ぶと、app/game区分、固定プリセット、必要入力、許可するパッケージ形式、AI補完対象、Partner Center経路を自動選択します。
+
+- MSIX/PWA app: 現在READ_ONLYで観測済みの標準MSIX経路
+- EXE/MSI app: HTTPS installer URL、EXE/MSI、architecture、silent install引数、languageが必要
+- GDK game: PCはMSIXVC/MSIXVC2を使用し、EKB/symbols/submission validatorを専用テンプレートで扱う
+- MSIX/PWA game: game genre / IARC / game propertiesをゲーム用テンプレートで扱う
+
+未実証のrouteはテンプレートだけを適用し、live Store writeはHOLDします。MSIX App以外のlive mappingをMSIX App selectorで代用しません。
+
+詳細: `docs/SUBMISSION_ROUTE_TEMPLATES_JA.md`
+
 ## 夜間処理
 製品単位のHOLD/ERRORは記録して次へ進みます。認証切れのみ全体停止。書込成否不明はUNKNOWNにし、同じ製品を自動再送しません。朝にJSON/Markdownレポートを確認します。
 
