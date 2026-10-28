@@ -28,6 +28,7 @@ from .partner_center import (
     dryrun_uploader,
     simulate_overview_start,
 )
+from .submission_routes import ROUTE_LABELS, route_id_from_label, route_label, route_template
 
 MODE_LABELS = {
     ValueMode.FIXED: "固定（自動）",
@@ -67,6 +68,8 @@ class App(tk.Tk):
         self.minsize(940, 680)
 
         self.kind = tk.StringVar(value="app")
+        self.submission_route = tk.StringVar(value="msix_pwa_app")
+        self.submission_route_label = tk.StringVar(value=route_label("msix_pwa_app"))
         self.submission_kind = tk.StringVar(value="update")
         self.name = tk.StringVar()
         self.repo = tk.StringVar()
@@ -77,6 +80,8 @@ class App(tk.Tk):
         self.status_text = tk.StringVar(value="入力待ち")
         self.package_status = tk.StringVar(value="未選択")
         self.images_status = tk.StringVar(value="未選択")
+        self.package_label = tk.StringVar(value="MSIX / MSIXUPLOAD")
+        self.route_hint = tk.StringVar(value="MSIX系: Microsoft Storeへパッケージをアップロード")
         self.security_status = tk.StringVar(value="未確認")
         self.preset_status = tk.StringVar(value="アプリ用固定ルール")
         self.result_summary_text = tk.StringVar(value="未実行")
@@ -85,16 +90,24 @@ class App(tk.Tk):
         self.ollama_model = tk.StringVar(value="qwen3:8b")
         self.github_token = tk.StringVar()
         self.hero_art = tk.StringVar()
+        self.installer_url = tk.StringVar()
+        self.installer_type = tk.StringVar(value="exe")
+        self.installer_architecture = tk.StringVar(value="x64")
+        self.silent_install_args = tk.StringVar()
+        self.installer_languages = tk.StringVar(value="en-us")
+        self.gdk_ekb = tk.StringVar()
+        self.gdk_symbols = tk.StringVar()
+        self.gdk_validator = tk.StringVar()
         self.trailers: list[TrailerAsset] = []
 
         self.current_product: ProductInput | None = None
         self._last_kind = self.kind.get()
+        self._last_route = self.submission_route.get()
         self.queue: list[ProductInput] = []
         self.last_report = None
 
         self._configure_styles()
         self._build()
-        self.kind.trace_add("write", lambda *_: self._refresh_preset_status())
         self.submission_kind.trace_add("write", lambda *_: self._refresh_preset_status())
         self._refresh_preset_status()
 
@@ -159,11 +172,16 @@ class App(tk.Tk):
         top.columnconfigure(1, weight=1)
         top.columnconfigure(2, weight=0)
 
-        ttk.Label(top, text="種類", width=16).grid(row=0, column=0, sticky="w", pady=5)
-        row = ttk.Frame(top)
-        row.grid(row=0, column=1, sticky="w")
-        ttk.Radiobutton(row, text="アプリ", variable=self.kind, value="app").pack(side="left")
-        ttk.Radiobutton(row, text="ゲーム", variable=self.kind, value="game").pack(side="left", padx=(18, 0))
+        ttk.Label(top, text="申請種類", width=16).grid(row=0, column=0, sticky="w", pady=5)
+        self.route_combo = ttk.Combobox(
+            top,
+            textvariable=self.submission_route_label,
+            state="readonly",
+            values=ROUTE_LABELS,
+            width=24,
+        )
+        self.route_combo.grid(row=0, column=1, sticky="w", pady=5)
+        self.route_combo.bind("<<ComboboxSelected>>", self._on_route_selected)
         ttk.Label(top, textvariable=self.preset_status, foreground="#1769AA").grid(row=0, column=2, sticky="e", padx=(20,0))
 
         ttk.Label(top, text="処理", width=16).grid(row=1, column=0, sticky="w", pady=5)
@@ -178,8 +196,10 @@ class App(tk.Tk):
         files = ttk.LabelFrame(tab, text=" ファイル ", style="Section.TLabelframe", padding=12)
         files.grid(row=1, column=0, sticky="ew", pady=(0, 10))
         files.columnconfigure(1, weight=1)
-        self._path_row(files, 0, "MSIX / MSIXUPLOAD", self.package, False, self.package_status)
+        self._path_row(files, 0, self.package_label, self.package, False, self.package_status)
         self._path_row(files, 1, "商品画像フォルダ", self.images, True, self.images_status)
+        ttk.Label(files, textvariable=self.route_hint, foreground="#5B6470").grid(row=2, column=0, columnspan=3, sticky="w", pady=(5,0))
+        ttk.Button(files, text="申請ルート設定…", command=self.open_route_settings, style="Quiet.TButton").grid(row=2, column=3, sticky="e", pady=(5,0))
 
         security = ttk.LabelFrame(tab, text=" セキュリティ確認（必須） ", style="Section.TLabelframe", padding=12)
         security.grid(row=2, column=0, sticky="ew", pady=(0, 10))
@@ -232,29 +252,50 @@ class App(tk.Tk):
         ).pack(side="right")
 
 
-    def _refresh_preset_status(self):
-        kind=self.kind.get()
-        kind_label="アプリ" if kind=="app" else "ゲーム"
-        mode_label="既存更新" if self.submission_kind.get()=="update" else "新規"
-        self.preset_status.set(f"{kind_label}用固定ルール / {mode_label}")
+    def _on_route_selected(self, _event=None):
+        route_id=route_id_from_label(self.submission_route_label.get())
+        template=route_template(route_id)
+        self.submission_route.set(route_id)
+        self.kind.set(template.product_type)
+        if route_id=="exe_msi_app":
+            self.package_label.set("EXE / MSI（ローカルQA）")
+            self.route_hint.set("EXE/MSI: StoreにはHTTPS installer URLとsilent install情報を登録")
+        elif route_id=="gdk_game":
+            self.package_label.set("MSIXVC / MSIXVC2")
+            self.route_hint.set("GDK: MSIXVC系 + EKB / symbols / validatorを専用テンプレートで処理")
+        elif route_id=="msix_pwa_game":
+            self.package_label.set("MSIX / MSIXUPLOAD")
+            self.route_hint.set("MSIX/PWA game: ゲーム用Properties・IARCテンプレートを使用")
+        else:
+            self.package_label.set("MSIX / MSIXUPLOAD")
+            self.route_hint.set("MSIX/PWA app: 現在の標準Storeパッケージ経路")
+        self._refresh_preset_status()
 
-        if self._last_kind != kind:
-            # Product-type-specific answers must never leak between app and game.
+    def _refresh_preset_status(self):
+        route_id=self.submission_route.get()
+        template=route_template(route_id)
+        kind=template.product_type
+        self.kind.set(kind)
+        mode_label="既存更新" if self.submission_kind.get()=="update" else "新規"
+        self.preset_status.set(f"{template.partner_center_label} / {mode_label}")
+
+        if self._last_kind != kind or self._last_route != route_id:
+            # Route-specific answers must never leak across Partner Center product types.
             self.current_product=None
             self.security_status.set("未確認")
             if hasattr(self, "review_summary"):
                 self.review_summary.configure(text="まだ準備されていません")
             self._last_kind=kind
+            self._last_route=route_id
 
-        # Materialize the fixed preset immediately in memory, not only as a label.
         try:
             p=self._build_product()
             apply_fixed_rules(p)
             self.current_product=p
             self.render_review()
-            self.status_text.set(f"{kind_label}用固定ルールを適用済み")
+            self.status_text.set(f"{template.partner_center_label}テンプレート適用済み")
         except Exception:
-            self.status_text.set(f"{kind_label}用固定ルールを選択")
+            self.status_text.set(f"{template.partner_center_label}テンプレートを選択")
 
     def _build_queue(self):
         top = ttk.Frame(self.queue_tab)
@@ -269,8 +310,8 @@ class App(tk.Tk):
         for c, text, width in (
             ("no", "#", 42),
             ("name", "製品", 250),
-            ("kind", "種類", 85),
-            ("package", "パッケージ", 420),
+            ("kind", "申請種類", 180),
+            ("package", "パッケージ", 325),
             ("status", "状態", 120),
         ):
             self.queue_tree.heading(c, text=text)
@@ -332,7 +373,10 @@ class App(tk.Tk):
         self.review_tree.bind("<<TreeviewSelect>>", self.show_rationale)
 
     def _path_row(self, parent, row, label, var, folder, status_var):
-        ttk.Label(parent, text=label, width=16).grid(row=row, column=0, sticky="w", pady=6)
+        if isinstance(label, tk.Variable):
+            ttk.Label(parent, textvariable=label, width=20).grid(row=row, column=0, sticky="w", pady=6)
+        else:
+            ttk.Label(parent, text=label, width=20).grid(row=row, column=0, sticky="w", pady=6)
         ttk.Entry(parent, textvariable=var).grid(row=row, column=1, sticky="ew", pady=6, padx=6)
         ttk.Button(parent, text="参照", command=lambda: self.pick(var, folder, status_var)).grid(row=row, column=2)
         ttk.Label(parent, textvariable=status_var, width=10).grid(row=row, column=3, padx=(8, 0))
@@ -341,12 +385,13 @@ class App(tk.Tk):
         if folder:
             selected = filedialog.askdirectory()
         else:
-            selected = filedialog.askopenfilename(
-                filetypes=[
-                    ("Store packages", "*.msix *.msixupload *.msixbundle *.appx *.appxupload *.appxbundle"),
-                    ("All files", "*.*"),
-                ]
-            )
+            if var is self.package:
+                template=route_template(self.submission_route.get())
+                pattern=" ".join(f"*{ext}" for ext in template.accepted_extensions)
+                filetypes=[(template.partner_center_label, pattern), ("All files", "*.*")]
+            else:
+                filetypes=[("All files", "*.*")]
+            selected = filedialog.askopenfilename(filetypes=filetypes)
         if selected:
             var.set(selected)
             status_var.set("選択済み" if Path(selected).exists() else "要確認")
@@ -372,8 +417,17 @@ class App(tk.Tk):
             hero_art_path=self.hero_art.get().strip(),
             security_package_sha256=self.current_product.security_package_sha256 if self.current_product and self.current_product.product_type == self.kind.get() else "",
             submission_kind=self.submission_kind.get(),
+            submission_route=self.submission_route.get(),
+            installer_url=self.installer_url.get().strip(),
+            installer_type=self.installer_type.get().strip(),
+            installer_architecture=self.installer_architecture.get().strip(),
+            silent_install_args=self.silent_install_args.get().strip(),
+            installer_languages=[x.strip() for x in self.installer_languages.get().split(",") if x.strip()],
+            gdk_ekb_path=self.gdk_ekb.get().strip(),
+            gdk_symbols_path=self.gdk_symbols.get().strip(),
+            gdk_submission_validator_path=self.gdk_validator.get().strip(),
         )
-        if self.current_product and self.current_product.product_type == p.product_type:
+        if self.current_product and self.current_product.product_type == p.product_type and self.current_product.submission_route == p.submission_route:
             p.fields = {k: FieldValue(**{
                 "key": v.key,
                 "mode": v.mode,
@@ -406,12 +460,15 @@ class App(tk.Tk):
             p.product_name,
             self.submission_kind.get(),
             visible_products=(),
+            submission_route=p.submission_route,
+            product_type=p.product_type,
         )
         lines = [
             "Partner Center開始シミュレーション",
             "",
             f"開始URL: {sim.start_url}",
             f"対象: {sim.product_name or '(未入力)'}",
+            f"申請種類: {route_label(p.submission_route, p.product_type)}",
             f"処理: {'新規' if sim.mode == 'new' else '既存更新'}",
             "",
             *[f"✓ {x}" for x in sim.actions],
@@ -479,7 +536,7 @@ class App(tk.Tk):
                 "",
                 "end",
                 iid=str(i - 1),
-                values=(i, p.product_name, "ゲーム" if p.product_type == "game" else "アプリ", Path(p.package_path).name if p.package_path else "未選択", "要確認" if hold else "準備OK"),
+                values=(i, p.product_name, route_label(p.submission_route, p.product_type), Path(p.package_path).name if p.package_path else "未選択", "要確認" if hold else "準備OK"),
                 tags=("hold" if hold else "ready",),
             )
         self.queue_summary.configure(text=f"{len(self.queue)}件")
@@ -638,6 +695,54 @@ class App(tk.Tk):
         ttk.Button(body, text="反映", command=save, style="Primary.TButton").pack(anchor="e", pady=(10, 0))
 
 
+
+
+    def open_route_settings(self):
+        template=route_template(self.submission_route.get())
+        win=tk.Toplevel(self)
+        win.title(f"申請ルート設定 — {template.partner_center_label}")
+        win.geometry("720x430")
+        win.transient(self)
+        win.grab_set()
+        body=ttk.Frame(win,padding=18)
+        body.pack(fill="both",expand=True)
+        body.columnconfigure(1,weight=1)
+        ttk.Label(body,text=template.partner_center_label,font=("Segoe UI",14,"bold")).grid(row=0,column=0,columnspan=3,sticky="w")
+        ttk.Label(body,text="この種類に必要な追加情報だけを表示します。",foreground="#5B6470").grid(row=1,column=0,columnspan=3,sticky="w",pady=(2,14))
+
+        if template.route_id=="exe_msi_app":
+            rows=(
+                ("HTTPS installer URL", self.installer_url),
+                ("Installer type (exe/msi)", self.installer_type),
+                ("Architecture", self.installer_architecture),
+                ("Silent install arguments", self.silent_install_args),
+                ("Languages (comma separated)", self.installer_languages),
+            )
+            for i,(label,var) in enumerate(rows,start=2):
+                ttk.Label(body,text=label).grid(row=i,column=0,sticky="w",pady=6)
+                if label.startswith("Installer type"):
+                    ttk.Combobox(body,textvariable=var,state="readonly",values=("exe","msi")).grid(row=i,column=1,columnspan=2,sticky="ew",pady=6)
+                else:
+                    ttk.Entry(body,textvariable=var).grid(row=i,column=1,columnspan=2,sticky="ew",pady=6)
+            ttk.Label(body,text="StoreにはローカルEXE/MSIを直接送らず、バージョン固定HTTPS URLを登録します。",foreground="#5B6470").grid(row=7,column=0,columnspan=3,sticky="w",pady=(10,0))
+        elif template.route_id=="gdk_game":
+            def browse(var, filetypes):
+                path=filedialog.askopenfilename(parent=win,filetypes=filetypes)
+                if path: var.set(path)
+            rows=(
+                ("EKB",self.gdk_ekb,[("EKB","*.ekb"),("All files","*.*")]),
+                ("Symbols",self.gdk_symbols,[("ZIP","*.zip"),("All files","*.*")]),
+                ("Submission validator",self.gdk_validator,[("XML","*.xml"),("All files","*.*")]),
+            )
+            for i,(label,var,types) in enumerate(rows,start=2):
+                ttk.Label(body,text=label).grid(row=i,column=0,sticky="w",pady=6)
+                ttk.Entry(body,textvariable=var).grid(row=i,column=1,sticky="ew",pady=6)
+                ttk.Button(body,text="参照",command=lambda v=var,t=types:browse(v,t)).grid(row=i,column=2,padx=(6,0))
+            ttk.Label(body,text="GDK live uploadは専用画面/MakePkg経路の実証が終わるまでHOLDします。",foreground="#5B6470").grid(row=5,column=0,columnspan=3,sticky="w",pady=(10,0))
+        else:
+            ttk.Label(body,text="このルートに追加の固定入力はありません。MSIX・画像・価格・セキュリティ確認を使用します。",wraplength=650).grid(row=2,column=0,columnspan=3,sticky="w",pady=8)
+
+        ttk.Button(body,text="完了",command=win.destroy,style="Primary.TButton").grid(row=20,column=2,sticky="e",pady=(20,0))
 
     def open_security_settings(self):
         if not self.package.get().strip() or not Path(self.package.get().strip()).is_file():
