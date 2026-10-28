@@ -146,6 +146,24 @@ class LiveDraftTests(unittest.TestCase):
             with self.assertRaises(LiveGateError):
                 LiveDraftWorkflow(FakePort())(product)
 
+    def test_warning_validation_is_hold_not_saved(self):
+        with tempfile.TemporaryDirectory() as directory:
+            product = live_product(Path(directory))
+            port = FakePort()
+            port.uploaded = PackageState("WARNING", "COMPLETE", warning="manual review")
+            with self.assertRaises(LiveGateError):
+                LiveDraftWorkflow(port)(product)
+            self.assertFalse(port.saved)
+
+    def test_non_msix_app_routes_cannot_enter_current_live_adapter(self):
+        with tempfile.TemporaryDirectory() as directory:
+            product = live_product(Path(directory))
+            for route_id in ("exe_msi_app", "gdk_game", "msix_pwa_game"):
+                product.submission_route = route_id
+                product.product_type = "game" if "game" in route_id else "app"
+                with self.subTest(route=route_id), self.assertRaises(LiveGateError):
+                    LiveDraftWorkflow(FakePort())(product)
+
     def test_validation_error_is_hold_not_saved(self):
         with tempfile.TemporaryDirectory() as directory:
             product = live_product(Path(directory))
@@ -194,6 +212,11 @@ class LiveDraftTests(unittest.TestCase):
     def test_unverified_selector_map_fails_closed(self):
         with self.assertRaises(LiveGateError):
             SelectorMap({"schema_version": 2, "write_enabled": False})
+
+    def test_write_enabled_map_must_be_complete_before_any_upload(self):
+        with self.assertRaises(LiveGateError) as ctx:
+            SelectorMap({"schema_version": 2, "write_enabled": True, "selectors": {}})
+        self.assertIn("incomplete before upload", str(ctx.exception))
 
     def test_report_contains_live_fields_at_top_level(self):
         with tempfile.TemporaryDirectory() as directory:
