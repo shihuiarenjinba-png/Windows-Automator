@@ -5,6 +5,9 @@ from pathlib import Path
 from typing import Any, Callable
 import hashlib
 import json
+from urllib.parse import urlparse
+
+from .submission_routes import default_route_for_product_type, route_template
 
 class ValueMode(str, Enum):
     FIXED="fixed"; OLLAMA="ollama"; MANUAL="manual"; BLANK="blank"; REVIEW="review"
@@ -40,6 +43,15 @@ class ProductInput:
     hero_art_path:str=""
     security_package_sha256:str=""
     submission_kind:str="update"
+    submission_route:str=""
+    installer_url:str=""
+    installer_type:str=""
+    installer_architecture:str=""
+    silent_install_args:str=""
+    installer_languages:list[str]=field(default_factory=list)
+    gdk_ekb_path:str=""
+    gdk_symbols_path:str=""
+    gdk_submission_validator_path:str=""
     source_sha:str=""
     source_branch:str=""
     identity_name:str=""
@@ -55,7 +67,10 @@ class ProductInput:
         return d
     @classmethod
     def from_dict(cls,d):
-        d=dict(d); fs={}
+        d=dict(d)
+        if not d.get("submission_route") and d.get("product_type") in {"app","game"}:
+            d["submission_route"]=default_route_for_product_type(d["product_type"])
+        fs={}
         for k,v in (d.get("fields") or {}).items():
             v=dict(v); v["mode"]=ValueMode(v.get("mode","ollama")); fs[k]=FieldValue(**v)
         d["fields"]=fs
@@ -141,7 +156,7 @@ SECURITY_CONFIRM_KEYS=(
 APP_FIELDS=(ChoiceField("primary_category","Primary category",APP_CATEGORIES,True,False,"properties"),ChoiceField("requires_internet","Internet connection",("yes","no"),False,False,"properties"),ChoiceField("background_activity","Background activity",("yes","no"),False,False,"properties"))
 GAME_FIELDS=(ChoiceField("game_genres","Game genres",GAME_GENRES,True,False,"properties",3),ChoiceField("online_multiplayer","Online multiplayer",("yes","no"),False,True,"properties"),ChoiceField("user_generated_content","User-generated content",("yes","no"),False,True,"age_ratings"),ChoiceField("violence","Violence",("yes","no"),True,True,"age_ratings"),ChoiceField("gambling","Gambling",("yes","no"),True,True,"age_ratings"),ChoiceField("sexual_content","Sexual content",("yes","no"),True,True,"age_ratings"),ChoiceField("drugs_alcohol_tobacco","Drugs/alcohol/tobacco",("yes","no"),True,True,"age_ratings"),ChoiceField("strong_language","Strong language",("yes","no"),True,True,"age_ratings"))
 TEXT_FIELDS={"description":{"required":True,"max_chars":10000},"whats_new":{"required":False,"max_chars":1500},"features":{"required":False},"support_url":{"required":False},"privacy_policy_url":{"required":False},"certification_notes":{"required":False}}
-PACKAGE_EXTENSIONS={".msix",".msixupload",".msixbundle",".appx",".appxupload",".appxbundle"}
+PACKAGE_EXTENSIONS={".msix",".msixupload",".msixbundle",".appx",".appxupload",".appxbundle",".exe",".msi",".msixvc"}
 
 def file_sha256(path:str):
     h=hashlib.sha256()
@@ -161,8 +176,11 @@ def fixed_preset_for(kind:str):
     raise ValueError("product_type must be app or game")
 
 def apply_fixed_rules(p:ProductInput):
+    template=route_template(p.submission_route or default_route_for_product_type(p.product_type), p.product_type)
+    p.submission_route=template.route_id
     defs={f.key:f for f in fields_for(p.product_type)}
     proposed=fixed_preset_for(p.product_type)
+    proposed.update(dict(template.fixed_defaults))
     if not p.market_preset:
         p.market_preset="all_markets"
     proposed["submission_kind"]=p.submission_kind
@@ -187,13 +205,53 @@ def apply_fixed_rules(p:ProductInput):
 
 def validate_product(p:ProductInput):
     out=[]
-    if p.product_type not in {"app","game"}: out.append(Finding("TYPE","Product type must be app or game",Severity.HOLD,"product_type")); return out
-    if not p.product_name.strip(): out.append(Finding("NAME","Product name missing",Severity.HOLD,"product_name"))
-    if not p.package_path: out.append(Finding("PACKAGE_MISSING","MSIX/MSIXUPLOAD not selected",Severity.HOLD,"package_path"))
+    if p.product_type not in {"app","game"}:
+        out.append(Finding("TYPE","Product type must be app or game",Severity.HOLD,"product_type"))
+        return out
+    try:
+        template=route_template(p.submission_route or default_route_for_product_type(p.product_type), p.product_type)
+        p.submission_route=template.route_id
+    except ValueError as exc:
+        out.append(Finding("SUBMISSION_ROUTE",str(exc),Severity.HOLD,"submission_route"))
+        return out
+    if not p.product_name.strip():
+        out.append(Finding("NAME","Product name missing",Severity.HOLD,"product_name"))
+
+    if not p.package_path:
+        out.append(Finding("PACKAGE_MISSING",f"{template.partner_center_label}: local package/installer not selected",Severity.HOLD,"package_path"))
     else:
         q=Path(p.package_path)
-        if q.suffix.lower() not in PACKAGE_EXTENSIONS: out.append(Finding("PACKAGE_TYPE",f"Unsupported package extension: {q.suffix}",Severity.HOLD,"package_path"))
-        if not q.exists(): out.append(Finding("PACKAGE_NOT_FOUND","Package file does not exist",Severity.HOLD,"package_path"))
+        if q.suffix.lower() not in template.accepted_extensions:
+            out.append(Finding("PACKAGE_TYPE",f"{template.partner_center_label} does not accept local extension {q.suffix}",Severity.HOLD,"package_path"))
+        if not q.exists():
+            out.append(Finding("PACKAGE_NOT_FOUND","Package file does not exist",Severity.HOLD,"package_path"))
+
+    if template.route_id=="exe_msi_app":
+        parsed=urlparse(p.installer_url)
+        if parsed.scheme!="https" or not parsed.netloc:
+            out.append(Finding("INSTALLER_URL","EXE/MSI submission requires a versioned HTTPS installer URL",Severity.HOLD,"installer_url"))
+        if p.installer_type not in {"exe","msi"}:
+            out.append(Finding("INSTALLER_TYPE","EXE/MSI submission requires installer_type exe or msi",Severity.HOLD,"installer_type"))
+        elif p.package_path and Path(p.package_path).suffix.lower()!=f".{p.installer_type}":
+            out.append(Finding("INSTALLER_TYPE_MISMATCH","Local installer extension does not match installer_type",Severity.HOLD,"installer_type"))
+        if not p.installer_architecture.strip():
+            out.append(Finding("INSTALLER_ARCH","EXE/MSI submission requires installer architecture",Severity.HOLD,"installer_architecture"))
+        if not p.silent_install_args.strip():
+            out.append(Finding("INSTALLER_SILENT_ARGS","EXE/MSI submission requires silent install arguments",Severity.HOLD,"silent_install_args"))
+        if not p.installer_languages:
+            out.append(Finding("INSTALLER_LANGUAGE","EXE/MSI submission requires at least one language",Severity.HOLD,"installer_languages"))
+
+    if template.route_id=="gdk_game":
+        for field_name, label in (
+            ("gdk_ekb_path","GDK EKB"),
+            ("gdk_symbols_path","GDK symbols ZIP"),
+            ("gdk_submission_validator_path","GDK submission validator XML"),
+        ):
+            value=str(getattr(p,field_name,"") or "").strip()
+            if not value:
+                out.append(Finding("GDK_EVIDENCE_MISSING",f"{label} is required for the GDK submission template",Severity.HOLD,field_name))
+            elif not Path(value).is_file():
+                out.append(Finding("GDK_EVIDENCE_NOT_FOUND",f"{label} file does not exist",Severity.HOLD,field_name))
     if not p.images_dir: out.append(Finding("IMAGES_MISSING","Screenshot folder not selected",Severity.WARN,"images_dir"))
     else:
         d=Path(p.images_dir)
