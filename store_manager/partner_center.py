@@ -1,6 +1,7 @@
 from __future__ import annotations
 from dataclasses import dataclass
 from .core import ProductInput
+from .submission_routes import default_route_for_product_type, route_template
 
 PARTNER_CENTER_APPS_GAMES_URL = "https://partner.microsoft.com/en-us/dashboard/apps-and-games/overview"
 
@@ -37,7 +38,7 @@ def choose_exact_option(visible,desired):
         raise OptionMismatch(f"Expected exactly one option {desired!r}; got {m!r}")
     return m[0]
 
-def simulate_overview_start(product_name:str, submission_kind:str="update", visible_products:tuple[str,...]=()):
+def simulate_overview_start(product_name:str, submission_kind:str="update", visible_products:tuple[str,...]=(), submission_route:str="msix_pwa_app", product_type:str|None=None):
     name=(product_name or "").strip()
     if not name:
         return OverviewSimulation(
@@ -49,8 +50,9 @@ def simulate_overview_start(product_name:str, submission_kind:str="update", visi
             "product_name_missing",
         )
     actions=["open:apps_and_games_overview"]
+    route=route_template(submission_route or default_route_for_product_type(product_type or "app"), product_type)
     if submission_kind=="new":
-        actions += ["click:new_product", "choose:app_or_game", f"reserve_name:{name}"]
+        actions += ["click:new_product", f"choose_product_type_exact:{route.partner_center_label}", f"reserve_name:{name}"]
         return OverviewSimulation(
             PARTNER_CENTER_APPS_GAMES_URL,
             submission_kind,
@@ -82,9 +84,12 @@ def simulate_overview_start(product_name:str, submission_kind:str="update", visi
     )
 
 def build_dry_plan(p:ProductInput):
-    start=simulate_overview_start(p.product_name, "update")
+    route=route_template(p.submission_route or default_route_for_product_type(p.product_type), p.product_type)
+    start=simulate_overview_start(p.product_name, p.submission_kind, submission_route=route.route_id, product_type=p.product_type)
     plan=[
         *start.actions,
+        f"submission_route:{route.route_id}",
+        f"partner_center_product_type:{route.partner_center_label}",
         "submission:start_or_update",
         "security_profile:require_confirmed_for_selected_package",
         "pricing_availability:fill_verified",
