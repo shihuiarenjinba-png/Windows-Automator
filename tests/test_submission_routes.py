@@ -1,0 +1,104 @@
+import tempfile
+import unittest
+from pathlib import Path
+
+from store_manager.core import FieldValue, ProductInput, SECURITY_CONFIRM_KEYS, ValueMode, apply_fixed_rules, file_sha256, fields_for, validate_product
+from store_manager.partner_center import simulate_overview_start
+from store_manager.submission_routes import ROUTE_LABELS, ROUTE_TEMPLATES, default_route_for_product_type, route_id_from_label, route_template
+
+
+def ready_fields(product):
+    for definition in fields_for(product.product_type):
+        values={
+            "product_type": product.product_type,
+            "submission_kind": "update",
+            "pricing_model": "free",
+            "visibility": "discoverable",
+            "free_trial": "none",
+            "publish_hold": "manual_publish",
+            "primary_category": "Productivity",
+            "game_genres": ["Strategy"],
+            "violence": "no",
+            "gambling": "no",
+            "sexual_content": "no",
+            "drugs_alcohol_tobacco": "no",
+            "strong_language": "no",
+        }
+        value=values.get(definition.key, "no")
+        product.fields[definition.key]=FieldValue(
+            definition.key, ValueMode.MANUAL, value, "test", 1.0, "test",
+            definition.key in SECURITY_CONFIRM_KEYS,
+        )
+    product.fields["description"]=FieldValue("description",ValueMode.MANUAL,"Description","test")
+
+
+class SubmissionRouteTests(unittest.TestCase):
+    def test_partner_center_labels_match_four_visible_product_types(self):
+        self.assertEqual(
+            ROUTE_LABELS,
+            ("MSIX or PWA app","EXE or MSI app","GDK game","MSIX or PWA game"),
+        )
+
+    def test_route_label_round_trip(self):
+        for route_id, template in ROUTE_TEMPLATES.items():
+            self.assertEqual(route_id_from_label(template.partner_center_label),route_id)
+            self.assertEqual(route_template(route_id).partner_center_label,template.partner_center_label)
+
+    def test_defaults_preserve_existing_app_game_behavior(self):
+        self.assertEqual(default_route_for_product_type("app"),"msix_pwa_app")
+        self.assertEqual(default_route_for_product_type("game"),"msix_pwa_game")
+
+    def test_new_product_simulation_chooses_exact_partner_center_type(self):
+        for route_id, template in ROUTE_TEMPLATES.items():
+            sim=simulate_overview_start(
+                "Example",
+                "new",
+                submission_route=route_id,
+                product_type=template.product_type,
+            )
+            self.assertIn(f"choose_product_type_exact:{template.partner_center_label}",sim.actions)
+
+    def test_route_product_type_mismatch_fails_closed(self):
+        p=ProductInput("game","Bad","x",submission_route="msix_pwa_app")
+        findings=validate_product(p)
+        self.assertTrue(any(x.code=="SUBMISSION_ROUTE" for x in findings))
+
+    def test_exe_msi_template_requires_url_metadata(self):
+        with tempfile.TemporaryDirectory() as d:
+            root=Path(d)
+            exe=root/"setup.exe"; exe.write_bytes(b"exe")
+            images=root/"images"; images.mkdir(); (images/"01.png").write_bytes(b"x")
+            p=ProductInput("app","EXE App","x",package_path=str(exe),images_dir=str(images),submission_route="exe_msi_app",price_mode="free")
+            ready_fields(p)
+            p.security_package_sha256=file_sha256(exe)
+            findings=validate_product(p)
+            codes={x.code for x in findings}
+            self.assertIn("INSTALLER_URL",codes)
+            self.assertIn("INSTALLER_ARCH",codes)
+            self.assertIn("INSTALLER_SILENT_ARGS",codes)
+            self.assertIn("INSTALLER_LANGUAGE",codes)
+
+    def test_gdk_template_requires_companion_evidence(self):
+        with tempfile.TemporaryDirectory() as d:
+            root=Path(d)
+            pkg=root/"game.msixvc"; pkg.write_bytes(b"game")
+            images=root/"images"; images.mkdir(); (images/"01.png").write_bytes(b"x")
+            p=ProductInput("game","GDK","x",package_path=str(pkg),images_dir=str(images),submission_route="gdk_game",price_mode="free")
+            ready_fields(p)
+            p.security_package_sha256=file_sha256(pkg)
+            findings=validate_product(p)
+            self.assertGreaterEqual(sum(x.code=="GDK_EVIDENCE_MISSING" for x in findings),3)
+
+    def test_msix_game_accepts_msix_not_exe(self):
+        with tempfile.TemporaryDirectory() as d:
+            root=Path(d)
+            exe=root/"game.exe"; exe.write_bytes(b"x")
+            images=root/"images"; images.mkdir(); (images/"01.png").write_bytes(b"x")
+            p=ProductInput("game","Game","x",package_path=str(exe),images_dir=str(images),submission_route="msix_pwa_game",price_mode="free")
+            ready_fields(p)
+            p.security_package_sha256=file_sha256(exe)
+            self.assertTrue(any(x.code=="PACKAGE_TYPE" for x in validate_product(p)))
+
+
+if __name__=="__main__":
+    unittest.main()
