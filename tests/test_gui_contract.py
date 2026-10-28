@@ -2,6 +2,7 @@ import unittest
 
 from store_manager import gui
 from store_manager.core import APP_CATEGORIES, GAME_GENRES, ValueMode
+from store_manager.submission_routes import ROUTE_LABELS
 
 
 class GuiContractTests(unittest.TestCase):
@@ -14,6 +15,12 @@ class GuiContractTests(unittest.TestCase):
     def test_microsoft_choice_catalogs_are_immutable_tuples(self):
         self.assertIsInstance(APP_CATEGORIES, tuple)
         self.assertIsInstance(GAME_GENRES, tuple)
+
+    def test_four_partner_center_product_types_are_exposed(self):
+        self.assertEqual(
+            ROUTE_LABELS,
+            ("MSIX or PWA app","EXE or MSI app","GDK game","MSIX or PWA game"),
+        )
 
     def test_user_facing_text_labels_exist(self):
         self.assertIn("description", gui.TEXT_LABELS)
