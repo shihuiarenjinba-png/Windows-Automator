@@ -12,6 +12,8 @@ import re
 import zipfile
 from xml.etree import ElementTree
 
+from .submission_routes import default_route_for_product_type, route_template
+
 from .core import (
     AmbiguousWriteError,
     GlobalAuthError,
@@ -25,6 +27,16 @@ from .core import (
 HEX40 = re.compile(r"^[0-9a-fA-F]{40}$")
 VERSION4 = re.compile(r"^\d+\.\d+\.\d+\.\d+$")
 PARTNER_HOST = "https://partner.microsoft.com/"
+REQUIRED_LIVE_SELECTORS = (
+    "overview_packages_link",
+    "packages_file_input",
+    "packages_save_button",
+    "packages_validation_state",
+    "packages_section_state",
+    "packages_save_success",
+    "overview_section_states",
+)
+
 REQUIRED_SECTIONS = (
     "pricing_availability",
     "properties",
@@ -128,6 +140,13 @@ def read_package_identity(path: str | Path) -> PackageIdentity:
 
 
 def validate_live_gate(product: ProductInput) -> None:
+    template = route_template(product.submission_route or default_route_for_product_type(product.product_type), product.product_type)
+    product.submission_route = template.route_id
+    if template.route_id != "msix_pwa_app" or not template.live_write_supported:
+        raise LiveGateError(
+            f"live Partner Center write is not verified for route {template.partner_center_label}; "
+            "use dry run until a dedicated live mapping is observed"
+        )
     missing = []
     for field_name in (
         "store_product_id",
@@ -189,15 +208,17 @@ class LiveDraftWorkflow:
         upload_completed_at = utc_now()
         if state.validation == "ERROR":
             raise PackageValidationError(state.error or "Microsoft package validation failed")
-        if state.validation not in {"VALID", "WARNING"}:
+        if state.validation == "WARNING":
+            raise LiveGateError("Microsoft package validation returned WARNING; manual review is required")
+        if state.validation != "VALID":
             raise AmbiguousWriteError(f"package validation is {state.validation}")
         if state.section_completion != "COMPLETE":
             raise LiveGateError(f"Packages section is {state.section_completion}")
         self.port.save_packages(product, context)
         actions.append("packages:save_draft")
         verified = self.port.reload_and_verify_package(product, context)
-        if verified.validation not in {"VALID", "WARNING"} or verified.section_completion != "COMPLETE":
-            raise AmbiguousWriteError("saved package could not be proven after reload")
+        if verified.validation != "VALID" or verified.section_completion != "COMPLETE":
+            raise AmbiguousWriteError("saved package could not be proven VALID/COMPLETE after reload")
         sections = self.port.verify_required_sections(product, context)
         if tuple(sections) != REQUIRED_SECTIONS:
             raise LiveGateError("required section evidence is incomplete or out of order")
@@ -224,6 +245,7 @@ class LiveDraftWorkflow:
             "package_sha256": package_sha,
             "source_sha": product.source_sha.lower(),
             "source_branch": product.source_branch,
+            "submission_route": product.submission_route,
             "identity": {
                 "name": product.identity_name,
                 "publisher": product.identity_publisher,
@@ -249,6 +271,16 @@ class SelectorMap:
         if data.get("write_enabled") is not True:
             raise LiveGateError("Partner Center write mapping is not enabled")
         self.data = data
+        selectors = data.get("selectors", {})
+        missing = []
+        for key in REQUIRED_LIVE_SELECTORS:
+            value = selectors.get(key)
+            if not isinstance(value, dict) or value.get("verified") is not True or not str(value.get("selector") or "").strip():
+                missing.append(key)
+        if missing:
+            raise LiveGateError(
+                "Partner Center write mapping is incomplete before upload: " + ", ".join(missing)
+            )
 
     @classmethod
     def load(cls, path: str | Path) -> "SelectorMap":
