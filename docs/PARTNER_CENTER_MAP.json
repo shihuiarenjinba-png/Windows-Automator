@@ -1,0 +1,119 @@
+{
+  "schema_version": 3,
+  "routes": {
+    "msix_pwa_app": {
+      "live_write_supported": false,
+      "observed_at_utc": "2026-10-29T00:00:00Z",
+      "observation_scope": {
+    "product_name": "Offline Notes Canary",
+    "product_id": "9MZ8ZZTRTS17",
+    "draft_id": "1152921505702251319",
+    "mode": "READ_ONLY_NO_UPLOAD_NO_SAVE"
+      },
+      "selectors": {
+    "overview_packages_link": {
+      "strategy": "css",
+      "selector": "a[href$='/packages']",
+      "verified": true,
+      "evidence": "Application overview exposed one Packages link containing the current submission id."
+    },
+    "packages_file_input": {
+      "strategy": "css",
+      "selector": "input[name='fileuploader'][type='file'][multiple]",
+      "verified": true,
+      "evidence": "Observed on the live Packages page without selecting a file."
+    },
+    "packages_save_button": {
+      "strategy": "role",
+      "selector": "button",
+      "name": "Save",
+      "verified": true,
+      "evidence": "Exactly one Save button was exposed on the live Packages page."
+    },
+    "packages_validation_state": {
+      "strategy": "css",
+      "selector": "",
+      "exact_states": {},
+      "verified": false,
+      "evidence": "Requires an explicitly authorized real upload; no status was guessed."
+    },
+    "packages_section_state": {
+      "strategy": "css",
+      "selector": "",
+      "exact_states": {},
+      "verified": false,
+      "evidence": "Requires an explicitly authorized real upload; validation and completion remain separate."
+    },
+    "packages_save_success": {
+      "strategy": "css",
+      "selector": "",
+      "verified": false,
+      "evidence": "Save was not clicked during read-only mapping."
+    },
+    "overview_section_states": {
+      "strategy": "css",
+      "selector": "",
+      "exact_states": {},
+      "verified": false,
+      "evidence": "Completion state must be observed after a real draft save and reload."
+    }
+      },
+      "observed_pages": {
+    "pricing_availability": {
+      "heading": "Pricing and availability",
+      "save_label": "Save draft",
+      "notes": ["All worldwide markets selected", "Public audience selected", "Discoverable selected", "Base price not configured"]
+    },
+    "properties": {
+      "heading": "Offline Notes Canary | Properties",
+      "save_label": "Save",
+      "notes": ["Primary category unselected", "Privacy declaration unselected"]
+    },
+    "age_ratings": {
+      "heading": "Age ratings",
+      "save_label": "Save draft",
+      "notes": ["Dynamic IARC questionnaire visible", "No answer was changed"]
+    },
+    "packages": {
+      "heading": "Offline Notes Canary | Packages",
+      "save_label": "Save",
+      "notes": ["No package present", "Windows 10/11 Desktop unchecked", "Future device families checked"]
+    },
+    "store_listings": {
+      "heading": "Manage Store listing languages",
+      "save_label": "Save",
+      "notes": ["Languages populate only after package upload", "No listing language present"]
+    },
+        "submission_options": {
+      "heading": "Offline Notes Canary | Submission Options",
+      "save_label": "Save",
+      "notes": ["Publish as soon as certification passes was selected", "Save disabled", "No value was changed"]
+        }
+      }
+    },
+    "exe_msi_app": {
+      "live_write_supported": false,
+      "selectors": {},
+      "hold_code": "LIVE_ROUTE_NOT_VERIFIED"
+    },
+    "gdk_game": {
+      "live_write_supported": false,
+      "selectors": {},
+      "hold_code": "LIVE_ROUTE_NOT_VERIFIED"
+    },
+    "msix_pwa_game": {
+      "live_write_supported": false,
+      "selectors": {},
+      "hold_code": "LIVE_ROUTE_NOT_VERIFIED"
+    }
+  },
+  "safety": {
+    "never_guess_selector": true,
+    "never_fuzzy_match_choice": true,
+    "never_auto_submit_for_certification": true,
+    "never_auto_publish": true,
+    "require_action_time_live_confirmation": true,
+    "continue_after_product_error": true,
+    "stop_all_on_auth_failure": true
+  }
+}
