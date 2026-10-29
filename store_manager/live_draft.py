@@ -37,14 +37,7 @@ REQUIRED_LIVE_SELECTORS = (
     "overview_section_states",
 )
 
-REQUIRED_SECTIONS = (
-    "pricing_availability",
-    "properties",
-    "age_ratings",
-    "packages",
-    "store_listings",
-    "submission_options",
-)
+REQUIRED_SECTIONS = route_template("msix_pwa_app").required_sections
 
 
 class LiveGateError(ProductHoldError):
@@ -78,6 +71,7 @@ class PackageIdentity:
 
 
 class PartnerCenterPort(Protocol):
+    def ensure_route_ready(self, product: ProductInput) -> None: ...
     def verify_product_and_draft(self, product: ProductInput) -> DraftContext: ...
     def upload_package(self, product: ProductInput, context: DraftContext) -> PackageState: ...
     def save_packages(self, product: ProductInput, context: DraftContext) -> None: ...
@@ -144,9 +138,13 @@ def validate_live_gate(product: ProductInput) -> None:
     product.submission_route = template.route_id
     if template.route_id != "msix_pwa_app" or not template.live_write_supported:
         raise LiveGateError(
-            f"live Partner Center write is not verified for route {template.partner_center_label}; "
+            f"LIVE_ROUTE_NOT_VERIFIED: live Partner Center write is not verified for route {template.partner_center_label}; "
             "use dry run until a dedicated live mapping is observed"
         )
+    if product.submission_route_source == "upstream":
+        missing_handoff = [name for name in ("package_type", "package_sha256") if not str(getattr(product, name, "") or "").strip()]
+        if missing_handoff:
+            raise LiveGateError("UPSTREAM_HANDOFF_INCOMPLETE: " + ", ".join(missing_handoff))
     missing = []
     for field_name in (
         "store_product_id",
@@ -171,6 +169,9 @@ def validate_live_gate(product: ProductInput) -> None:
     if not product.package_path or not Path(product.package_path).is_file():
         raise LiveGateError("local package is not present")
     package_sha = file_sha256(product.package_path)
+    immutable_sha = str(product.package_sha256 or "")
+    if immutable_sha and package_sha.lower() != immutable_sha.lower():
+        raise LiveGateError("PACKAGE_SHA_MISMATCH: local package does not match immutable upstream package_sha256")
     if package_sha != product.security_package_sha256:
         raise LiveGateError("package SHA does not match the security-confirmed package")
     package_identity = read_package_identity(product.package_path)
@@ -196,6 +197,8 @@ class LiveDraftWorkflow:
 
     def __call__(self, product: ProductInput) -> UploadOutcome:
         validate_live_gate(product)
+        self.port.ensure_route_ready(product)
+        template = route_template(product.submission_route, product.product_type)
         package_sha = file_sha256(product.package_path)
         context = self.port.verify_product_and_draft(product)
         actions = [
@@ -220,7 +223,7 @@ class LiveDraftWorkflow:
         if verified.validation != "VALID" or verified.section_completion != "COMPLETE":
             raise AmbiguousWriteError("saved package could not be proven VALID/COMPLETE after reload")
         sections = self.port.verify_required_sections(product, context)
-        if tuple(sections) != REQUIRED_SECTIONS:
+        if tuple(sections) != template.required_sections:
             raise LiveGateError("required section evidence is incomplete or out of order")
         incomplete = [name for name, status in sections.items() if status not in {"SAVED", "NOT_REQUIRED"}]
         if incomplete:
@@ -246,6 +249,11 @@ class LiveDraftWorkflow:
             "source_sha": product.source_sha.lower(),
             "source_branch": product.source_branch,
             "submission_route": product.submission_route,
+            "submission_route_source": product.submission_route_source,
+            "package_type": product.package_type or Path(product.package_path).suffix.lstrip(".").lower(),
+            "immutable_package_sha256": product.package_sha256 or package_sha,
+            "live_adapter": template.live_adapter,
+            "required_sections": list(template.required_sections),
             "identity": {
                 "name": product.identity_name,
                 "publisher": product.identity_publisher,
@@ -266,12 +274,18 @@ class LiveDraftWorkflow:
 
 class SelectorMap:
     def __init__(self, data: dict[str, Any]):
-        if data.get("schema_version") != 2:
-            raise LiveGateError("Partner Center selector map schema_version must be 2")
-        if data.get("write_enabled") is not True:
-            raise LiveGateError("Partner Center write mapping is not enabled")
+        if data.get("schema_version") != 3:
+            raise LiveGateError("Partner Center selector map schema_version must be 3")
+        if not isinstance(data.get("routes"), dict):
+            raise LiveGateError("Partner Center selector map routes registry is missing")
         self.data = data
-        selectors = data.get("selectors", {})
+        self.active_route: str | None = None
+
+    def activate(self, route_id: str) -> None:
+        route = self.data["routes"].get(route_id)
+        if not isinstance(route, dict) or route.get("live_write_supported") is not True:
+            raise LiveGateError(f"LIVE_ROUTE_NOT_VERIFIED: selector map is not enabled for {route_id}")
+        selectors = route.get("selectors", {})
         missing = []
         for key in REQUIRED_LIVE_SELECTORS:
             value = selectors.get(key)
@@ -281,13 +295,16 @@ class SelectorMap:
             raise LiveGateError(
                 "Partner Center write mapping is incomplete before upload: " + ", ".join(missing)
             )
+        self.active_route = route_id
 
     @classmethod
     def load(cls, path: str | Path) -> "SelectorMap":
         return cls(json.loads(Path(path).read_text(encoding="utf-8")))
 
     def exact(self, key: str) -> dict[str, Any]:
-        value = self.data.get("selectors", {}).get(key)
+        if not self.active_route:
+            raise LiveGateError("Partner Center selector route was not activated")
+        value = self.data["routes"][self.active_route].get("selectors", {}).get(key)
         if not isinstance(value, dict) or value.get("verified") is not True:
             raise LiveGateError(f"selector is not verified: {key}")
         if not value.get("selector"):
@@ -307,6 +324,9 @@ class PlaywrightPartnerCenterPort:
         self.map = selector_map
         self.evidence_dir = Path(evidence_dir)
         self.timeout_ms = timeout_ms
+
+    def ensure_route_ready(self, product: ProductInput) -> None:
+        self.map.activate(product.submission_route)
 
     def _goto(self, url: str) -> None:
         self.page.goto(url, wait_until="domcontentloaded", timeout=60_000)
@@ -423,7 +443,7 @@ class PlaywrightPartnerCenterPort:
         self._goto(f"{PARTNER_HOST}en-us/dashboard/products/{product.store_product_id}/overview")
         spec = self.map.exact("overview_section_states")
         states: dict[str, str] = {}
-        for section in REQUIRED_SECTIONS:
+        for section in route_template(product.submission_route, product.product_type).required_sections:
             section_selector = str(spec["selector"]).replace("{section}", section)
             texts = [x.strip() for x in self.page.locator(section_selector).all_text_contents()]
             mapped = [spec.get("exact_states", {}).get(x) for x in texts]

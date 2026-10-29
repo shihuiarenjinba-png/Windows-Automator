@@ -2,6 +2,10 @@
 
 Partner Center の `New product` で表示される4種類を、Windows-Automatorでは固定テンプレートとして扱う。
 
+`submission_route` は上流工程が確定した不変値であり、通常のhandoffではAutomator側から変更しない。読み込み優先順位は、上流handoff、ローカルpackage検査（比較専用）、旧JSON互換既定値、手動製品の明示選択の順とする。旧JSONはapp→`msix_pwa_app`、game→`msix_pwa_game`だけを許し、GDK/EXEは推測しない。
+
+経路とpackageが一致しない場合はrouteを書き換えず、`SUBMISSION_ROUTE_PACKAGE_MISMATCH` で製品HOLDにする。
+
 ## 1. MSIX or PWA app
 
 内部ID: `msix_pwa_app`
@@ -82,17 +86,25 @@ GDK専用の実画面/API/MakePkg upload経路を観測してからlive有効化
 
 ## 共通処理
 
-ユーザーは最初に申請種類を1つ選ぶ。
+通常は上流工程で確定した申請種類を `[上流工程で確定済み]` として読取専用表示する。手動製品だけは最初に申請種類を1つ選ぶ。
 
 その選択から自動的に:
-1. app/gameを決定
-2. 固定プリセットを適用
-3. 必要入力項目を決定
-4. AI補完可能項目を決定
-5. package validation方式を決定
-6. Partner Centerの申請経路を決定
-7. live adapterを決定
+1. 上流routeとpackage type/SHAを比較
+2. app/gameとの整合を確認
+3. 固定プリセットを適用
+4. 必要入力項目とroute固有セクションを決定
+5. AI補完可能項目を決定
+6. package validation方式を決定
+7. Partner Center adapterとselector mapを決定
 
 AIはテンプレートを変更しない。AIはテンプレートが許可した入力欄だけを補完する。
 
 セキュリティ・Identity・Store ID・package provenanceはAI確定禁止。
+
+## Live書込みの状態
+
+- `msix_pwa_app`: READ_ONLY観測あり。ただしvalidation/save/reloadのselector evidenceが未完成なため、同梱mapは `live_write_supported=false`。
+- `exe_msi_app` / `gdk_game` / `msix_pwa_game`: 専用実画面map未検証。`LIVE_ROUTE_NOT_VERIFIED` でブラウザー書込み前に製品HOLD。
+- selector mapはschema 3でroute別に管理し、別routeのselectorを流用しない。
+- package validationの `WARNING` はHOLD。`VALID` かつrequired sectionの保存証跡が揃った場合だけ `DRAFT_SAVED`。
+- certification submit / publishは自動操作対象外。

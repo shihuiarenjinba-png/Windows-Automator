@@ -8,7 +8,9 @@ class SubmissionRouteTemplate:
     product_type: str
     package_mode: str
     accepted_extensions: tuple[str, ...]
+    accepted_package_types: tuple[str, ...]
     required_inputs: tuple[str, ...]
+    required_sections: tuple[str, ...]
     ai_fillable_fields: tuple[str, ...]
     fixed_defaults: tuple[tuple[str, str], ...]
     live_adapter: str
@@ -22,7 +24,9 @@ ROUTE_TEMPLATES = {
         "app",
         "store_binary_upload",
         (".msix", ".msixupload", ".msixbundle", ".appx", ".appxupload", ".appxbundle"),
+        ("msix", "msixupload", "msixbundle", "appx", "appxupload", "appxbundle", "pwa"),
         ("package_path", "images_dir", "security_profile", "pricing"),
+        ("pricing_availability", "properties", "age_ratings", "packages", "store_listings", "submission_options"),
         ("description", "features", "whats_new", "primary_category", "system_requirements", "certification_notes"),
         (("visibility", "discoverable"), ("free_trial", "none"), ("publish_hold", "manual_publish")),
         "msix_app",
@@ -38,6 +42,7 @@ ROUTE_TEMPLATES = {
         "app",
         "installer_url",
         (".exe", ".msi"),
+        ("exe", "msi"),
         (
             "package_path",
             "installer_url",
@@ -49,6 +54,7 @@ ROUTE_TEMPLATES = {
             "security_profile",
             "pricing",
         ),
+        ("pricing_availability", "properties", "age_ratings", "installer", "store_listings", "submission_options"),
         ("description", "features", "whats_new", "primary_category", "system_requirements", "certification_notes"),
         (("visibility", "discoverable"), ("free_trial", "none"), ("publish_hold", "manual_publish")),
         "exe_msi_app",
@@ -63,7 +69,8 @@ ROUTE_TEMPLATES = {
         "GDK game",
         "game",
         "gdk_msixvc",
-        (".msixvc",),
+        (".msixvc", ".msixvc2"),
+        ("msixvc", "msixvc2"),
         (
             "package_path",
             "gdk_ekb_path",
@@ -73,6 +80,7 @@ ROUTE_TEMPLATES = {
             "security_profile",
             "pricing",
         ),
+        ("game_setup", "packages", "properties", "age_ratings", "store_listings", "pricing_availability", "submission_options"),
         ("description", "features", "whats_new", "game_genres", "certification_notes"),
         (("visibility", "discoverable"), ("free_trial", "none"), ("publish_hold", "manual_publish")),
         "gdk_game",
@@ -89,7 +97,9 @@ ROUTE_TEMPLATES = {
         "game",
         "store_binary_upload",
         (".msix", ".msixupload", ".msixbundle", ".appx", ".appxupload", ".appxbundle"),
+        ("msix", "msixupload", "msixbundle", "appx", "appxupload", "appxbundle", "pwa"),
         ("package_path", "images_dir", "security_profile", "pricing"),
+        ("pricing_availability", "properties", "age_ratings", "packages", "store_listings", "submission_options"),
         ("description", "features", "whats_new", "game_genres", "certification_notes"),
         (("visibility", "discoverable"), ("free_trial", "none"), ("publish_hold", "manual_publish")),
         "msix_game",
@@ -104,6 +114,7 @@ ROUTE_TEMPLATES = {
 ROUTE_IDS = tuple(ROUTE_TEMPLATES)
 ROUTE_LABELS = tuple(ROUTE_TEMPLATES[x].partner_center_label for x in ROUTE_IDS)
 LABEL_TO_ROUTE_ID = {ROUTE_TEMPLATES[x].partner_center_label: x for x in ROUTE_IDS}
+ROUTE_SOURCES = ("upstream", "legacy_default", "manual")
 
 def default_route_for_product_type(product_type: str) -> str:
     if product_type == "app":
@@ -134,3 +145,7 @@ def route_id_from_label(label: str) -> str:
 
 def route_label(route_id: str, product_type: str | None = None) -> str:
     return route_template(route_id, product_type).partner_center_label
+
+def route_display(route_id: str, product_type: str | None = None, source: str = "manual") -> str:
+    label = route_label(route_id, product_type)
+    return f"{label} [上流工程で確定済み]" if source == "upstream" else label

@@ -86,6 +86,10 @@ class FakePort:
         self.sections = {name: "SAVED" for name in REQUIRED_SECTIONS}
         self.evidence = [{"kind": "screenshot", "path": "C:/evidence/proof.png"}]
         self.saved = False
+        self.route_ready_calls = 0
+
+    def ensure_route_ready(self, product):
+        self.route_ready_calls += 1
 
     def verify_product_and_draft(self, product):
         return DraftContext(product.store_product_id, "12345", "https://partner.microsoft.com/draft/12345")
@@ -114,9 +118,13 @@ class LiveDraftTests(unittest.TestCase):
             outcome = LiveDraftWorkflow(port)(product)
             self.assertEqual(outcome.status, "DRAFT_SAVED")
             self.assertTrue(port.saved)
+            self.assertEqual(port.route_ready_calls, 1)
             self.assertEqual(outcome.details["execution_mode"], "live")
             self.assertTrue(outcome.details["save_verified_after_reload"])
             self.assertEqual(outcome.details["package_sha256"], product.security_package_sha256)
+            self.assertEqual(outcome.details["submission_route"], "msix_pwa_app")
+            self.assertEqual(outcome.details["live_adapter"], "msix_app")
+            self.assertEqual(outcome.details["required_sections"], list(REQUIRED_SECTIONS))
             self.assertFalse(outcome.details["submitted"])
             self.assertFalse(outcome.details["certified"])
             self.assertFalse(outcome.details["published"])
@@ -161,8 +169,10 @@ class LiveDraftTests(unittest.TestCase):
             for route_id in ("exe_msi_app", "gdk_game", "msix_pwa_game"):
                 product.submission_route = route_id
                 product.product_type = "game" if "game" in route_id else "app"
-                with self.subTest(route=route_id), self.assertRaises(LiveGateError):
-                    LiveDraftWorkflow(FakePort())(product)
+                port = FakePort()
+                with self.subTest(route=route_id), self.assertRaisesRegex(LiveGateError, "LIVE_ROUTE_NOT_VERIFIED"):
+                    LiveDraftWorkflow(port)(product)
+                self.assertEqual(port.route_ready_calls, 0)
 
     def test_validation_error_is_hold_not_saved(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -211,12 +221,18 @@ class LiveDraftTests(unittest.TestCase):
 
     def test_unverified_selector_map_fails_closed(self):
         with self.assertRaises(LiveGateError):
-            SelectorMap({"schema_version": 2, "write_enabled": False})
+            SelectorMap({"schema_version": 3, "routes": {}}).activate("msix_pwa_app")
 
     def test_write_enabled_map_must_be_complete_before_any_upload(self):
         with self.assertRaises(LiveGateError) as ctx:
-            SelectorMap({"schema_version": 2, "write_enabled": True, "selectors": {}})
+            SelectorMap({"schema_version": 3, "routes": {"msix_pwa_app": {"live_write_supported": True, "selectors": {}}}}).activate("msix_pwa_app")
         self.assertIn("incomplete before upload", str(ctx.exception))
+
+    def test_checked_in_route_registry_is_valid_and_all_routes_fail_closed(self):
+        mapping = SelectorMap.load(Path(__file__).parents[1] / "docs" / "PARTNER_CENTER_MAP.json")
+        for route_id in ("msix_pwa_app", "exe_msi_app", "gdk_game", "msix_pwa_game"):
+            with self.subTest(route=route_id), self.assertRaisesRegex(LiveGateError, "LIVE_ROUTE_NOT_VERIFIED"):
+                mapping.activate(route_id)
 
     def test_report_contains_live_fields_at_top_level(self):
         with tempfile.TemporaryDirectory() as directory:

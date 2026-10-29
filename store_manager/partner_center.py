@@ -92,14 +92,19 @@ def build_dry_plan(p:ProductInput):
         f"partner_center_product_type:{route.partner_center_label}",
         "submission:start_or_update",
         "security_profile:require_confirmed_for_selected_package",
-        "pricing_availability:fill_verified",
-        "properties:fill_verified",
-        "age_ratings:answer_visible_questions",
-        f"packages:upload:{p.package_path}",
-        "packages:wait_validation",
-        "restricted_capabilities:compare_detected_to_confirmed_security_profile",
-        "store_listings:fill_text_and_screenshots",
     ]
+    section_actions={
+        "game_setup": ["game_setup:fill_verified_gdk_metadata"],
+        "pricing_availability": ["pricing_availability:fill_verified"],
+        "properties": ["properties:fill_verified"],
+        "age_ratings": ["age_ratings:answer_visible_questions"],
+        "packages": [f"packages:upload:{p.package_path}", "packages:wait_validation", "restricted_capabilities:compare_detected_to_confirmed_security_profile"],
+        "installer": [f"installer:register_versioned_url:{p.installer_url}", f"installer:local_qa_artifact:{p.package_path}", "installer:verify_silent_install_metadata"],
+        "store_listings": ["store_listings:fill_text_and_screenshots"],
+        "submission_options": ["submission_options:fill_verified"],
+    }
+    for section in route.required_sections:
+        plan.extend(section_actions[section])
     if p.trailers:
         for i,t in enumerate(p.trailers):
             plan.append(f"store_listings:trailer:{i}:upload:{t.video_path}")
@@ -107,7 +112,7 @@ def build_dry_plan(p:ProductInput):
             plan.append(f"store_listings:trailer:{i}:title:{t.title}")
         if p.product_type=="game":
             plan.append(f"store_listings:super_hero_art:{p.hero_art_path}")
-    plan += ["submission_options:fill_verified","review:save_draft_only"]
+    plan += ["review:save_draft_only"]
     return plan
 
 def dryrun_uploader(p):

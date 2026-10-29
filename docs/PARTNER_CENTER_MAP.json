@@ -1,14 +1,16 @@
 {
-  "schema_version": 2,
-  "write_enabled": false,
-  "observed_at_utc": "2026-10-29T00:00:00Z",
-  "observation_scope": {
+  "schema_version": 3,
+  "routes": {
+    "msix_pwa_app": {
+      "live_write_supported": false,
+      "observed_at_utc": "2026-10-29T00:00:00Z",
+      "observation_scope": {
     "product_name": "Offline Notes Canary",
     "product_id": "9MZ8ZZTRTS17",
     "draft_id": "1152921505702251319",
     "mode": "READ_ONLY_NO_UPLOAD_NO_SAVE"
-  },
-  "selectors": {
+      },
+      "selectors": {
     "overview_packages_link": {
       "strategy": "css",
       "selector": "a[href$='/packages']",
@@ -55,8 +57,8 @@
       "verified": false,
       "evidence": "Completion state must be observed after a real draft save and reload."
     }
-  },
-  "observed_pages": {
+      },
+      "observed_pages": {
     "pricing_availability": {
       "heading": "Pricing and availability",
       "save_label": "Save draft",
@@ -82,10 +84,27 @@
       "save_label": "Save",
       "notes": ["Languages populate only after package upload", "No listing language present"]
     },
-    "submission_options": {
+        "submission_options": {
       "heading": "Offline Notes Canary | Submission Options",
       "save_label": "Save",
       "notes": ["Publish as soon as certification passes was selected", "Save disabled", "No value was changed"]
+        }
+      }
+    },
+    "exe_msi_app": {
+      "live_write_supported": false,
+      "selectors": {},
+      "hold_code": "LIVE_ROUTE_NOT_VERIFIED"
+    },
+    "gdk_game": {
+      "live_write_supported": false,
+      "selectors": {},
+      "hold_code": "LIVE_ROUTE_NOT_VERIFIED"
+    },
+    "msix_pwa_game": {
+      "live_write_supported": false,
+      "selectors": {},
+      "hold_code": "LIVE_ROUTE_NOT_VERIFIED"
     }
   },
   "safety": {

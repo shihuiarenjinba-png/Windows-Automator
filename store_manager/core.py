@@ -5,9 +5,10 @@ from pathlib import Path
 from typing import Any, Callable
 import hashlib
 import json
+import re
 from urllib.parse import urlparse
 
-from .submission_routes import default_route_for_product_type, route_template
+from .submission_routes import ROUTE_SOURCES, default_route_for_product_type, route_template
 
 class ValueMode(str, Enum):
     FIXED="fixed"; OLLAMA="ollama"; MANUAL="manual"; BLANK="blank"; REVIEW="review"
@@ -44,6 +45,9 @@ class ProductInput:
     security_package_sha256:str=""
     submission_kind:str="update"
     submission_route:str=""
+    submission_route_source:str="manual"
+    package_type:str=""
+    package_sha256:str=""
     installer_url:str=""
     installer_type:str=""
     installer_architecture:str=""
@@ -70,6 +74,9 @@ class ProductInput:
         d=dict(d)
         if not d.get("submission_route") and d.get("product_type") in {"app","game"}:
             d["submission_route"]=default_route_for_product_type(d["product_type"])
+            d["submission_route_source"]="legacy_default"
+        elif d.get("submission_route") and not d.get("submission_route_source"):
+            d["submission_route_source"]="upstream"
         fs={}
         for k,v in (d.get("fields") or {}).items():
             v=dict(v); v["mode"]=ValueMode(v.get("mode","ollama")); fs[k]=FieldValue(**v)
@@ -156,7 +163,7 @@ SECURITY_CONFIRM_KEYS=(
 APP_FIELDS=(ChoiceField("primary_category","Primary category",APP_CATEGORIES,True,False,"properties"),ChoiceField("requires_internet","Internet connection",("yes","no"),False,False,"properties"),ChoiceField("background_activity","Background activity",("yes","no"),False,False,"properties"))
 GAME_FIELDS=(ChoiceField("game_genres","Game genres",GAME_GENRES,True,False,"properties",3),ChoiceField("online_multiplayer","Online multiplayer",("yes","no"),False,True,"properties"),ChoiceField("user_generated_content","User-generated content",("yes","no"),False,True,"age_ratings"),ChoiceField("violence","Violence",("yes","no"),True,True,"age_ratings"),ChoiceField("gambling","Gambling",("yes","no"),True,True,"age_ratings"),ChoiceField("sexual_content","Sexual content",("yes","no"),True,True,"age_ratings"),ChoiceField("drugs_alcohol_tobacco","Drugs/alcohol/tobacco",("yes","no"),True,True,"age_ratings"),ChoiceField("strong_language","Strong language",("yes","no"),True,True,"age_ratings"))
 TEXT_FIELDS={"description":{"required":True,"max_chars":10000},"whats_new":{"required":False,"max_chars":1500},"features":{"required":False},"support_url":{"required":False},"privacy_policy_url":{"required":False},"certification_notes":{"required":False}}
-PACKAGE_EXTENSIONS={".msix",".msixupload",".msixbundle",".appx",".appxupload",".appxbundle",".exe",".msi",".msixvc"}
+PACKAGE_EXTENSIONS={".msix",".msixupload",".msixbundle",".appx",".appxupload",".appxbundle",".exe",".msi",".msixvc",".msixvc2"}
 
 def file_sha256(path:str):
     h=hashlib.sha256()
@@ -214,6 +221,12 @@ def validate_product(p:ProductInput):
     except ValueError as exc:
         out.append(Finding("SUBMISSION_ROUTE",str(exc),Severity.HOLD,"submission_route"))
         return out
+    if p.submission_route_source not in ROUTE_SOURCES:
+        out.append(Finding("SUBMISSION_ROUTE_SOURCE",f"Unsupported route source: {p.submission_route_source}",Severity.HOLD,"submission_route_source"))
+    if p.submission_route_source=="upstream":
+        missing=[name for name in ("package_type","package_sha256") if not str(getattr(p,name,"") or "").strip()]
+        if missing:
+            out.append(Finding("UPSTREAM_HANDOFF_INCOMPLETE","Immutable upstream handoff is missing: "+", ".join(missing),Severity.HOLD,"submission_route"))
     if not p.product_name.strip():
         out.append(Finding("NAME","Product name missing",Severity.HOLD,"product_name"))
 
@@ -222,9 +235,18 @@ def validate_product(p:ProductInput):
     else:
         q=Path(p.package_path)
         if q.suffix.lower() not in template.accepted_extensions:
-            out.append(Finding("PACKAGE_TYPE",f"{template.partner_center_label} does not accept local extension {q.suffix}",Severity.HOLD,"package_path"))
+            out.append(Finding("SUBMISSION_ROUTE_PACKAGE_MISMATCH",f"{template.partner_center_label} does not accept local extension {q.suffix}",Severity.HOLD,"package_path"))
         if not q.exists():
             out.append(Finding("PACKAGE_NOT_FOUND","Package file does not exist",Severity.HOLD,"package_path"))
+    normalized_package_type=str(p.package_type or "").strip().lower().lstrip(".")
+    if normalized_package_type and normalized_package_type not in template.accepted_package_types:
+        out.append(Finding("SUBMISSION_ROUTE_PACKAGE_MISMATCH",f"{template.partner_center_label} does not accept immutable package_type {p.package_type}",Severity.HOLD,"package_type"))
+    immutable_sha=str(p.package_sha256 or "")
+    if immutable_sha and not re.fullmatch(r"[0-9a-fA-F]{64}",immutable_sha):
+        out.append(Finding("PACKAGE_SHA_INVALID","Immutable package_sha256 must be exactly 64 hexadecimal characters",Severity.HOLD,"package_sha256"))
+    elif immutable_sha and p.package_path and Path(p.package_path).is_file():
+        if file_sha256(p.package_path).lower()!=immutable_sha.lower():
+            out.append(Finding("PACKAGE_SHA_MISMATCH","Local package bytes do not match immutable upstream package_sha256",Severity.HOLD,"package_sha256"))
 
     if template.route_id=="exe_msi_app":
         parsed=urlparse(p.installer_url)
@@ -382,8 +404,9 @@ def run_queue(products:list[ProductInput],uploader:Callable[[ProductInput],list[
                 seen_packages[package_sha]=product_key
 
         findings.extend(validate_product(p))
+        route_details={"submission_route":p.submission_route,"submission_route_source":p.submission_route_source}
         if any(f.severity==Severity.HOLD for f in findings):
-            report.results.append(ProductResult(p.product_name,"HOLD",findings,[]))
+            report.results.append(ProductResult(p.product_name,"HOLD",findings,[],route_details))
             if not policy.continue_after_product_hold: report.stopped_early=True; report.stop_reason="product_hold"; break
             continue
         try:
@@ -391,20 +414,20 @@ def run_queue(products:list[ProductInput],uploader:Callable[[ProductInput],list[
             if isinstance(outcome,UploadOutcome):
                 if outcome.status not in {"DONE","DRAFT_SAVED","HOLD","UNKNOWN","ERROR"}:
                     raise ValueError(f"Unsupported uploader outcome: {outcome.status}")
-                report.results.append(ProductResult(p.product_name,outcome.status,findings,outcome.actions,outcome.details))
+                report.results.append(ProductResult(p.product_name,outcome.status,findings,outcome.actions,{**route_details,**outcome.details}))
             else:
-                report.results.append(ProductResult(p.product_name,"DONE",findings,list(outcome)))
+                report.results.append(ProductResult(p.product_name,"DONE",findings,list(outcome),route_details))
         except GlobalAuthError as e:
-            report.results.append(ProductResult(p.product_name,"AUTH_ERROR",findings+[Finding("AUTH",str(e),Severity.FATAL)],[]))
+            report.results.append(ProductResult(p.product_name,"AUTH_ERROR",findings+[Finding("AUTH",str(e),Severity.FATAL)],[],route_details))
             if policy.stop_on_global_auth_error: report.stopped_early=True; report.stop_reason="global_auth_error"; break
         except AmbiguousWriteError as e:
-            report.results.append(ProductResult(p.product_name,"UNKNOWN",findings+[Finding("AMBIGUOUS_WRITE",str(e),Severity.HOLD)],[]))
+            report.results.append(ProductResult(p.product_name,"UNKNOWN",findings+[Finding("AMBIGUOUS_WRITE",str(e),Severity.HOLD)],[],route_details))
             if policy.stop_on_ambiguous_write: report.stopped_early=True; report.stop_reason="ambiguous_write"; break
         except ProductHoldError as e:
-            report.results.append(ProductResult(p.product_name,"HOLD",findings+[Finding("LIVE_GATE",str(e),Severity.HOLD)],[]))
+            report.results.append(ProductResult(p.product_name,"HOLD",findings+[Finding("LIVE_GATE",str(e),Severity.HOLD)],[],route_details))
             if not policy.continue_after_product_hold: report.stopped_early=True; report.stop_reason="product_hold"; break
         except Exception as e:
-            report.results.append(ProductResult(p.product_name,"ERROR",findings+[Finding("UPLOAD_ERROR",str(e),Severity.HOLD)],[]))
+            report.results.append(ProductResult(p.product_name,"ERROR",findings+[Finding("UPLOAD_ERROR",str(e),Severity.HOLD)],[],route_details))
             if not policy.continue_after_product_error: report.stopped_early=True; report.stop_reason="product_error"; break
     return report
 
@@ -421,5 +444,5 @@ def render_markdown(report:QueueReport):
         ]
     lines += ["","| 状態 | 件数 |","|---|---:|"]+[f"| {s} | {counts.get(s,0)} |" for s in ("DONE","DRAFT_SAVED","HOLD","UNKNOWN","ERROR","AUTH_ERROR")]
     for r in report.results:
-        lines += ["",f"## {r.product_name} — {r.status}"]+[f"- **{f.severity.value.upper()} / {f.code}**: {f.message}" for f in r.findings]
+        lines += ["",f"## {r.product_name} — {r.status}",f"- 申請ルート: `{r.details.get('submission_route','')}`"]+[f"- **{f.severity.value.upper()} / {f.code}**: {f.message}" for f in r.findings]
     return "\n".join(lines)+"\n"

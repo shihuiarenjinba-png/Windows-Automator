@@ -28,7 +28,7 @@ from .partner_center import (
     dryrun_uploader,
     simulate_overview_start,
 )
-from .submission_routes import ROUTE_LABELS, route_id_from_label, route_label, route_template
+from .submission_routes import ROUTE_LABELS, route_display, route_id_from_label, route_label, route_template
 
 MODE_LABELS = {
     ValueMode.FIXED: "固定（自動）",
@@ -183,6 +183,7 @@ class App(tk.Tk):
         self.route_combo.grid(row=0, column=1, sticky="w", pady=5)
         self.route_combo.bind("<<ComboboxSelected>>", self._on_route_selected)
         ttk.Label(top, textvariable=self.preset_status, foreground="#1769AA").grid(row=0, column=2, sticky="e", padx=(20,0))
+        ttk.Label(top, text="手動登録時のみ変更可。上流handoffの申請種類は読取専用です。", foreground="#5B6470").grid(row=0, column=3, sticky="w", padx=(12,0))
 
         ttk.Label(top, text="処理", width=16).grid(row=1, column=0, sticky="w", pady=5)
         row = ttk.Frame(top)
@@ -536,7 +537,7 @@ class App(tk.Tk):
                 "",
                 "end",
                 iid=str(i - 1),
-                values=(i, p.product_name, route_label(p.submission_route, p.product_type), Path(p.package_path).name if p.package_path else "未選択", "要確認" if hold else "準備OK"),
+                values=(i, p.product_name, route_display(p.submission_route, p.product_type, p.submission_route_source), Path(p.package_path).name if p.package_path else "未選択", "要確認" if hold else "準備OK"),
                 tags=("hold" if hold else "ready",),
             )
         self.queue_summary.configure(text=f"{len(self.queue)}件")
