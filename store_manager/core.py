@@ -9,6 +9,7 @@ import re
 from urllib.parse import urlparse
 
 from .submission_routes import ROUTE_SOURCES, default_route_for_product_type, route_template
+from .restricted_capabilities import build_package_justifications
 
 class ValueMode(str, Enum):
     FIXED="fixed"; OLLAMA="ollama"; MANUAL="manual"; BLANK="blank"; REVIEW="review"
@@ -56,6 +57,7 @@ class ProductInput:
     gdk_ekb_path:str=""
     gdk_symbols_path:str=""
     gdk_submission_validator_path:str=""
+    restricted_capability_justifications:dict[str,str]=field(default_factory=dict)
     source_sha:str=""
     source_branch:str=""
     identity_name:str=""
@@ -190,6 +192,10 @@ def apply_fixed_rules(p:ProductInput):
     proposed.update(dict(template.fixed_defaults))
     if not p.market_preset:
         p.market_preset="all_markets"
+    if p.package_path and Path(p.package_path).is_file():
+        auto_justifications, _ = build_package_justifications(p.package_path, p.product_type)
+        for capability, text in auto_justifications.items():
+            p.restricted_capability_justifications.setdefault(capability, text)
     proposed["submission_kind"]=p.submission_kind
     if p.price_mode in {"free","paid"}:
         proposed["pricing_model"]=p.price_mode
@@ -303,6 +309,18 @@ def validate_product(p:ProductInput):
     elif len(str(desc.value))>10000: out.append(Finding("DESCRIPTION_TOO_LONG","Description exceeds 10,000 characters",Severity.HOLD,"description"))
     personal=p.fields.get("collects_personal_data"); privacy=p.fields.get("privacy_policy_url")
     if personal and personal.value=="yes" and not str(privacy.value if privacy else "").strip(): out.append(Finding("PRIVACY_POLICY","Privacy policy URL required by declaration",Severity.HOLD,"privacy_policy_url"))
+    if p.package_path and Path(p.package_path).is_file():
+        auto_justifications, unresolved_capabilities = build_package_justifications(p.package_path, p.product_type)
+        for capability, text in auto_justifications.items():
+            p.restricted_capability_justifications.setdefault(capability, text)
+        for capability in unresolved_capabilities:
+            if not str(p.restricted_capability_justifications.get(capability) or "").strip():
+                out.append(Finding(
+                    "RESTRICTED_CAPABILITY_JUSTIFICATION_REQUIRED",
+                    f"Restricted capability {capability} requires a verified Submission Options explanation",
+                    Severity.HOLD,
+                    f"restricted_capability_justifications.{capability}",
+                ))
 
     # Trailers are fully optional. No trailer means no warning and no HOLD.
     for i,t in enumerate(p.trailers):
