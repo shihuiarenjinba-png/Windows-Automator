@@ -150,12 +150,12 @@
     },
     "msix_pwa_game": {
       "live_write_supported": false,
-      "observed_at_utc": "2026-11-04T10:43:52Z",
+      "observed_at_utc": "2026-11-04T12:19:25Z",
       "observation_scope": {
         "product_name": "STRATEGY MARKET US",
         "product_id": "9PJCWW6G6D42",
         "draft_id": "1152921505702134687",
-        "mode": "AUTHORIZED_UPLOAD_NO_SAVE_WARNING_HOLD"
+        "mode": "MANUAL_PACKAGES_SAVE_THEN_AUTHORIZED_SUBMISSION_OPTIONS_SAVE"
       },
       "section_verification": {
         "product_match": "VERIFIED",
@@ -163,13 +163,16 @@
         "packages_upload": "VERIFIED",
         "package_analysis": "VERIFIED",
         "package_validation": "OBSERVED_WARNING_ONLY",
-        "packages_save": "UNVERIFIED_NOT_CLICKED",
-        "reload_verification": "VERIFIED_UNSAVED_WARNING_RECONCILIATION",
+        "packages_save": "VERIFIED_MANUAL_SAVE",
+        "reload_verification": "VERIFIED_SAVED_PACKAGE_RECONCILIATION",
         "pricing_availability": "UNVERIFIED",
         "properties": "UNVERIFIED",
         "age_ratings": "UNVERIFIED",
         "store_listings": "UNVERIFIED",
-        "submission_options": "UNVERIFIED"
+        "submission_options": "VERIFIED_RESTRICTED_CAPABILITY_EXPLANATION",
+        "submission_options_restricted_capabilities": "VERIFIED",
+        "submission_options_save": "VERIFIED",
+        "submission_options_reload": "VERIFIED"
       },
       "selectors": {
         "overview_packages_link": {
@@ -207,7 +210,7 @@
           "selector": "button",
           "name": "Save",
           "verified": true,
-          "evidence": "Exactly one accessible Save control was present and became enabled after analysis; it was not clicked."
+          "evidence": "Exactly one accessible Save control was present. The user clicked it manually; its enabled state after reload is not a success signal."
         },
         "packages_validation_state": {
           "strategy": "css",
@@ -219,53 +222,59 @@
           "evidence": "Only the WARNING path was observed. VALID and ERROR selectors/states remain unverified."
         },
         "packages_section_state": {
-          "strategy": "css",
-          "selector": "",
-          "exact_states": {},
-          "verified": false,
-          "evidence": "A warning is not proof that the Packages section is COMPLETE."
+          "strategy": "composite_overview_and_reload",
+          "selector": "a[href$='/packages']",
+          "exact_states": {
+            "Complete": "COMPLETE"
+          },
+          "verified": true,
+          "evidence": "After the manual Save, Overview showed Packages Complete and Validated; reload retained only version 0.25.25.0."
         },
         "packages_save_success": {
-          "strategy": "css",
-          "selector": "",
-          "verified": false,
-          "evidence": "Save was deliberately not clicked because WARNING is a HOLD."
+          "strategy": "composite_overview_and_reload",
+          "selector": "a[href$='/packages']",
+          "verified": true,
+          "evidence": "Manual Save success was proven by Overview Complete/Validated plus reload retaining 0.25.25.0 and removing 0.25.15.0. Save button enabled state is not a success signal."
         },
         "overview_section_states": {
           "strategy": "css",
           "selector": "",
           "exact_states": {},
           "verified": false,
-          "evidence": "No post-save overview reconciliation was authorized or observed."
+          "evidence": "Post-save section states were observed, but a reusable generic selector for every required section is not yet verified."
         },
         "submission_options_restricted_capability_container": {
           "strategy": "css",
-          "selector": "",
-          "verified": false,
-          "evidence": "Restricted capabilities section must be observed on Submission Options after a package declaring runFullTrust is saved."
+          "selector": "section.section:has(h2[data-l10n-key='resCapSectionHeader'])",
+          "verified": true,
+          "evidence": "Exactly one section had the localized Restricted capabilities heading and contained the exact runFullTrust token."
         },
         "submission_options_restricted_capability_textarea": {
           "strategy": "css",
-          "selector": "",
-          "verified": false,
-          "evidence": "Explanation input selector is intentionally unverified until the live Submission Options field is observed."
+          "selector": "section.section:has(h2[data-l10n-key='resCapSectionHeader']):has(span:text-is('runFullTrust')) textarea.text-area-width[maxlength='500']",
+          "verified": true,
+          "evidence": "Exactly one textarea was scoped to the exact runFullTrust capability; it persisted the 407-character evidence-based explanation after reload."
         },
         "submission_options_save_button": {
           "strategy": "role",
-          "selector": "",
+          "selector": "button",
           "name": "Save",
-          "verified": false,
-          "evidence": "Submission Options Save control must be observed and uniquely verified before automatic writing."
+          "verified": true,
+          "evidence": "Exactly one accessible Save button was observed and used. It remained enabled after reload and therefore is not a success signal."
         },
         "submission_options_save_success": {
-          "strategy": "css",
-          "selector": "",
-          "verified": false,
-          "evidence": "Post-save success signal must be observed and verified before automatic writing."
+          "strategy": "composite_redirect_overview_reload",
+          "selector": "a[href$='/options']",
+          "redirect_suffix": "/submissions/{draft_id}",
+          "exact_states": {
+            "Complete": "SAVED"
+          },
+          "verified": true,
+          "evidence": "Save redirected to the draft URL, Overview showed Submission options Complete, and reopening the page returned the exact explanation with a pristine textarea."
         }
       },
-      "hold_code": "PACKAGE_VALIDATION_WARNING",
-      "hold_detail": "runFullTrust requires Microsoft approval; Save was not clicked and the route remains fail-closed."
+      "hold_code": "RESTRICTED_CAPABILITY_REVIEW_REQUIRED",
+      "hold_detail": "The raw package acceptance state remains WARNING. The runFullTrust explanation is saved, but certification remains HOLD and the full route remains fail-closed."
     }
   },
   "safety": {

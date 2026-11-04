@@ -28,7 +28,7 @@
   },
   "outcome": {
     "status": "HOLD",
-    "hold_code": "PACKAGE_VALIDATION_WARNING",
+    "hold_code": "RESTRICTED_CAPABILITY_REVIEW_REQUIRED",
     "save_enabled_after_analysis": true,
     "save_clicked": false,
     "reload_observed": true,

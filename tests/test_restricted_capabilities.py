@@ -5,7 +5,12 @@ from pathlib import Path
 
 from store_manager.core import FieldValue, ProductInput, SECURITY_CONFIRM_KEYS, ValueMode, apply_fixed_rules, file_sha256, fields_for, validate_product
 from store_manager.partner_center import dryrun_uploader
-from store_manager.restricted_capabilities import build_package_justifications, restricted_capabilities_from_package
+from store_manager.restricted_capabilities import (
+    RUNFULLTRUST_PACKAGE_WARNING,
+    build_package_justifications,
+    classify_package_warning,
+    restricted_capabilities_from_package,
+)
 
 
 def package_with_runfulltrust(root: Path) -> Path:
@@ -50,6 +55,18 @@ def ready_game(root: Path) -> ProductInput:
 
 
 class RestrictedCapabilityTests(unittest.TestCase):
+    def test_exact_partner_center_warning_routes_only_runfulltrust(self):
+        code, capabilities = classify_package_warning(RUNFULLTRUST_PACKAGE_WARNING)
+        self.assertEqual(code, "RESTRICTED_CAPABILITY_REVIEW_REQUIRED")
+        self.assertEqual(capabilities, ("runFullTrust",))
+        duplicate = f"{RUNFULLTRUST_PACKAGE_WARNING} | {RUNFULLTRUST_PACKAGE_WARNING}"
+        self.assertEqual(classify_package_warning(duplicate), (code, capabilities))
+
+    def test_unknown_warning_remains_generic_hold(self):
+        code, capabilities = classify_package_warning("Some other warning")
+        self.assertEqual(code, "PACKAGE_VALIDATION_WARNING")
+        self.assertEqual(capabilities, ())
+
     def test_runfulltrust_is_detected_from_manifest(self):
         with tempfile.TemporaryDirectory() as d:
             package=package_with_runfulltrust(Path(d))

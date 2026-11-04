@@ -6,6 +6,24 @@ import zipfile
 from xml.etree import ElementTree
 
 AUTO_JUSTIFICATION_CAPABILITIES = ("runFullTrust",)
+RUNFULLTRUST_PACKAGE_WARNING = (
+    "Package acceptance validation warning: The following restricted capabilities "
+    "require approval before you can use them in your app: runFullTrust."
+)
+
+
+def classify_package_warning(text: str) -> tuple[str, tuple[str, ...]]:
+    """Classify only an exact observed restricted-capability warning.
+
+    The raw Microsoft acceptance state remains WARNING.  This classification
+    merely teaches the workflow which safe follow-up section is required; every
+    other warning retains the generic fail-closed status.
+    """
+
+    messages = [message.strip() for message in text.split(" | ") if message.strip()]
+    if messages and set(messages) == {RUNFULLTRUST_PACKAGE_WARNING}:
+        return "RESTRICTED_CAPABILITY_REVIEW_REQUIRED", ("runFullTrust",)
+    return "PACKAGE_VALIDATION_WARNING", ()
 
 def _manifest_bytes_from_archive(raw: bytes | Path, depth: int = 0) -> list[bytes]:
     if depth > 3:

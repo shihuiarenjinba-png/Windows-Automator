@@ -164,6 +164,19 @@ class LiveDraftTests(unittest.TestCase):
                 LiveDraftWorkflow(port)(product)
             self.assertFalse(port.saved)
 
+    def test_exact_runfulltrust_warning_has_dedicated_hold_code(self):
+        with tempfile.TemporaryDirectory() as directory:
+            product = live_product(Path(directory))
+            port = FakePort()
+            warning = (
+                "Package acceptance validation warning: The following restricted capabilities "
+                "require approval before you can use them in your app: runFullTrust."
+            )
+            port.uploaded = PackageState("WARNING", "COMPLETE", warning=warning)
+            with self.assertRaisesRegex(LiveGateError, "RESTRICTED_CAPABILITY_REVIEW_REQUIRED"):
+                LiveDraftWorkflow(port)(product)
+            self.assertFalse(port.saved)
+
     def test_non_msix_app_routes_cannot_enter_current_live_adapter(self):
         with tempfile.TemporaryDirectory() as directory:
             product = live_product(Path(directory))
@@ -256,10 +269,33 @@ class LiveDraftTests(unittest.TestCase):
         mapping = json.loads((root / "docs" / "PARTNER_CENTER_MAP.json").read_text(encoding="utf-8"))
         game = mapping["routes"]["msix_pwa_game"]
         self.assertFalse(game["live_write_supported"])
-        self.assertEqual(game["hold_code"], "PACKAGE_VALIDATION_WARNING")
-        self.assertEqual(game["section_verification"]["packages_save"], "UNVERIFIED_NOT_CLICKED")
+        self.assertEqual(game["hold_code"], "RESTRICTED_CAPABILITY_REVIEW_REQUIRED")
+        self.assertEqual(game["section_verification"]["packages_save"], "VERIFIED_MANUAL_SAVE")
         self.assertTrue(game["selectors"]["packages_warning_alert"]["verified"])
         self.assertFalse(game["selectors"]["packages_validation_state"]["verified"])
+
+    def test_observed_submission_options_fixture_teaches_composite_save_success(self):
+        root = Path(__file__).parents[1]
+        fixture = json.loads(
+            (root / "tests" / "fixtures" / "partner_center_msix_pwa_game_us_submission_options.json").read_text(encoding="utf-8")
+        )
+        self.assertEqual(fixture["restricted_capability"]["name"], "runFullTrust")
+        self.assertEqual(fixture["restricted_capability"]["textarea_count"], 1)
+        self.assertTrue(fixture["save_observation"]["reload_value_exact_match"])
+        self.assertFalse(fixture["save_observation"]["save_button_enabled_is_success_signal"])
+        self.assertEqual(fixture["outcome"]["certification_gate"], "HOLD")
+        self.assertFalse(fixture["outcome"]["submitted"])
+
+        mapping = json.loads((root / "docs" / "PARTNER_CENTER_MAP.json").read_text(encoding="utf-8"))
+        game = mapping["routes"]["msix_pwa_game"]
+        for key in (
+            "submission_options_restricted_capability_container",
+            "submission_options_restricted_capability_textarea",
+            "submission_options_save_button",
+            "submission_options_save_success",
+        ):
+            self.assertTrue(game["selectors"][key]["verified"], key)
+        self.assertFalse(game["live_write_supported"])
 
     def test_conflicting_observed_package_states_are_unknown(self):
         exact = {"Analyzing package": "ANALYZING", "warning": "WARNING"}

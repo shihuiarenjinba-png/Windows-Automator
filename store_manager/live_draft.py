@@ -13,6 +13,7 @@ import zipfile
 from xml.etree import ElementTree
 
 from .submission_routes import default_route_for_product_type, route_template
+from .restricted_capabilities import classify_package_warning
 
 from .core import (
     AmbiguousWriteError,
@@ -229,7 +230,9 @@ class LiveDraftWorkflow:
             raise PackageValidationError(state.error or "Microsoft package validation failed")
         if state.validation == "WARNING":
             detail = state.warning or "Microsoft package validation returned WARNING"
-            raise LiveGateError(f"PACKAGE_VALIDATION_WARNING: {detail}; manual review is required")
+            warning_code, capabilities = classify_package_warning(detail)
+            capability_detail = f" ({', '.join(capabilities)})" if capabilities else ""
+            raise LiveGateError(f"{warning_code}{capability_detail}: {detail}; manual review is required")
         if state.validation != "VALID":
             raise AmbiguousWriteError(f"package validation is {state.validation}")
         if state.section_completion != "COMPLETE":
