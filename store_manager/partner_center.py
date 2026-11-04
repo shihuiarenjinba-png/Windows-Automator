@@ -103,9 +103,16 @@ def build_dry_plan(p:ProductInput):
         "store_listings": ["store_listings:fill_text_and_screenshots"],
         "submission_options": [
             *[
-                f"submission_options:restricted_capability:{capability}:fill_justification"
-                for capability in sorted(p.restricted_capability_justifications)
+                f"submission_options:restricted_capability:{capability}:fill_confirmed_justification_exact_match"
+                for capability, explanation in sorted(p.restricted_capability_justifications.items())
+                if explanation.confirmed
             ],
+            *(
+                ["submission_options:save", "submission_options:reload_and_verify_exact_text"]
+                if p.restricted_capability_justifications
+                and all(x.confirmed for x in p.restricted_capability_justifications.values())
+                else []
+            ),
             "submission_options:fill_verified",
         ],
     }

@@ -150,13 +150,24 @@
     },
     "msix_pwa_game": {
       "live_write_supported": false,
-      "observed_at_utc": "2026-11-04T12:19:25Z",
+      "observed_at_utc": "2026-11-05T00:00:00Z",
       "observation_scope": {
-        "product_name": "STRATEGY MARKET US",
-        "product_id": "9PJCWW6G6D42",
-        "draft_id": "1152921505702134687",
-        "mode": "MANUAL_PACKAGES_SAVE_THEN_AUTHORIZED_SUBMISSION_OPTIONS_SAVE"
+        "observed_product_count": 2,
+        "products": [
+          {
+            "product_name": "STRATEGY MARKET US",
+            "product_id": "9PJCWW6G6D42",
+            "draft_id": "1152921505702134687"
+          },
+          {
+            "product_name": "STRATEGY MARKET",
+            "product_id": "9PM2R3N22JX8",
+            "draft_id": "1152921505702134539"
+          }
+        ],
+        "mode": "TWO_PRODUCT_SUBMISSION_OPTIONS_SAVE_AND_RELOAD_VERIFICATION"
       },
+      "submission_options_restricted_capability_write_supported": true,
       "section_verification": {
         "product_match": "VERIFIED",
         "identity_match": "VERIFIED",
@@ -169,10 +180,10 @@
         "properties": "UNVERIFIED",
         "age_ratings": "UNVERIFIED",
         "store_listings": "UNVERIFIED",
-        "submission_options": "VERIFIED_RESTRICTED_CAPABILITY_EXPLANATION",
-        "submission_options_restricted_capabilities": "VERIFIED",
-        "submission_options_save": "VERIFIED",
-        "submission_options_reload": "VERIFIED"
+        "submission_options": "VERIFIED_2_PRODUCTS_RESTRICTED_CAPABILITY_EXPLANATION",
+        "submission_options_restricted_capabilities": "VERIFIED_2_PRODUCTS",
+        "submission_options_save": "VERIFIED_2_PRODUCTS",
+        "submission_options_reload": "VERIFIED_2_PRODUCTS"
       },
       "selectors": {
         "overview_packages_link": {
@@ -247,20 +258,23 @@
           "strategy": "css",
           "selector": "section.section:has(h2[data-l10n-key='resCapSectionHeader'])",
           "verified": true,
-          "evidence": "Exactly one section had the localized Restricted capabilities heading and contained the exact runFullTrust token."
+          "observed_products": 2,
+          "evidence": "US and JP each exposed exactly one section with the localized Restricted capabilities heading and exact runFullTrust token."
         },
         "submission_options_restricted_capability_textarea": {
           "strategy": "css",
           "selector": "section.section:has(h2[data-l10n-key='resCapSectionHeader']):has(span:text-is('runFullTrust')) textarea.text-area-width[maxlength='500']",
           "verified": true,
-          "evidence": "Exactly one textarea was scoped to the exact runFullTrust capability; it persisted the 407-character evidence-based explanation after reload."
+          "observed_products": 2,
+          "evidence": "The same exact-match textarea selector was unique on US and JP; each retained its product-specific explanation after reload."
         },
         "submission_options_save_button": {
           "strategy": "role",
           "selector": "button",
           "name": "Save",
           "verified": true,
-          "evidence": "Exactly one accessible Save button was observed and used. It remained enabled after reload and therefore is not a success signal."
+          "observed_products": 2,
+          "evidence": "Exactly one accessible Save button was observed and used on both US and JP. Its enabled state after reload is not a success signal."
         },
         "submission_options_save_success": {
           "strategy": "composite_redirect_overview_reload",
@@ -270,11 +284,16 @@
             "Complete": "SAVED"
           },
           "verified": true,
-          "evidence": "Save redirected to the draft URL, Overview showed Submission options Complete, and reopening the page returned the exact explanation with a pristine textarea."
+          "observed_products": 2,
+          "evidence": "On both US and JP, Save redirected to the draft URL, Overview showed Submission options Complete, and reopening returned the exact explanation with a pristine textarea."
         }
       },
       "hold_code": "RESTRICTED_CAPABILITY_REVIEW_REQUIRED",
-      "hold_detail": "The raw package acceptance state remains WARNING. The runFullTrust explanation is saved, but certification remains HOLD and the full route remains fail-closed."
+      "hold_detail": "The raw package acceptance state remains WARNING. Submission Options capability write/save/reload is route-level verified across two products, but certification and the full route remain fail-closed.",
+      "product_certification_gates": {
+        "9PJCWW6G6D42": "HOLD_RESTRICTED_CAPABILITY_APPROVAL_REQUIRED",
+        "9PM2R3N22JX8": "HOLD_JP_START_FLOW_UNRESOLVED"
+      }
     }
   },
   "safety": {

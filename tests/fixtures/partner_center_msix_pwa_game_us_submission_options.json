@@ -29,8 +29,10 @@
     "save_button_name": "Save",
     "after_click_url_suffix": "/submissions/1152921505702134687",
     "overview_section_state": "Complete",
+    "overview_state": "Complete",
     "reload_value_exact_match": true,
     "reload_textarea_state": "PRISTINE",
+    "textarea_dirty_after_reload": false,
     "save_button_enabled_after_reload": true,
     "save_button_enabled_is_success_signal": false
   },

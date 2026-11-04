@@ -13,7 +13,12 @@ import zipfile
 from xml.etree import ElementTree
 
 from .submission_routes import default_route_for_product_type, route_template
-from .restricted_capabilities import classify_package_warning
+from .restricted_capabilities import (
+    classify_package_warning,
+    exact_capability_match,
+    normalize_explanation_text,
+    restricted_capabilities_from_package,
+)
 
 from .core import (
     AmbiguousWriteError,
@@ -87,6 +92,31 @@ def normalize_partner_center_state(texts: list[str], exact_states: dict[str, str
     return next(iter(states)) if len(states) == 1 else "UNKNOWN"
 
 
+def restricted_capability_text_retained(expected: str, reloaded: str) -> bool:
+    """Compare persisted text while normalizing only CR/LF and edge whitespace."""
+
+    return normalize_explanation_text(expected) == normalize_explanation_text(reloaded)
+
+
+def submission_options_save_succeeded(
+    *,
+    draft_url: str,
+    redirected_url: str,
+    overview_state: str,
+    expected_text: str,
+    reloaded_text: str,
+    textarea_dirty: bool,
+) -> bool:
+    """Normalize the US/JP composite success signal without trusting button state."""
+
+    return (
+        draft_url.rstrip("/") == redirected_url.rstrip("/")
+        and overview_state == "Complete"
+        and restricted_capability_text_retained(expected_text, reloaded_text)
+        and textarea_dirty is False
+    )
+
+
 class PartnerCenterPort(Protocol):
     def ensure_route_ready(self, product: ProductInput) -> None: ...
     def verify_product_and_draft(self, product: ProductInput) -> DraftContext: ...
@@ -95,6 +125,59 @@ class PartnerCenterPort(Protocol):
     def reload_and_verify_package(self, product: ProductInput, context: DraftContext) -> PackageState: ...
     def verify_required_sections(self, product: ProductInput, context: DraftContext) -> dict[str, str]: ...
     def capture_evidence(self, product: ProductInput, context: DraftContext) -> list[dict[str, str]]: ...
+
+
+class RestrictedCapabilitySubmissionPort(Protocol):
+    """Narrow adapter contract for the verified Submission Options write."""
+
+    def read_partner_capabilities(self, product: ProductInput, context: DraftContext) -> tuple[str, ...]: ...
+    def fill_capability_explanation(self, capability: str, text: str) -> None: ...
+    def save_submission_options(self, context: DraftContext) -> str: ...
+    def read_submission_options_overview_state(self, product: ProductInput, context: DraftContext) -> str: ...
+    def reload_capability_explanations(self, product: ProductInput, context: DraftContext) -> tuple[dict[str, str], dict[str, bool]]: ...
+
+
+def save_restricted_capability_explanations(
+    product: ProductInput,
+    context: DraftContext,
+    port: RestrictedCapabilitySubmissionPort,
+) -> list[str]:
+    """Write only confirmed, SHA-bound explanations and prove persistence after Save."""
+
+    manifest_capabilities=restricted_capabilities_from_package(product.package_path)
+    if not manifest_capabilities:
+        return []
+    partner_capabilities=port.read_partner_capabilities(product,context)
+    if not exact_capability_match(manifest_capabilities,partner_capabilities):
+        raise LiveGateError("RESTRICTED_CAPABILITY_EXACT_MATCH_REQUIRED")
+    package_sha=file_sha256(product.package_path)
+    for capability in manifest_capabilities:
+        explanation=product.restricted_capability_justifications.get(capability)
+        if not explanation or not explanation.text.strip():
+            raise LiveGateError(f"RESTRICTED_CAPABILITY_JUSTIFICATION_REQUIRED: {capability}")
+        if not explanation.confirmed or explanation.package_sha256.casefold()!=package_sha.casefold():
+            raise LiveGateError(f"RESTRICTED_CAPABILITY_CONFIRMATION_REQUIRED: {capability}")
+        port.fill_capability_explanation(capability,explanation.text)
+    redirected_url=port.save_submission_options(context)
+    overview_state=port.read_submission_options_overview_state(product,context)
+    reloaded,dirty=port.reload_capability_explanations(product,context)
+    for capability in manifest_capabilities:
+        explanation=product.restricted_capability_justifications[capability]
+        if not submission_options_save_succeeded(
+            draft_url=context.draft_url,
+            redirected_url=redirected_url,
+            overview_state=overview_state,
+            expected_text=explanation.text,
+            reloaded_text=reloaded.get(capability,""),
+            textarea_dirty=dirty.get(capability,True),
+        ):
+            raise AmbiguousWriteError(f"restricted capability explanation Save is unproven: {capability}")
+        product.restricted_capability_explanation_saved[capability]=True
+    return [
+        *[f"submission_options:restricted_capability:{capability}:filled_exact_match" for capability in manifest_capabilities],
+        "submission_options:saved",
+        "submission_options:reload_verified",
+    ]
 
 
 def utc_now() -> str:
@@ -191,6 +274,14 @@ def validate_live_gate(product: ProductInput) -> None:
         raise LiveGateError("PACKAGE_SHA_MISMATCH: local package does not match immutable upstream package_sha256")
     if package_sha != product.security_package_sha256:
         raise LiveGateError("package SHA does not match the security-confirmed package")
+    for capability in restricted_capabilities_from_package(product.package_path):
+        explanation=product.restricted_capability_justifications.get(capability)
+        if not explanation or not explanation.text.strip():
+            raise LiveGateError(f"RESTRICTED_CAPABILITY_JUSTIFICATION_REQUIRED: {capability}")
+        if not explanation.confirmed:
+            raise LiveGateError(f"RESTRICTED_CAPABILITY_CONFIRMATION_REQUIRED: {capability}")
+        if explanation.package_sha256.casefold()!=package_sha.casefold():
+            raise LiveGateError(f"RESTRICTED_CAPABILITY_PACKAGE_CHANGED: {capability}")
     package_identity = read_package_identity(product.package_path)
     expected_identity = PackageIdentity(
         product.identity_name,

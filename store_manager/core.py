@@ -9,7 +9,10 @@ import re
 from urllib.parse import urlparse
 
 from .submission_routes import ROUTE_SOURCES, default_route_for_product_type, route_template
-from .restricted_capabilities import build_package_justifications
+from .restricted_capabilities import (
+    RestrictedCapabilityJustification,
+    sync_package_justifications,
+)
 
 class ValueMode(str, Enum):
     FIXED="fixed"; OLLAMA="ollama"; MANUAL="manual"; BLANK="blank"; REVIEW="review"
@@ -57,7 +60,9 @@ class ProductInput:
     gdk_ekb_path:str=""
     gdk_symbols_path:str=""
     gdk_submission_validator_path:str=""
-    restricted_capability_justifications:dict[str,str]=field(default_factory=dict)
+    restricted_capability_justifications:dict[str,RestrictedCapabilityJustification]=field(default_factory=dict)
+    restricted_capability_explanation_saved:dict[str,bool]=field(default_factory=dict)
+    certification_gate:str="HOLD"
     source_sha:str=""
     source_branch:str=""
     identity_name:str=""
@@ -84,6 +89,10 @@ class ProductInput:
             v=dict(v); v["mode"]=ValueMode(v.get("mode","ollama")); fs[k]=FieldValue(**v)
         d["fields"]=fs
         d["trailers"]=[x if isinstance(x,TrailerAsset) else TrailerAsset(**x) for x in (d.get("trailers") or [])]
+        d["restricted_capability_justifications"]={
+            key: RestrictedCapabilityJustification.from_value(value)
+            for key,value in (d.get("restricted_capability_justifications") or {}).items()
+        }
         return cls(**d)
     @classmethod
     def load(cls,path): return cls.from_dict(json.loads(Path(path).read_text(encoding="utf-8")))
@@ -193,9 +202,22 @@ def apply_fixed_rules(p:ProductInput):
     if not p.market_preset:
         p.market_preset="all_markets"
     if p.package_path and Path(p.package_path).is_file():
-        auto_justifications, _ = build_package_justifications(p.package_path, p.product_type)
-        for capability, text in auto_justifications.items():
-            p.restricted_capability_justifications.setdefault(capability, text)
+        previous_justifications={
+            key: RestrictedCapabilityJustification.from_value(value)
+            for key,value in p.restricted_capability_justifications.items()
+        }
+        p.restricted_capability_justifications, _ = sync_package_justifications(
+            p.package_path,
+            p.product_type,
+            p.product_name,
+            p.restricted_capability_justifications,
+        )
+        p.restricted_capability_explanation_saved={
+            capability: bool(p.restricted_capability_explanation_saved.get(capability,False))
+            and capability in previous_justifications
+            and previous_justifications[capability].package_sha256.casefold()==explanation.package_sha256.casefold()
+            for capability,explanation in p.restricted_capability_justifications.items()
+        }
     proposed["submission_kind"]=p.submission_kind
     if p.price_mode in {"free","paid"}:
         proposed["pricing_model"]=p.price_mode
@@ -310,16 +332,51 @@ def validate_product(p:ProductInput):
     personal=p.fields.get("collects_personal_data"); privacy=p.fields.get("privacy_policy_url")
     if personal and personal.value=="yes" and not str(privacy.value if privacy else "").strip(): out.append(Finding("PRIVACY_POLICY","Privacy policy URL required by declaration",Severity.HOLD,"privacy_policy_url"))
     if p.package_path and Path(p.package_path).is_file():
-        auto_justifications, unresolved_capabilities = build_package_justifications(p.package_path, p.product_type)
-        for capability, text in auto_justifications.items():
-            p.restricted_capability_justifications.setdefault(capability, text)
+        previous_justifications={
+            key: RestrictedCapabilityJustification.from_value(value)
+            for key,value in p.restricted_capability_justifications.items()
+        }
+        p.restricted_capability_justifications, unresolved_capabilities = sync_package_justifications(
+            p.package_path,
+            p.product_type,
+            p.product_name,
+            p.restricted_capability_justifications,
+        )
+        p.restricted_capability_explanation_saved={
+            capability: bool(p.restricted_capability_explanation_saved.get(capability,False))
+            and capability in previous_justifications
+            and previous_justifications[capability].package_sha256.casefold()==explanation.package_sha256.casefold()
+            for capability,explanation in p.restricted_capability_justifications.items()
+        }
         for capability in unresolved_capabilities:
-            if not str(p.restricted_capability_justifications.get(capability) or "").strip():
+            out.append(Finding(
+                "RESTRICTED_CAPABILITY_NEEDS_OWNER_INPUT",
+                f"Unknown restricted capability {capability} requires owner-provided Store guidance; AI text is disabled",
+                Severity.HOLD,
+                f"restricted_capability_justifications.{capability}",
+            ))
+        for capability, explanation in p.restricted_capability_justifications.items():
+            field_name=f"restricted_capability_justifications.{capability}"
+            if not explanation.text.strip():
                 out.append(Finding(
                     "RESTRICTED_CAPABILITY_JUSTIFICATION_REQUIRED",
-                    f"Restricted capability {capability} requires a verified Submission Options explanation",
+                    f"Restricted capability {capability} requires a Submission Options explanation",
                     Severity.HOLD,
-                    f"restricted_capability_justifications.{capability}",
+                    field_name,
+                ))
+            elif len(explanation.text)>500:
+                out.append(Finding(
+                    "RESTRICTED_CAPABILITY_JUSTIFICATION_TOO_LONG",
+                    f"Restricted capability {capability} explanation exceeds the Partner Center 500-character limit",
+                    Severity.HOLD,
+                    field_name,
+                ))
+            elif not explanation.confirmed:
+                out.append(Finding(
+                    "RESTRICTED_CAPABILITY_CONFIRMATION_REQUIRED",
+                    f"Restricted capability {capability} explanation must be confirmed for this package",
+                    Severity.HOLD,
+                    field_name,
                 ))
 
     # Trailers are fully optional. No trailer means no warning and no HOLD.
@@ -422,7 +479,19 @@ def run_queue(products:list[ProductInput],uploader:Callable[[ProductInput],list[
                 seen_packages[package_sha]=product_key
 
         findings.extend(validate_product(p))
-        route_details={"submission_route":p.submission_route,"submission_route_source":p.submission_route_source}
+        capability_names=sorted(p.restricted_capability_justifications)
+        route_details={
+            "submission_route":p.submission_route,
+            "submission_route_source":p.submission_route_source,
+            "restricted_capability":capability_names,
+            "restricted_capability_explanation_confirmed":all(
+                p.restricted_capability_justifications[name].confirmed for name in capability_names
+            ) if capability_names else True,
+            "restricted_capability_explanation_saved":all(
+                p.restricted_capability_explanation_saved.get(name,False) for name in capability_names
+            ) if capability_names else True,
+            "certification_gate":p.certification_gate,
+        }
         if any(f.severity==Severity.HOLD for f in findings):
             report.results.append(ProductResult(p.product_name,"HOLD",findings,[],route_details))
             if not policy.continue_after_product_hold: report.stopped_early=True; report.stop_reason="product_hold"; break
@@ -462,5 +531,14 @@ def render_markdown(report:QueueReport):
         ]
     lines += ["","| 状態 | 件数 |","|---|---:|"]+[f"| {s} | {counts.get(s,0)} |" for s in ("DONE","DRAFT_SAVED","HOLD","UNKNOWN","ERROR","AUTH_ERROR")]
     for r in report.results:
-        lines += ["",f"## {r.product_name} — {r.status}",f"- 申請ルート: `{r.details.get('submission_route','')}`"]+[f"- **{f.severity.value.upper()} / {f.code}**: {f.message}" for f in r.findings]
+        capabilities=r.details.get("restricted_capability") or []
+        lines += [
+            "",
+            f"## {r.product_name} — {r.status}",
+            f"- 申請ルート: `{r.details.get('submission_route','')}`",
+            f"- Restricted Capability: `{', '.join(capabilities) if capabilities else 'none'}`",
+            f"- 説明確認済み: `{r.details.get('restricted_capability_explanation_confirmed',True)}`",
+            f"- 説明保存済み: `{r.details.get('restricted_capability_explanation_saved',True)}`",
+            f"- Certification gate: `{r.details.get('certification_gate','HOLD')}`",
+        ]+[f"- **{f.severity.value.upper()} / {f.code}**: {f.message}" for f in r.findings]
     return "\n".join(lines)+"\n"

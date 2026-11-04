@@ -28,6 +28,7 @@ from .partner_center import (
     dryrun_uploader,
     simulate_overview_start,
 )
+from .restricted_capabilities import RestrictedCapabilityJustification
 from .submission_routes import ROUTE_LABELS, route_display, route_id_from_label, route_label, route_template
 
 MODE_LABELS = {
@@ -400,6 +401,8 @@ class App(tk.Tk):
                 self.security_status.set("再確認が必要")
                 if self.current_product:
                     self.current_product.security_package_sha256=""
+                    for explanation in self.current_product.restricted_capability_justifications.values():
+                        explanation.confirmed=False
                     for key in SECURITY_CONFIRM_KEYS:
                         if key in self.current_product.fields:
                             self.current_product.fields[key].confirmed=False
@@ -438,6 +441,12 @@ class App(tk.Tk):
                 "rationale": v.rationale,
                 "confirmed": v.confirmed,
             }) for k, v in self.current_product.fields.items()}
+            p.restricted_capability_justifications={
+                key: RestrictedCapabilityJustification.from_value(value)
+                for key,value in self.current_product.restricted_capability_justifications.items()
+            }
+            p.restricted_capability_explanation_saved=dict(self.current_product.restricted_capability_explanation_saved)
+            p.certification_gate=self.current_product.certification_gate
         for f in fields_for(p.product_type):
             p.fields.setdefault(f.key, FieldValue(f.key, ValueMode.OLLAMA, None, "pending"))
         p.fields.setdefault("description", FieldValue("description", ValueMode.OLLAMA, None, "pending"))
@@ -620,15 +629,44 @@ class App(tk.Tk):
             confidence = "" if fv.confidence is None else f"{fv.confidence:.0%}"
             tag = "review" if fv.mode == ValueMode.REVIEW else ("fixed" if fv.mode == ValueMode.FIXED else "")
             self.review_tree.insert("", "end", iid=key, values=(label, MODE_LABELS[fv.mode], value, fv.source or "—", confidence), tags=(tag,) if tag else ())
-        self.review_summary.configure(text=f"要確認 {counts[ValueMode.REVIEW]} / AI {counts[ValueMode.OLLAMA]} / 固定 {counts[ValueMode.FIXED]}")
+        capability_holds=0
+        for capability, explanation in sorted(p.restricted_capability_justifications.items()):
+            if self.review_only.get() and explanation.confirmed:
+                continue
+            capability_holds += 0 if explanation.confirmed else 1
+            self.review_tree.insert(
+                "",
+                "end",
+                iid=f"restricted_capability::{capability}",
+                values=(
+                    f"Microsoft Store追加説明 — {capability}",
+                    "確認済み" if explanation.confirmed else "要確認",
+                    explanation.text,
+                    explanation.source,
+                    "100%" if explanation.confirmed else "",
+                ),
+                tags=() if explanation.confirmed else ("review",),
+            )
+        self.review_summary.configure(text=f"要確認 {counts[ValueMode.REVIEW] + capability_holds} / AI {counts[ValueMode.OLLAMA]} / 固定 {counts[ValueMode.FIXED]}")
 
     def show_rationale(self, _event=None):
         selected = self.review_tree.selection()
         text = ""
         if selected and self.current_product:
-            fv = self.current_product.fields.get(selected[0])
-            if fv:
-                text = fv.rationale or "補足理由はありません。"
+            key=selected[0]
+            if key.startswith("restricted_capability::"):
+                capability=key.split("::",1)[1]
+                explanation=self.current_product.restricted_capability_justifications.get(capability)
+                if explanation:
+                    text=(
+                        f"Restricted capability: {capability}\n"
+                        f"Package SHA-256: {explanation.package_sha256}\n"
+                        "この説明は現在のパッケージにだけ紐づきます。パッケージ変更時は再確認が必要です。"
+                    )
+            else:
+                fv = self.current_product.fields.get(key)
+                if fv:
+                    text = fv.rationale or "補足理由はありません。"
         self.rationale.configure(state="normal")
         self.rationale.delete("1.0", "end")
         self.rationale.insert("1.0", text)
@@ -639,6 +677,9 @@ class App(tk.Tk):
         if not selected or not self.current_product:
             return
         key = selected[0]
+        if key.startswith("restricted_capability::"):
+            self.edit_restricted_capability(key.split("::",1)[1])
+            return
         fv = self.current_product.fields[key]
         defs = {f.key: f for f in fields_for(self.current_product.product_type)}
         field_def = defs.get(key)
@@ -694,6 +735,54 @@ class App(tk.Tk):
             win.destroy()
 
         ttk.Button(body, text="反映", command=save, style="Primary.TButton").pack(anchor="e", pady=(10, 0))
+
+    def edit_restricted_capability(self, capability: str):
+        if not self.current_product:
+            return
+        explanation=self.current_product.restricted_capability_justifications.get(capability)
+        if not explanation:
+            return
+        win=tk.Toplevel(self)
+        win.title("Microsoft Store 追加説明（必須）")
+        win.geometry("720x500")
+        win.transient(self)
+        win.grab_set()
+        body=ttk.Frame(win,padding=18)
+        body.pack(fill="both",expand=True)
+        ttk.Label(body,text=f"Restricted capability: {capability}",font=("Segoe UI",13,"bold")).pack(anchor="w")
+        ttk.Label(
+            body,
+            text="固定テンプレートを自動入力しています。内容を確認・必要なら編集し、現在のパッケージに対して確認済みにしてください。",
+            foreground="#5B6470",
+            wraplength=680,
+        ).pack(anchor="w",pady=(3,10))
+        editor=tk.Text(body,height=14,wrap="word")
+        editor.insert("1.0",explanation.text)
+        editor.pack(fill="both",expand=True)
+        confirmed=tk.BooleanVar(value=explanation.confirmed)
+        ttk.Checkbutton(body,text="この説明を現在のパッケージについて確認済みにする",variable=confirmed).pack(anchor="w",pady=10)
+        ttk.Label(body,text=f"Package SHA-256: {explanation.package_sha256}",foreground="#5B6470").pack(anchor="w")
+
+        def save():
+            value=editor.get("1.0","end").strip()
+            if not value:
+                messagebox.showwarning("説明が必要です","Restricted Capabilityの説明を入力してください。",parent=win)
+                return
+            if confirmed.get() and (not self.current_product.package_path or not Path(self.current_product.package_path).is_file()):
+                messagebox.showwarning("パッケージ未選択","確認状態をパッケージSHAへ紐付けられません。",parent=win)
+                return
+            current_sha=file_sha256(self.current_product.package_path) if self.current_product.package_path else ""
+            self.current_product.restricted_capability_justifications[capability]=RestrictedCapabilityJustification(
+                text=value,
+                source="manual_ui" if value != explanation.text else explanation.source,
+                confirmed=confirmed.get(),
+                package_sha256=current_sha,
+            )
+            self.current_product.restricted_capability_explanation_saved[capability]=False
+            self.render_review()
+            win.destroy()
+
+        ttk.Button(body,text="反映",command=save,style="Primary.TButton").pack(anchor="e",pady=(10,0))
 
 
 

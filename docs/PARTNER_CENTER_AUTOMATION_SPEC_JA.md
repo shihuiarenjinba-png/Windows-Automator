@@ -58,7 +58,7 @@
 - Category / genre候補
 - System requirementsの文章候補
 - Certification notes
-- Restricted capability理由の文章下書き（Capabilityそのものはパッケージ検出結果を正とする）
+- Restricted capability理由はAI自由作文にしない。既知の`runFullTrust`だけ承認済み固定テンプレートを製品名とApp/Game種別から生成する
 
 ## AIだけで確定しない項目
 
@@ -68,6 +68,7 @@
 - ローカルファイルアクセス
 - カメラ / マイク / 位置情報
 - Restricted capability有無
+- Restricted capability説明の確認（現在のpackage SHA-256へ紐付け、package変更時は確認解除）
 - Driver / NT service依存
 - IARCで根拠不足の回答
 - 価格額
@@ -80,4 +81,7 @@
 - 表示中の選択肢以外を生成しない
 - 保存完了/validation完了を状態で確認
 - selector未確認の項目は本番write不可
+- ManifestとPartner CenterのCapability一覧がexact matchしない場合はHOLD
+- 未知Capabilityは`NEEDS_OWNER_INPUT`としてHOLDし、AIで補完しない
+- Submission Options Save成功は、同一draftへの遷移、Overview Complete、reload後の説明一致をすべて確認する
 - Submit for certificationは別承認まで自動化しない

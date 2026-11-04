@@ -24,7 +24,11 @@ from store_manager.live_draft import (
     REQUIRED_SECTIONS,
     SelectorMap,
     normalize_partner_center_state,
+    restricted_capability_text_retained,
+    save_restricted_capability_explanations,
+    submission_options_save_succeeded,
 )
+from store_manager.restricted_capabilities import RestrictedCapabilityJustification
 
 
 def live_product(root: Path) -> ProductInput:
@@ -111,7 +115,66 @@ class FakePort:
         return self.evidence
 
 
+class FakeRestrictedCapabilityPort:
+    def __init__(self, capabilities=("runFullTrust",)):
+        self.capabilities=capabilities
+        self.filled={}
+
+    def read_partner_capabilities(self, product, context):
+        return self.capabilities
+
+    def fill_capability_explanation(self, capability, text):
+        self.filled[capability]=text
+
+    def save_submission_options(self, context):
+        return context.draft_url
+
+    def read_submission_options_overview_state(self, product, context):
+        return "Complete"
+
+    def reload_capability_explanations(self, product, context):
+        return dict(self.filled),{key:False for key in self.filled}
+
+
 class LiveDraftTests(unittest.TestCase):
+    def test_restricted_capability_workflow_fills_saves_and_reload_verifies(self):
+        with tempfile.TemporaryDirectory() as directory:
+            product=live_product(Path(directory))
+            manifest=b'''<?xml version="1.0" encoding="utf-8"?>
+<Package xmlns="http://schemas.microsoft.com/appx/manifest/foundation/windows10"
+ xmlns:rescap="http://schemas.microsoft.com/appx/manifest/foundation/windows10/restrictedcapabilities">
+ <Identity Name="Example.Identity" Publisher="CN=EXAMPLE" Version="1.2.3.4" ProcessorArchitecture="x64" />
+ <Capabilities><rescap:Capability Name="runFullTrust" /></Capabilities>
+</Package>'''
+            with zipfile.ZipFile(product.package_path,"w") as archive:
+                archive.writestr("AppxManifest.xml",manifest)
+            sha=file_sha256(product.package_path)
+            product.security_package_sha256=sha
+            product.restricted_capability_justifications["runFullTrust"]=RestrictedCapabilityJustification(
+                "Confirmed explanation","owner_input",True,sha
+            )
+            context=DraftContext(product.store_product_id,"12345","https://partner.microsoft.com/draft/12345")
+            port=FakeRestrictedCapabilityPort()
+            actions=save_restricted_capability_explanations(product,context,port)
+            self.assertEqual(port.filled,{"runFullTrust":"Confirmed explanation"})
+            self.assertTrue(product.restricted_capability_explanation_saved["runFullTrust"])
+            self.assertIn("submission_options:reload_verified",actions)
+
+    def test_restricted_capability_workflow_rejects_non_exact_partner_set(self):
+        with tempfile.TemporaryDirectory() as directory:
+            product=live_product(Path(directory))
+            manifest=b'''<?xml version="1.0" encoding="utf-8"?>
+<Package xmlns="http://schemas.microsoft.com/appx/manifest/foundation/windows10"
+ xmlns:rescap="http://schemas.microsoft.com/appx/manifest/foundation/windows10/restrictedcapabilities">
+ <Identity Name="Example.Identity" Publisher="CN=EXAMPLE" Version="1.2.3.4" ProcessorArchitecture="x64" />
+ <Capabilities><rescap:Capability Name="runFullTrust" /></Capabilities>
+</Package>'''
+            with zipfile.ZipFile(product.package_path,"w") as archive:
+                archive.writestr("AppxManifest.xml",manifest)
+            context=DraftContext(product.store_product_id,"12345","https://partner.microsoft.com/draft/12345")
+            with self.assertRaisesRegex(LiveGateError,"EXACT_MATCH_REQUIRED"):
+                save_restricted_capability_explanations(product,context,FakeRestrictedCapabilityPort(("runFullTrust","other")))
+
     def test_success_requires_reload_and_emits_explicit_live_evidence(self):
         with tempfile.TemporaryDirectory() as directory:
             product = live_product(Path(directory))
@@ -296,6 +359,40 @@ class LiveDraftTests(unittest.TestCase):
         ):
             self.assertTrue(game["selectors"][key]["verified"], key)
         self.assertFalse(game["live_write_supported"])
+
+    def test_submission_options_save_success_requires_all_us_jp_signals(self):
+        expected="Line one\r\nLine two"
+        values=dict(
+            draft_url="https://partner.microsoft.com/submissions/123",
+            redirected_url="https://partner.microsoft.com/submissions/123/",
+            overview_state="Complete",
+            expected_text=expected,
+            reloaded_text="  Line one\nLine two  ",
+            textarea_dirty=False,
+        )
+        self.assertTrue(submission_options_save_succeeded(**values))
+        self.assertTrue(restricted_capability_text_retained(expected,values["reloaded_text"]))
+        for key,bad in (
+            ("redirected_url","https://partner.microsoft.com/submissions/other"),
+            ("overview_state","Incomplete"),
+            ("reloaded_text","Line one changed\nLine two"),
+            ("textarea_dirty",True),
+        ):
+            changed=dict(values); changed[key]=bad
+            self.assertFalse(submission_options_save_succeeded(**changed),key)
+
+    def test_us_jp_fixtures_share_route_level_selectors_and_reload_contract(self):
+        root=Path(__file__).parents[1]
+        us=json.loads((root/"tests"/"fixtures"/"partner_center_msix_pwa_game_us_submission_options.json").read_text(encoding="utf-8"))
+        jp=json.loads((root/"tests"/"fixtures"/"partner_center_msix_pwa_game_jp_submission_options.json").read_text(encoding="utf-8"))
+        self.assertEqual(us["route_id"],jp["route_id"])
+        for key in ("container_selector","textarea_selector"):
+            self.assertEqual(us["restricted_capability"][key],jp["restricted_capability"][key])
+        for fixture in (us,jp):
+            self.assertTrue(fixture["save_observation"]["reload_value_exact_match"])
+            self.assertEqual(fixture["save_observation"]["overview_state"],"Complete")
+            self.assertFalse(fixture["save_observation"]["save_button_enabled_is_success_signal"])
+            self.assertEqual(fixture["outcome"]["certification_gate"],"HOLD")
 
     def test_conflicting_observed_package_states_are_unknown(self):
         exact = {"Analyzing package": "ANALYZING", "warning": "WARNING"}

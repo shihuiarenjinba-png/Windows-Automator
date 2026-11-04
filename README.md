@@ -76,6 +76,8 @@ python -m store_manager.gui
 3. **夜間キュー** — 複数製品を並べ、HOLDがあっても次製品へ進む前提で事前確認
 4. **結果・設定** — DONE/HOLD等のレポート、Ollama URL/model、GitHub token入力
 
+MSIXのManifestにRestricted Capabilityがある製品だけ、画面2のレビューへ「Microsoft Store追加説明」が現れます。`runFullTrust`は製品名とApp/Game種別に応じた固定テンプレートを自動入力しますが、ユーザーが編集・確認済みにするまでlive write対象になりません。確認はpackage SHA-256に紐づき、パッケージ変更時に自動解除されます。未知Capabilityは文章を推測せずHOLDします。
+
 GitHub tokenはGUIから保存せず、GitHubコンテキスト取得だけに使用し、Ollamaへ渡しません。
 
 現在の「下書きアップロード」は安全側で無効です。読み取り観測済みの画面契約は `docs/PARTNER_CENTER_SCREEN_MAPPING_20261029.md`、機械可読selectorは `docs/PARTNER_CENTER_MAP.json` を参照してください。

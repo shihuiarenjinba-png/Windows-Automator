@@ -1,7 +1,10 @@
 from __future__ import annotations
 
+from dataclasses import dataclass
+import hashlib
 from io import BytesIO
 from pathlib import Path
+from typing import Any
 import zipfile
 from xml.etree import ElementTree
 
@@ -12,18 +15,46 @@ RUNFULLTRUST_PACKAGE_WARNING = (
 )
 
 
-def classify_package_warning(text: str) -> tuple[str, tuple[str, ...]]:
-    """Classify only an exact observed restricted-capability warning.
+@dataclass
+class RestrictedCapabilityJustification:
+    """Owner-reviewed Store explanation bound to one exact package."""
 
-    The raw Microsoft acceptance state remains WARNING.  This classification
-    merely teaches the workflow which safe follow-up section is required; every
-    other warning retains the generic fail-closed status.
-    """
+    text: str = ""
+    source: str = "owner_required"
+    confirmed: bool = False
+    package_sha256: str = ""
+
+    @classmethod
+    def from_value(cls, value: Any) -> "RestrictedCapabilityJustification":
+        if isinstance(value, cls):
+            return cls(value.text, value.source, value.confirmed, value.package_sha256)
+        if isinstance(value, str):
+            # Legacy queue files contained only text. Never infer confirmation.
+            return cls(text=value, source="legacy_text", confirmed=False)
+        if isinstance(value, dict):
+            return cls(
+                text=str(value.get("text") or ""),
+                source=str(value.get("source") or "owner_required"),
+                confirmed=bool(value.get("confirmed", False)),
+                package_sha256=str(value.get("package_sha256") or ""),
+            )
+        return cls()
+
+
+def normalize_explanation_text(text: str) -> str:
+    """Normalize only line endings and surrounding whitespace."""
+
+    return str(text or "").replace("\r\n", "\n").replace("\r", "\n").strip()
+
+
+def classify_package_warning(text: str) -> tuple[str, tuple[str, ...]]:
+    """Classify only the exact observed restricted-capability warning."""
 
     messages = [message.strip() for message in text.split(" | ") if message.strip()]
     if messages and set(messages) == {RUNFULLTRUST_PACKAGE_WARNING}:
         return "RESTRICTED_CAPABILITY_REVIEW_REQUIRED", ("runFullTrust",)
     return "PACKAGE_VALIDATION_WARNING", ()
+
 
 def _manifest_bytes_from_archive(raw: bytes | Path, depth: int = 0) -> list[bytes]:
     if depth > 3:
@@ -49,6 +80,7 @@ def _manifest_bytes_from_archive(raw: bytes | Path, depth: int = 0) -> list[byte
             out.extend(_manifest_bytes_from_archive(BytesIO(archive.read(name)), depth + 1))
         return out
 
+
 def restricted_capabilities_from_package(path: str | Path) -> tuple[str, ...]:
     found: set[str] = set()
     for raw in _manifest_bytes_from_archive(Path(path)):
@@ -61,31 +93,101 @@ def restricted_capabilities_from_package(path: str | Path) -> tuple[str, ...]:
                 continue
             namespace = node.tag.split("}", 1)[0].lstrip("{") if "}" in node.tag else ""
             name = str(node.attrib.get("Name") or "").strip()
-            # Restricted capabilities normally use the rescap namespace.
             if name and ("restrictedcapabilities" in namespace.casefold() or name == "runFullTrust"):
                 found.add(name)
     return tuple(sorted(found))
 
-def build_restricted_capability_justification(capability: str, product_type: str) -> str | None:
+
+def build_restricted_capability_justification(
+    capability: str,
+    product_type: str,
+    product_name: str = "",
+) -> str | None:
+    """Build the approved fixed template; unknown capabilities never use AI prose."""
+
     if capability != "runFullTrust":
         return None
     noun = "game" if product_type == "game" else "application"
+    subject = product_name.strip() or "This product"
     return (
-        f"This product is a packaged Windows desktop {noun}. "
-        "The runFullTrust capability is required because the package launches its normal "
-        "desktop process at the standard desktop (medium integrity) trust level rather than "
-        "as an AppContainer application. The capability is used only to run the packaged "
-        f"desktop {noun} and provide its normal local desktop functionality. "
-        "It is not used to request administrator elevation."
+        f"{subject} is a packaged Windows desktop {noun} that runs as a normal Win32 desktop process. "
+        f"The runFullTrust capability is required so the packaged {noun} can launch and operate its "
+        "desktop process at medium integrity outside the AppContainer sandbox, including its local "
+        "runtime and save-data functionality. It is not used to request administrator elevation or "
+        "bypass Windows security controls."
     )
 
-def build_package_justifications(path: str | Path, product_type: str) -> tuple[dict[str, str], tuple[str, ...]]:
-    explanations: dict[str, str] = {}
+
+def package_sha256(path: str | Path) -> str:
+    digest = hashlib.sha256()
+    with Path(path).open("rb") as stream:
+        for chunk in iter(lambda: stream.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def exact_capability_match(manifest_capabilities: tuple[str, ...], partner_capabilities: tuple[str, ...]) -> bool:
+    """Require the exact set and exactly one Partner Center field per capability."""
+
+    return len(partner_capabilities) == len(set(partner_capabilities)) and set(manifest_capabilities) == set(partner_capabilities)
+
+
+def sync_package_justifications(
+    path: str | Path,
+    product_type: str,
+    product_name: str,
+    existing: dict[str, Any] | None = None,
+) -> tuple[dict[str, RestrictedCapabilityJustification], tuple[str, ...]]:
+    """Reconcile capability records with the current package and invalidate stale confirmation."""
+
+    detected = restricted_capabilities_from_package(path)
+    current_sha = package_sha256(path)
+    old = {key: RestrictedCapabilityJustification.from_value(value) for key, value in (existing or {}).items()}
+    records: dict[str, RestrictedCapabilityJustification] = {}
     unresolved: list[str] = []
-    for capability in restricted_capabilities_from_package(path):
-        text = build_restricted_capability_justification(capability, product_type)
-        if text:
-            explanations[capability] = text
+    for capability in detected:
+        prior = old.get(capability)
+        template = build_restricted_capability_justification(capability, product_type, product_name)
+        if template is None:
+            if (
+                prior
+                and prior.package_sha256.casefold() == current_sha.casefold()
+                and prior.text.strip()
+                and prior.source in {"manual_ui", "owner_input"}
+                and prior.confirmed
+            ):
+                records[capability] = prior
+            else:
+                records[capability] = RestrictedCapabilityJustification(
+                    text=prior.text if prior else "",
+                    source=prior.source if prior and prior.text else "owner_required",
+                    confirmed=False,
+                    package_sha256=current_sha,
+                )
+                unresolved.append(capability)
+            continue
+        if prior and prior.package_sha256.casefold() == current_sha.casefold():
+            records[capability] = prior
+        elif prior and prior.text and prior.source in {"manual_ui", "owner_input"}:
+            records[capability] = RestrictedCapabilityJustification(
+                text=prior.text,
+                source=prior.source,
+                confirmed=False,
+                package_sha256=current_sha,
+            )
         else:
-            unresolved.append(capability)
-    return explanations, tuple(unresolved)
+            records[capability] = RestrictedCapabilityJustification(
+                text=template,
+                source="fixed_template",
+                confirmed=False,
+                package_sha256=current_sha,
+            )
+    return records, tuple(unresolved)
+
+
+def build_package_justifications(
+    path: str | Path,
+    product_type: str,
+    product_name: str = "",
+) -> tuple[dict[str, RestrictedCapabilityJustification], tuple[str, ...]]:
+    return sync_package_justifications(path, product_type, product_name)
