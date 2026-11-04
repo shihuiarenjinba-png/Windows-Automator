@@ -103,8 +103,97 @@
     },
     "msix_pwa_game": {
       "live_write_supported": false,
-      "selectors": {},
-      "hold_code": "LIVE_ROUTE_NOT_VERIFIED"
+      "observed_at_utc": "2026-11-04T10:43:52Z",
+      "observation_scope": {
+        "product_name": "STRATEGY MARKET US",
+        "product_id": "9PJCWW6G6D42",
+        "draft_id": "1152921505702134687",
+        "mode": "AUTHORIZED_UPLOAD_NO_SAVE_WARNING_HOLD"
+      },
+      "section_verification": {
+        "product_match": "VERIFIED",
+        "identity_match": "VERIFIED",
+        "packages_upload": "VERIFIED",
+        "package_analysis": "VERIFIED",
+        "package_validation": "OBSERVED_WARNING_ONLY",
+        "packages_save": "UNVERIFIED_NOT_CLICKED",
+        "reload_verification": "VERIFIED_UNSAVED_WARNING_RECONCILIATION",
+        "pricing_availability": "UNVERIFIED",
+        "properties": "UNVERIFIED",
+        "age_ratings": "UNVERIFIED",
+        "store_listings": "UNVERIFIED",
+        "submission_options": "UNVERIFIED"
+      },
+      "selectors": {
+        "overview_packages_link": {
+          "strategy": "css",
+          "selector": "a[href$='/packages']",
+          "verified": true,
+          "evidence": "The existing US draft exposed one Packages link containing draft id 1152921505702134687."
+        },
+        "packages_file_input": {
+          "strategy": "css",
+          "selector": "input[name='fileuploader'][type='file'][multiple]",
+          "verified": true,
+          "evidence": "The visible 'browse your files.' control opened this input and accepted the authorized MSIX."
+        },
+        "packages_upload_status": {
+          "strategy": "css",
+          "selector": "div.uploadStatus-text",
+          "exact_states": {
+            "Analyzing package": "ANALYZING"
+          },
+          "verified": true,
+          "evidence": "Observed after upload reached 100 percent for version 0.25.25.0."
+        },
+        "packages_warning_alert": {
+          "strategy": "css",
+          "selector": ".alert.alert-warning .alert-string",
+          "exact_states": {
+            "Package acceptance validation warning: The following restricted capabilities require approval before you can use them in your app: runFullTrust.": "WARNING"
+          },
+          "verified": true,
+          "evidence": "Observed for both the existing and newly uploaded package after analysis."
+        },
+        "packages_save_button": {
+          "strategy": "role",
+          "selector": "button",
+          "name": "Save",
+          "verified": true,
+          "evidence": "Exactly one accessible Save control was present and became enabled after analysis; it was not clicked."
+        },
+        "packages_validation_state": {
+          "strategy": "css",
+          "selector": ".alert .alert-string",
+          "exact_states": {
+            "Package acceptance validation warning: The following restricted capabilities require approval before you can use them in your app: runFullTrust.": "WARNING"
+          },
+          "verified": false,
+          "evidence": "Only the WARNING path was observed. VALID and ERROR selectors/states remain unverified."
+        },
+        "packages_section_state": {
+          "strategy": "css",
+          "selector": "",
+          "exact_states": {},
+          "verified": false,
+          "evidence": "A warning is not proof that the Packages section is COMPLETE."
+        },
+        "packages_save_success": {
+          "strategy": "css",
+          "selector": "",
+          "verified": false,
+          "evidence": "Save was deliberately not clicked because WARNING is a HOLD."
+        },
+        "overview_section_states": {
+          "strategy": "css",
+          "selector": "",
+          "exact_states": {},
+          "verified": false,
+          "evidence": "No post-save overview reconciliation was authorized or observed."
+        }
+      },
+      "hold_code": "PACKAGE_VALIDATION_WARNING",
+      "hold_detail": "runFullTrust requires Microsoft approval; Save was not clicked and the route remains fail-closed."
     }
   },
   "safety": {

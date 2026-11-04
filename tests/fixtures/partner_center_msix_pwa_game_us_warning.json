@@ -1,0 +1,39 @@
+{
+  "schema_version": 1,
+  "observed_at_utc": "2026-11-04T10:43:52Z",
+  "route_id": "msix_pwa_game",
+  "product": {
+    "name": "STRATEGY MARKET US",
+    "store_product_id": "9PJCWW6G6D42",
+    "draft_id": "1152921505702134687"
+  },
+  "package": {
+    "filename": "STRATEGY_MARKET_USA_0.25.25.0_FINAL_UI_STORE_CANDIDATE_x64.msix",
+    "version": "0.25.25.0",
+    "architecture": "X64",
+    "sha256": "38D50DF72E43D491FEAD9C69DED0780C5E35952B601260967D4AE96BA609455F"
+  },
+  "observed_messages": {
+    "upload": [
+      "Analyzing package"
+    ],
+    "validation": [
+      "Package acceptance validation warning: The following restricted capabilities require approval before you can use them in your app: runFullTrust.",
+      "Package acceptance validation warning: The following restricted capabilities require approval before you can use them in your app: runFullTrust."
+    ]
+  },
+  "exact_states": {
+    "Analyzing package": "ANALYZING",
+    "Package acceptance validation warning: The following restricted capabilities require approval before you can use them in your app: runFullTrust.": "WARNING"
+  },
+  "outcome": {
+    "status": "HOLD",
+    "hold_code": "PACKAGE_VALIDATION_WARNING",
+    "save_enabled_after_analysis": true,
+    "save_clicked": false,
+    "reload_observed": true,
+    "submitted": false,
+    "certified": false,
+    "published": false
+  }
+}

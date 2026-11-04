@@ -70,6 +70,22 @@ class PackageIdentity:
     version: str
 
 
+def normalize_partner_center_state(texts: list[str], exact_states: dict[str, str]) -> str:
+    """Map observed Partner Center text without fuzzy matching.
+
+    Duplicate messages are common when an existing package and a newly uploaded
+    package have the same warning.  They represent one state, while conflicting
+    mapped states remain UNKNOWN and require a human to reconcile the target row.
+    """
+
+    states = {
+        exact_states[text.strip()]
+        for text in texts
+        if text.strip() in exact_states
+    }
+    return next(iter(states)) if len(states) == 1 else "UNKNOWN"
+
+
 class PartnerCenterPort(Protocol):
     def ensure_route_ready(self, product: ProductInput) -> None: ...
     def verify_product_and_draft(self, product: ProductInput) -> DraftContext: ...
@@ -212,7 +228,8 @@ class LiveDraftWorkflow:
         if state.validation == "ERROR":
             raise PackageValidationError(state.error or "Microsoft package validation failed")
         if state.validation == "WARNING":
-            raise LiveGateError("Microsoft package validation returned WARNING; manual review is required")
+            detail = state.warning or "Microsoft package validation returned WARNING"
+            raise LiveGateError(f"PACKAGE_VALIDATION_WARNING: {detail}; manual review is required")
         if state.validation != "VALID":
             raise AmbiguousWriteError(f"package validation is {state.validation}")
         if state.section_completion != "COMPLETE":
@@ -389,13 +406,11 @@ class PlaywrightPartnerCenterPort:
         section_texts = self.page.locator(section_spec["selector"]).all_text_contents()
         validation_map = validation_spec.get("exact_states", {})
         section_map = section_spec.get("exact_states", {})
-        validation = [validation_map[x.strip()] for x in validation_texts if x.strip() in validation_map]
-        section = [section_map[x.strip()] for x in section_texts if x.strip() in section_map]
-        if len(validation) != 1 or len(section) != 1:
-            return PackageState("UNKNOWN", "UNKNOWN")
-        warning = "" if validation[0] != "WARNING" else " | ".join(x.strip() for x in validation_texts)
-        error = "" if validation[0] != "ERROR" else " | ".join(x.strip() for x in validation_texts)
-        return PackageState(validation[0], section[0], warning, error)
+        validation = normalize_partner_center_state(validation_texts, validation_map)
+        section = normalize_partner_center_state(section_texts, section_map)
+        warning = "" if validation != "WARNING" else " | ".join(x.strip() for x in validation_texts)
+        error = "" if validation != "ERROR" else " | ".join(x.strip() for x in validation_texts)
+        return PackageState(validation, section, warning, error)
 
     def upload_package(self, product: ProductInput, context: DraftContext) -> PackageState:
         packages_url = context.draft_url + "/packages"

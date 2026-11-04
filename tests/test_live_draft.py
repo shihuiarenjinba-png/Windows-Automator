@@ -23,6 +23,7 @@ from store_manager.live_draft import (
     PackageValidationError,
     REQUIRED_SECTIONS,
     SelectorMap,
+    normalize_partner_center_state,
 )
 
 
@@ -159,7 +160,7 @@ class LiveDraftTests(unittest.TestCase):
             product = live_product(Path(directory))
             port = FakePort()
             port.uploaded = PackageState("WARNING", "COMPLETE", warning="manual review")
-            with self.assertRaises(LiveGateError):
+            with self.assertRaisesRegex(LiveGateError, "PACKAGE_VALIDATION_WARNING: manual review"):
                 LiveDraftWorkflow(port)(product)
             self.assertFalse(port.saved)
 
@@ -233,6 +234,37 @@ class LiveDraftTests(unittest.TestCase):
         for route_id in ("msix_pwa_app", "exe_msi_app", "gdk_game", "msix_pwa_game"):
             with self.subTest(route=route_id), self.assertRaisesRegex(LiveGateError, "LIVE_ROUTE_NOT_VERIFIED"):
                 mapping.activate(route_id)
+
+    def test_observed_msix_game_warning_fixture_is_exact_and_fail_closed(self):
+        root = Path(__file__).parents[1]
+        fixture = json.loads(
+            (root / "tests" / "fixtures" / "partner_center_msix_pwa_game_us_warning.json").read_text(encoding="utf-8")
+        )
+        self.assertEqual(fixture["route_id"], "msix_pwa_game")
+        self.assertEqual(
+            normalize_partner_center_state(fixture["observed_messages"]["upload"], fixture["exact_states"]),
+            "ANALYZING",
+        )
+        self.assertEqual(
+            normalize_partner_center_state(fixture["observed_messages"]["validation"], fixture["exact_states"]),
+            "WARNING",
+        )
+        self.assertEqual(fixture["outcome"]["status"], "HOLD")
+        self.assertFalse(fixture["outcome"]["save_clicked"])
+        self.assertFalse(fixture["outcome"]["submitted"])
+
+        mapping = json.loads((root / "docs" / "PARTNER_CENTER_MAP.json").read_text(encoding="utf-8"))
+        game = mapping["routes"]["msix_pwa_game"]
+        self.assertFalse(game["live_write_supported"])
+        self.assertEqual(game["hold_code"], "PACKAGE_VALIDATION_WARNING")
+        self.assertEqual(game["section_verification"]["packages_save"], "UNVERIFIED_NOT_CLICKED")
+        self.assertTrue(game["selectors"]["packages_warning_alert"]["verified"])
+        self.assertFalse(game["selectors"]["packages_validation_state"]["verified"])
+
+    def test_conflicting_observed_package_states_are_unknown(self):
+        exact = {"Analyzing package": "ANALYZING", "warning": "WARNING"}
+        self.assertEqual(normalize_partner_center_state(["warning", "warning"], exact), "WARNING")
+        self.assertEqual(normalize_partner_center_state(["Analyzing package", "warning"], exact), "UNKNOWN")
 
     def test_report_contains_live_fields_at_top_level(self):
         with tempfile.TemporaryDirectory() as directory:

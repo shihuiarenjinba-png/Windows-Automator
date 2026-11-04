@@ -104,7 +104,8 @@ AIはテンプレートを変更しない。AIはテンプレートが許可し�
 ## Live書込みの状態
 
 - `msix_pwa_app`: READ_ONLY観測あり。ただしvalidation/save/reloadのselector evidenceが未完成なため、同梱mapは `live_write_supported=false`。
-- `exe_msi_app` / `gdk_game` / `msix_pwa_game`: 専用実画面map未検証。`LIVE_ROUTE_NOT_VERIFIED` でブラウザー書込み前に製品HOLD。
+- `exe_msi_app` / `gdk_game`: 専用実画面map未検証。`LIVE_ROUTE_NOT_VERIFIED` でブラウザー書込み前に製品HOLD。
+- `msix_pwa_game`: 2026-11-04に `STRATEGY MARKET US` の既存draftで、Identity照合、MSIX upload、100%到達、解析中表示、version/architecture表示、`runFullTrust` 警告、警告後のreloadを実測した。`WARNING = HOLD` のためSaveは押しておらず、VALID / Save成功 / required sectionsは未検証。route全体の `live_write_supported` はfalseのまま維持する。
 - selector mapはschema 3でroute別に管理し、別routeのselectorを流用しない。
 - package validationの `WARNING` はHOLD。`VALID` かつrequired sectionの保存証跡が揃った場合だけ `DRAFT_SAVED`。
 - certification submit / publishは自動操作対象外。
