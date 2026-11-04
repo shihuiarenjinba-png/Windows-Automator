@@ -101,7 +101,13 @@ def build_dry_plan(p:ProductInput):
         "packages": [f"packages:upload:{p.package_path}", "packages:wait_validation", "restricted_capabilities:compare_detected_to_confirmed_security_profile"],
         "installer": [f"installer:register_versioned_url:{p.installer_url}", f"installer:local_qa_artifact:{p.package_path}", "installer:verify_silent_install_metadata"],
         "store_listings": ["store_listings:fill_text_and_screenshots"],
-        "submission_options": ["submission_options:fill_verified"],
+        "submission_options": [
+            *[
+                f"submission_options:restricted_capability:{capability}:fill_justification"
+                for capability in sorted(p.restricted_capability_justifications)
+            ],
+            "submission_options:fill_verified",
+        ],
     }
     for section in route.required_sections:
         plan.extend(section_actions[section])
