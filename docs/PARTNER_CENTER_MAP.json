@@ -5,89 +5,136 @@
       "live_write_supported": false,
       "observed_at_utc": "2026-10-29T00:00:00Z",
       "observation_scope": {
-    "product_name": "Offline Notes Canary",
-    "product_id": "9MZ8ZZTRTS17",
-    "draft_id": "1152921505702251319",
-    "mode": "READ_ONLY_NO_UPLOAD_NO_SAVE"
+        "product_name": "Offline Notes Canary",
+        "product_id": "9MZ8ZZTRTS17",
+        "draft_id": "1152921505702251319",
+        "mode": "READ_ONLY_NO_UPLOAD_NO_SAVE"
       },
       "selectors": {
-    "overview_packages_link": {
-      "strategy": "css",
-      "selector": "a[href$='/packages']",
-      "verified": true,
-      "evidence": "Application overview exposed one Packages link containing the current submission id."
-    },
-    "packages_file_input": {
-      "strategy": "css",
-      "selector": "input[name='fileuploader'][type='file'][multiple]",
-      "verified": true,
-      "evidence": "Observed on the live Packages page without selecting a file."
-    },
-    "packages_save_button": {
-      "strategy": "role",
-      "selector": "button",
-      "name": "Save",
-      "verified": true,
-      "evidence": "Exactly one Save button was exposed on the live Packages page."
-    },
-    "packages_validation_state": {
-      "strategy": "css",
-      "selector": "",
-      "exact_states": {},
-      "verified": false,
-      "evidence": "Requires an explicitly authorized real upload; no status was guessed."
-    },
-    "packages_section_state": {
-      "strategy": "css",
-      "selector": "",
-      "exact_states": {},
-      "verified": false,
-      "evidence": "Requires an explicitly authorized real upload; validation and completion remain separate."
-    },
-    "packages_save_success": {
-      "strategy": "css",
-      "selector": "",
-      "verified": false,
-      "evidence": "Save was not clicked during read-only mapping."
-    },
-    "overview_section_states": {
-      "strategy": "css",
-      "selector": "",
-      "exact_states": {},
-      "verified": false,
-      "evidence": "Completion state must be observed after a real draft save and reload."
-    }
+        "overview_packages_link": {
+          "strategy": "css",
+          "selector": "a[href$='/packages']",
+          "verified": true,
+          "evidence": "Application overview exposed one Packages link containing the current submission id."
+        },
+        "packages_file_input": {
+          "strategy": "css",
+          "selector": "input[name='fileuploader'][type='file'][multiple]",
+          "verified": true,
+          "evidence": "Observed on the live Packages page without selecting a file."
+        },
+        "packages_save_button": {
+          "strategy": "role",
+          "selector": "button",
+          "name": "Save",
+          "verified": true,
+          "evidence": "Exactly one Save button was exposed on the live Packages page."
+        },
+        "packages_validation_state": {
+          "strategy": "css",
+          "selector": "",
+          "exact_states": {},
+          "verified": false,
+          "evidence": "Requires an explicitly authorized real upload; no status was guessed."
+        },
+        "packages_section_state": {
+          "strategy": "css",
+          "selector": "",
+          "exact_states": {},
+          "verified": false,
+          "evidence": "Requires an explicitly authorized real upload; validation and completion remain separate."
+        },
+        "packages_save_success": {
+          "strategy": "css",
+          "selector": "",
+          "verified": false,
+          "evidence": "Save was not clicked during read-only mapping."
+        },
+        "overview_section_states": {
+          "strategy": "css",
+          "selector": "",
+          "exact_states": {},
+          "verified": false,
+          "evidence": "Completion state must be observed after a real draft save and reload."
+        },
+        "submission_options_restricted_capability_container": {
+          "strategy": "css",
+          "selector": "",
+          "verified": false,
+          "evidence": "Restricted capabilities section must be observed on Submission Options after a package declaring runFullTrust is saved."
+        },
+        "submission_options_restricted_capability_textarea": {
+          "strategy": "css",
+          "selector": "",
+          "verified": false,
+          "evidence": "Explanation input selector is intentionally unverified until the live Submission Options field is observed."
+        },
+        "submission_options_save_button": {
+          "strategy": "role",
+          "selector": "",
+          "name": "Save",
+          "verified": false,
+          "evidence": "Submission Options Save control must be observed and uniquely verified before automatic writing."
+        },
+        "submission_options_save_success": {
+          "strategy": "css",
+          "selector": "",
+          "verified": false,
+          "evidence": "Post-save success signal must be observed and verified before automatic writing."
+        }
       },
       "observed_pages": {
-    "pricing_availability": {
-      "heading": "Pricing and availability",
-      "save_label": "Save draft",
-      "notes": ["All worldwide markets selected", "Public audience selected", "Discoverable selected", "Base price not configured"]
-    },
-    "properties": {
-      "heading": "Offline Notes Canary | Properties",
-      "save_label": "Save",
-      "notes": ["Primary category unselected", "Privacy declaration unselected"]
-    },
-    "age_ratings": {
-      "heading": "Age ratings",
-      "save_label": "Save draft",
-      "notes": ["Dynamic IARC questionnaire visible", "No answer was changed"]
-    },
-    "packages": {
-      "heading": "Offline Notes Canary | Packages",
-      "save_label": "Save",
-      "notes": ["No package present", "Windows 10/11 Desktop unchecked", "Future device families checked"]
-    },
-    "store_listings": {
-      "heading": "Manage Store listing languages",
-      "save_label": "Save",
-      "notes": ["Languages populate only after package upload", "No listing language present"]
-    },
+        "pricing_availability": {
+          "heading": "Pricing and availability",
+          "save_label": "Save draft",
+          "notes": [
+            "All worldwide markets selected",
+            "Public audience selected",
+            "Discoverable selected",
+            "Base price not configured"
+          ]
+        },
+        "properties": {
+          "heading": "Offline Notes Canary | Properties",
+          "save_label": "Save",
+          "notes": [
+            "Primary category unselected",
+            "Privacy declaration unselected"
+          ]
+        },
+        "age_ratings": {
+          "heading": "Age ratings",
+          "save_label": "Save draft",
+          "notes": [
+            "Dynamic IARC questionnaire visible",
+            "No answer was changed"
+          ]
+        },
+        "packages": {
+          "heading": "Offline Notes Canary | Packages",
+          "save_label": "Save",
+          "notes": [
+            "No package present",
+            "Windows 10/11 Desktop unchecked",
+            "Future device families checked"
+          ]
+        },
+        "store_listings": {
+          "heading": "Manage Store listing languages",
+          "save_label": "Save",
+          "notes": [
+            "Languages populate only after package upload",
+            "No listing language present"
+          ]
+        },
         "submission_options": {
-      "heading": "Offline Notes Canary | Submission Options",
-      "save_label": "Save",
-      "notes": ["Publish as soon as certification passes was selected", "Save disabled", "No value was changed"]
+          "heading": "Offline Notes Canary | Submission Options",
+          "save_label": "Save",
+          "notes": [
+            "Publish as soon as certification passes was selected",
+            "Save disabled",
+            "No value was changed"
+          ]
         }
       }
     },
@@ -190,6 +237,31 @@
           "exact_states": {},
           "verified": false,
           "evidence": "No post-save overview reconciliation was authorized or observed."
+        },
+        "submission_options_restricted_capability_container": {
+          "strategy": "css",
+          "selector": "",
+          "verified": false,
+          "evidence": "Restricted capabilities section must be observed on Submission Options after a package declaring runFullTrust is saved."
+        },
+        "submission_options_restricted_capability_textarea": {
+          "strategy": "css",
+          "selector": "",
+          "verified": false,
+          "evidence": "Explanation input selector is intentionally unverified until the live Submission Options field is observed."
+        },
+        "submission_options_save_button": {
+          "strategy": "role",
+          "selector": "",
+          "name": "Save",
+          "verified": false,
+          "evidence": "Submission Options Save control must be observed and uniquely verified before automatic writing."
+        },
+        "submission_options_save_success": {
+          "strategy": "css",
+          "selector": "",
+          "verified": false,
+          "evidence": "Post-save success signal must be observed and verified before automatic writing."
         }
       },
       "hold_code": "PACKAGE_VALIDATION_WARNING",
