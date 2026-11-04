@@ -58,7 +58,7 @@ FIELD_SPECS = (
 
     StoreFieldSpec("publishing_hold","submission_options","Publishing hold","optional","fixed",False,True),
     StoreFieldSpec("certification_notes","submission_options","Notes for certification","optional","ai",True),
-    StoreFieldSpec("restricted_capabilities","submission_options","Restricted capability explanation","conditional","conditional",True,False,"Required when restricted capabilities are detected in the package."),
+    StoreFieldSpec("restricted_capabilities","submission_options","Restricted capability explanation","conditional","package",False,False,"Derived from actual package capability declarations. Known capabilities may use evidence-based templates; unknown capabilities require review."),
 )
 
 SECTIONS=(
