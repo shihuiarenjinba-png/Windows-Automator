@@ -117,6 +117,10 @@ class FolioCompleteTeacherDataTests(unittest.TestCase):
         self.assertFalse(safety["publish"])
         self.assertEqual(self.fixture["outcome"]["status"], "READY_FOR_CERTIFICATION_REVIEW")
         self.assertEqual(
+            self.fixture["outcome"]["teacher_data_status"],
+            "FOLIO_MSIX_APP_TEACHER_DATA_PERSISTED",
+        )
+        self.assertEqual(
             store_draft_next_state(
                 StoreDraftRuntimeObservation(certification_executed=True)
             ),

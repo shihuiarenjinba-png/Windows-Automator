@@ -122,6 +122,6 @@
   "outcome": {
     "draft_state": "STORE_DRAFT_COMPLETE",
     "status": "READY_FOR_CERTIFICATION_REVIEW",
-    "teacher_data_status": "LOCAL_COMPLETE_REMOTE_PENDING"
+    "teacher_data_status": "FOLIO_MSIX_APP_TEACHER_DATA_PERSISTED"
   }
 }
