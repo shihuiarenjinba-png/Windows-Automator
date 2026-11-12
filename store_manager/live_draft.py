@@ -70,6 +70,182 @@ class PackageState:
 
 
 @dataclass(frozen=True)
+class PackageRuntimeObservation:
+    """Normalized live Packages state used by the deterministic conveyor."""
+
+    package_present: bool = False
+    upload_in_progress: bool = False
+    analyzing: bool = False
+    validation: str = "UNKNOWN"
+    warning: str = ""
+    error: str = ""
+    desktop_checked: bool = False
+    save_completed: bool = False
+    retained_after_reload: bool = False
+
+
+def package_next_action(observation: PackageRuntimeObservation) -> str:
+    """Return one fail-closed next action for a normalized Packages state."""
+
+    if not observation.package_present:
+        return "PACKAGE_UPLOAD_REQUIRED"
+    if observation.upload_in_progress:
+        return "PACKAGE_UPLOAD_IN_PROGRESS"
+    if observation.analyzing:
+        return "PACKAGE_ANALYZING"
+    if observation.validation == "ERROR":
+        return "HOLD_PARTNER_CENTER_PACKAGE_VALIDATION"
+    if observation.validation == "WARNING":
+        code, capabilities = classify_package_warning(observation.warning)
+        if code != "RESTRICTED_CAPABILITY_REVIEW_REQUIRED" or capabilities != ("runFullTrust",):
+            return "HOLD_UNKNOWN_MICROSOFT_RESPONSE"
+    elif observation.validation != "VALID":
+        return "PACKAGE_RECONCILE_REQUIRED"
+    if not observation.desktop_checked:
+        return "DESKTOP_SELECTION_REQUIRED"
+    if not observation.save_completed:
+        return "PACKAGE_SAVE_REQUIRED"
+    if not observation.retained_after_reload:
+        return "PACKAGE_RELOAD_REQUIRED"
+    return "PACKAGE_SAVED"
+
+
+def reconcile_file_chooser_timeout(*, package_present: bool) -> str:
+    """Never retry a timed-out chooser until the draft has been reconciled."""
+
+    return "PACKAGE_RECONCILE_REQUIRED" if package_present else "SAFE_RETRY_ALLOWED"
+
+
+def session_expiry_recovery_next_action(
+    *,
+    session_expired_dialog: bool,
+    product_breadcrumb_available: bool,
+    product_overview_visible: bool,
+    packages_complete: bool,
+) -> str:
+    """Recover stale section pages without automating the sign-in dialog."""
+
+    if product_overview_visible:
+        return "OVERVIEW_RECOVERED" if packages_complete else "OVERVIEW_RECONCILE_REQUIRED"
+    if session_expired_dialog and product_breadcrumb_available:
+        return "NAVIGATE_PRODUCT_OVERVIEW"
+    if session_expired_dialog:
+        return "HUMAN_SIGN_IN_REQUIRED"
+    return "NO_RECOVERY_REQUIRED"
+
+
+def store_field_resolution_next_action(
+    *,
+    current_value_present: bool,
+    evidence_value_present: bool,
+    new_business_or_legal_decision: bool,
+) -> str:
+    """Classify Store fields without promoting every blank field to owner input.
+
+    Existing Partner Center values are preserved unless the product profile asks
+    for a change.  A blank value can be populated from immutable package, source,
+    or checked documentation evidence.  Owner input is reserved for a genuinely
+    new business/legal decision such as an unset price.
+    """
+
+    if current_value_present:
+        return "CURRENT_VALUE_PRESERVE"
+    if evidence_value_present:
+        return "EVIDENCE_VALUE_APPLY"
+    if new_business_or_legal_decision:
+        return "OWNER_INPUT_REQUIRED"
+    return "HOLD_INSUFFICIENT_EVIDENCE"
+
+
+def iarc_completion_next_action(
+    *,
+    questionnaire_complete: bool,
+    preview_generated: bool,
+    legal_attestation_confirmed: bool,
+    save_completed: bool,
+    retained_after_reload: bool,
+) -> str:
+    """Return the next IARC action without inventing a legal attestation.
+
+    The final IARC checkbox simultaneously accepts the IARC Terms of Use and
+    attests that the signer is the age of majority in their jurisdiction.  A
+    completed evidence-backed questionnaire does not authorize that personal
+    declaration.
+    """
+
+    if not questionnaire_complete:
+        return "IARC_QUESTIONNAIRE_REQUIRED"
+    if not preview_generated:
+        return "IARC_PREVIEW_REQUIRED"
+    if not legal_attestation_confirmed:
+        return "OWNER_INPUT_REQUIRED_IARC_LEGAL_ATTESTATION"
+    if not save_completed:
+        return "IARC_SAVE_REQUIRED"
+    if not retained_after_reload:
+        return "IARC_RELOAD_REQUIRED"
+    return "IARC_SAVED"
+
+
+@dataclass(frozen=True)
+class StoreDraftRuntimeObservation:
+    """Route-level Store Draft lifecycle with product values kept outside code."""
+
+    package_saved: bool = False
+    pricing_saved: bool = False
+    properties_saved: bool = False
+    iarc_questionnaire_complete: bool = False
+    iarc_legal_attestation_confirmed: bool = False
+    iarc_saved: bool = False
+    listing_saved: bool = False
+    submission_options_saved: bool = False
+    overview_reconciled: bool = False
+    retained_after_reload: bool = False
+    certification_executed: bool = False
+    publish_executed: bool = False
+
+
+def store_draft_next_state(observation: StoreDraftRuntimeObservation) -> str:
+    """Return the first unmet route state and stop at the certification boundary."""
+
+    if observation.certification_executed or observation.publish_executed:
+        return "HOLD_PROHIBITED_ACTION_EXECUTED"
+    if not observation.package_saved:
+        return "PACKAGE_UPLOAD_REQUIRED"
+    if not observation.pricing_saved:
+        return "PRICING_REQUIRED"
+    if not observation.properties_saved:
+        return "PROPERTIES_REQUIRED"
+    if not observation.iarc_questionnaire_complete:
+        return "IARC_REQUIRED"
+    if not observation.iarc_legal_attestation_confirmed:
+        return "IARC_LEGAL_ATTESTATION_REQUIRED"
+    if not observation.iarc_saved:
+        return "IARC_SAVE_REQUIRED"
+    if not observation.listing_saved:
+        return "LISTING_REQUIRED"
+    if not observation.submission_options_saved:
+        return "SUBMISSION_OPTIONS_REQUIRED"
+    if not observation.overview_reconciled or not observation.retained_after_reload:
+        return "DRAFT_RECONCILING"
+    return "STORE_DRAFT_COMPLETE"
+
+
+def certification_review_state(
+    *,
+    draft_state: str,
+    certification_executed: bool,
+    publish_executed: bool,
+) -> str:
+    """Promote only a completed draft to review; never press certification/publish."""
+
+    if certification_executed or publish_executed:
+        return "HOLD_PROHIBITED_ACTION_EXECUTED"
+    if draft_state == "STORE_DRAFT_COMPLETE":
+        return "READY_FOR_CERTIFICATION_REVIEW"
+    return draft_state
+
+
+@dataclass(frozen=True)
 class PackageIdentity:
     name: str
     publisher: str

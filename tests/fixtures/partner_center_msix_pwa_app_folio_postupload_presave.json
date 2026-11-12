@@ -1,0 +1,89 @@
+{
+  "schema_version": 1,
+  "observed_at_utc": "2026-11-12T03:42:26Z",
+  "route_id": "msix_pwa_app",
+  "mode": "LIVE_UPLOAD_ANALYZED_PRE_SAVE",
+  "product": {
+    "name": "Folio AI",
+    "store_id": "9P0VNLJ5FPF5",
+    "draft_id": "1152921505702219486"
+  },
+  "candidate": {
+    "filename": "FolioAI_1.0.3.0_x64_STORE_CANDIDATE_UNSIGNED.msix",
+    "version": "1.0.3.0",
+    "architecture": "X64",
+    "sha256": "AEECFA80D79FFD9AFE2B290DCEF8E390FC0CA9433CC73335368B1164D9F4E459",
+    "source_sha": "cbb9de223c0eac79563651ba2d0ae22e43653d68",
+    "identity": "OkinawaDesktopTools.FolioAI",
+    "publisher": "CN=46263F21-A700-41DB-8C9B-114C22FB82FC"
+  },
+  "state_transitions": [
+    "PACKAGE_UPLOAD_REQUIRED",
+    "PACKAGE_UPLOAD_IN_PROGRESS",
+    "PACKAGE_ANALYZING",
+    "PACKAGE_WARNING_REVIEW",
+    "PACKAGE_SAVE_REQUIRED"
+  ],
+  "upload": {
+    "control_role": "link",
+    "control_name": "browse your files.",
+    "file_input_selector": "input[name='fileuploader'][type='file'][multiple]",
+    "set_files_succeeded": true,
+    "progress_percent": 100,
+    "progress_state": "Uploading",
+    "analysis_state": "Analyzing package",
+    "package_row_present": true
+  },
+  "validation": {
+    "raw_state": "WARNING",
+    "warning": "Package acceptance validation warning: The following restricted capabilities require approval before you can use them in your app: runFullTrust.",
+    "error": "",
+    "warning_selector": ".alert.alert-warning .alert-string",
+    "classification": "KNOWN_RUNFULLTRUST_WARNING"
+  },
+  "package_details": {
+    "version": "v1.0.3.0",
+    "architecture": "X64",
+    "device_family": "Windows.Desktop min version 10.0.19041.0",
+    "languages": ["ja-jp", "en-us"],
+    "capabilities": [
+      "runFullTrust",
+      "Microsoft.storeFilter.core.notSupported_8wekyb3d8bbwe"
+    ],
+    "file_size_display": "14.6 MB"
+  },
+  "device_families": {
+    "desktop_before_upload": false,
+    "desktop_after_analysis": true,
+    "desktop_transition": "AUTO_SELECTED_BY_PARTNER_CENTER",
+    "mobile": false,
+    "xbox": false,
+    "team": false,
+    "mixed_reality": false,
+    "future_device_families": true
+  },
+  "save": {
+    "role": "button",
+    "name": "Save",
+    "dom": "input[type='button'][value='Save'].btn.btn-primary",
+    "enabled": true,
+    "clicked": false,
+    "reload_verified": false
+  },
+  "failure_recovery": {
+    "prior_state": "FILE_CHOOSER_TIMEOUT",
+    "reconcile_package_present": false,
+    "duplicate_write_detected": false,
+    "next_state": "SAFE_RETRY_ALLOWED"
+  },
+  "safety": {
+    "submitted": false,
+    "published": false,
+    "other_product_modified": false
+  },
+  "outcome": {
+    "status": "PACKAGE_SAVE_REQUIRED",
+    "route_live_write_supported": false,
+    "promotion_blocker": "Save and reload retention have not yet been observed."
+  }
+}

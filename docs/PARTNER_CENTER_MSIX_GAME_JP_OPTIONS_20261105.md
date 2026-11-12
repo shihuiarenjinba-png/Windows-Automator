@@ -11,6 +11,6 @@ The JP page reproduced the US selectors and composite Save signal:
 - Save: accessible role `button`, exact name `Save`
 - Success: redirect to the same draft overview, Overview `Complete`, then exact text retained after reload with a pristine textarea
 
-Save-button enabled state is not a success signal. The raw package warning remains a warning. Certification and publication were not executed. JP certification remains `HOLD_JP_START_FLOW_UNRESOLVED`.
+Save-button enabled state is not a success signal. The raw package warning remains a warning. Certification and publication were not executed. Clean-profile startup now passes on the final `0.1.24.0` runtime; JP certification remains held as `HOLD_STORE_LISTING_AND_EXISTING_SAVE_MIGRATION` until Store listings are saved/reloaded and the protected legacy-save incompatibility is resolved.
 
 Because the same behavior is now observed on the US and JP products, the Submission Options restricted-capability selector/save/reload contract is promoted to the `msix_pwa_game` route-level teacher data with `observed_products = 2`.

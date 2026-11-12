@@ -3,12 +3,31 @@
   "routes": {
     "msix_pwa_app": {
       "live_write_supported": false,
-      "observed_at_utc": "2026-10-29T00:00:00Z",
+      "store_draft_write_supported": "VERIFIED_1_PRODUCT_PROFILE_GATED",
+      "certification_write_supported": false,
+      "publish_write_supported": false,
+      "store_draft_status": "READY_FOR_CERTIFICATION_REVIEW",
+      "observed_at_utc": "2026-11-12T11:03:00Z",
       "observation_scope": {
-        "product_name": "Offline Notes Canary",
-        "product_id": "9MZ8ZZTRTS17",
-        "draft_id": "1152921505702251319",
-        "mode": "READ_ONLY_NO_UPLOAD_NO_SAVE"
+        "observed_product_count": 1,
+        "product_name": "Folio AI",
+        "product_id": "9P0VNLJ5FPF5",
+        "draft_id": "1152921505702219486",
+        "mode": "FULL_STORE_DRAFT_SAVE_RELOAD_VERIFIED"
+      },
+      "section_verification": {
+        "product_match": "VERIFIED",
+        "identity_match": "VERIFIED",
+        "packages_upload": "VERIFIED_1_PRODUCT",
+        "package_analysis": "VERIFIED_1_PRODUCT",
+        "package_validation": "OBSERVED_EXACT_RUNFULLTRUST_WARNING_ONLY",
+        "packages_save": "VERIFIED_1_PRODUCT",
+        "reload_verification": "VERIFIED_FULL_DRAFT_RECONCILIATION_1_PRODUCT",
+        "pricing_availability": "VERIFIED_COMPLETE_1_PRODUCT",
+        "properties": "VERIFIED_COMPLETE_1_PRODUCT",
+        "age_ratings": "VERIFIED_COMPLETE_1_PRODUCT_OWNER_ATTESTATION",
+        "store_listings": "VERIFIED_COMPLETE_1_PRODUCT",
+        "submission_options": "VERIFIED_COMPLETE_1_PRODUCT"
       },
       "selectors": {
         "overview_packages_link": {
@@ -21,7 +40,39 @@
           "strategy": "css",
           "selector": "input[name='fileuploader'][type='file'][multiple]",
           "verified": true,
-          "evidence": "Observed on the live Packages page without selecting a file."
+          "evidence": "The visible browse your files control opened this exact multiple file input and accepted the authorized Folio MSIX once."
+        },
+        "packages_upload_status": {
+          "strategy": "exact_text_states",
+          "selector": "Uploading | Analyzing package",
+          "exact_states": {
+            "Uploading": "UPLOAD_IN_PROGRESS",
+            "Analyzing package": "ANALYZING"
+          },
+          "verified": true,
+          "evidence": "Folio exposed the exact accessible states after 100 percent upload and during Microsoft analysis."
+        },
+        "packages_warning_alert": {
+          "strategy": "css",
+          "selector": ".alert.alert-warning .alert-string",
+          "exact_states": {
+            "Package acceptance validation warning: The following restricted capabilities require approval before you can use them in your app: runFullTrust.": "WARNING"
+          },
+          "verified": true,
+          "evidence": "The exact warning text and DOM selector were observed after Folio analysis completed."
+        },
+        "packages_package_row": {
+          "strategy": "css_and_exact_text",
+          "selector": "table.package-table .package-name .text-base",
+          "verified": true,
+          "evidence": "The Folio row exposed the exact filename plus v1.0.3.0 and X64 after analysis."
+        },
+        "packages_desktop_checkbox": {
+          "strategy": "role",
+          "selector": "checkbox",
+          "name": "Windows 10/11 Desktop",
+          "verified": true,
+          "evidence": "The accessible checkbox changed from unchecked before upload to checked after Folio analysis."
         },
         "packages_save_button": {
           "strategy": "role",
@@ -32,111 +83,222 @@
         },
         "packages_validation_state": {
           "strategy": "css",
-          "selector": "",
-          "exact_states": {},
-          "verified": false,
-          "evidence": "Requires an explicitly authorized real upload; no status was guessed."
+          "selector": ".alert .alert-string",
+          "exact_states": {
+            "Package acceptance validation warning: The following restricted capabilities require approval before you can use them in your app: runFullTrust.": "WARNING"
+          },
+          "verified": true,
+          "evidence": "The warning path is verified for Folio. Unknown text still normalizes to UNKNOWN and remains fail-closed; VALID and ERROR evidence are not inferred."
         },
         "packages_section_state": {
-          "strategy": "css",
-          "selector": "",
-          "exact_states": {},
-          "verified": false,
-          "evidence": "Requires an explicitly authorized real upload; validation and completion remain separate."
+          "strategy": "overview_aria_label",
+          "selector": "a[name='packages'][aria-label='Packages Status:  - Complete']",
+          "exact_states": {
+            "Packages Status:  - Complete": "COMPLETE"
+          },
+          "verified": true,
+          "evidence": "After Folio Save, Application overview exposed the exact package filename, Validated, Complete, and the exact Packages status aria-label."
         },
         "packages_save_success": {
-          "strategy": "css",
-          "selector": "",
-          "verified": false,
-          "evidence": "Save was not clicked during read-only mapping."
+          "strategy": "composite_overview_reopen_recovery",
+          "selector": "a[name='packages'][aria-label='Packages Status:  - Complete']",
+          "verified": true,
+          "evidence": "One Save redirected to Folio overview; Overview showed filename/Validated/Complete; Packages reopen before reload and again after breadcrumb recovery retained v1.0.3.0, X64, Windows.Desktop, Desktop checked, and the exact warning."
+        },
+        "product_breadcrumb_overview_recovery": {
+          "strategy": "role",
+          "selector": "link",
+          "name_template": "{product_name}",
+          "href": "#",
+          "verified": true,
+          "evidence": "When a section reload displayed Sign in required, selecting the top product breadcrumb returned to the same product overview without automating the authentication dialog."
+        },
+        "product_overview_recovery_success": {
+          "strategy": "composite_url_heading_package_status",
+          "selector": "a[name='packages'][aria-label='Packages Status:  - Complete']",
+          "url_template": "/en-us/dashboard/products/{product_id}/overview",
+          "heading_template": "{product_name}",
+          "verified": true,
+          "evidence": "The recovered Folio overview URL and heading matched the immutable product, and Packages remained Validated/Complete."
         },
         "overview_section_states": {
+          "strategy": "overview_accessible_name_template",
+          "selector": "{section_name} Status: - Complete",
+          "exact_states": {
+            "Complete": "COMPLETE"
+          },
+          "verified": true,
+          "evidence": "After the final reload, Pricing and availability, Properties, Age ratings, Packages, Store listings, and Submission options all exposed Complete on the Folio overview."
+        },
+        "age_ratings_link": {
           "strategy": "css",
-          "selector": "",
-          "exact_states": {},
-          "verified": false,
-          "evidence": "Completion state must be observed after a real draft save and reload."
+          "selector": "a[href$='/ageratings']",
+          "verified": true,
+          "evidence": "The Folio overview opened the current draft Age ratings route."
+        },
+        "age_ratings_legal_attestation": {
+          "strategy": "role_exact_accessible_name",
+          "selector": "checkbox",
+          "name": "By checking this box, I hereby agree to the IARC Terms of Use and I agree that I am the age of majority in my jurisdiction.",
+          "verified": true,
+          "requires_product_owner": true,
+          "evidence": "The combined terms and age-of-majority declaration was observed. Its truth must never be inferred or copied between products."
+        },
+        "age_ratings_save_button": {
+          "strategy": "role",
+          "selector": "button",
+          "name": "Save",
+          "verified": true,
+          "evidence": "The owner performed the legal attestation and Save. The automation verifies the resulting redirect and retained state."
+        },
+        "age_ratings_save_success": {
+          "strategy": "composite_overview_summary_reload",
+          "selector": "a[href$='/ageratings/summary']",
+          "heading": "Age ratings",
+          "verified": true,
+          "evidence": "Overview changed to Age ratings Complete; reopening and reloading /ageratings/summary retained the generated rating summary, then Continue returned to the same overview."
+        },
+        "age_ratings_continue": {
+          "strategy": "role",
+          "selector": "link",
+          "name": "Continue",
+          "verified": true,
+          "evidence": "Continue returned from the retained Age ratings summary to the same Folio overview."
+        },
+        "store_listing_description": {
+          "strategy": "css",
+          "selector": "#description-required",
+          "verified": true,
+          "evidence": "The required Description field was used and retained in both Folio listing locales."
+        },
+        "store_listing_short_description": {
+          "strategy": "css",
+          "selector": "#shortDescription",
+          "verified": true,
+          "evidence": "The Short description field was used and retained in both Folio listing locales."
+        },
+        "store_listing_features": {
+          "strategy": "css",
+          "selector": "[id^='feature-']",
+          "verified": true,
+          "evidence": "Folio feature fields were saved and retained; values remain product-profile data."
+        },
+        "store_listing_desktop_tab": {
+          "strategy": "css",
+          "selector": "#tab-0",
+          "verified": true,
+          "evidence": "The Desktop screenshot panel was uniquely identified."
+        },
+        "store_listing_screenshot_add_button": {
+          "strategy": "css",
+          "selector": "#panel-2 he-button.new-image-button button",
+          "verified": true,
+          "evidence": "The visible plus control opened a one-file chooser; the script waits for thumbnail and Desktop count increment before the next file."
+        },
+        "store_listing_screenshot_thumbnail": {
+          "strategy": "css",
+          "selector": "#panel-2 img[alt='listing-screenshot-image']",
+          "verified": true,
+          "evidence": "Thumbnail count plus the Desktop (n) counter reconciles chooser timeouts and prevents duplicate uploads."
+        },
+        "store_listing_save_button": {
+          "strategy": "role",
+          "selector": "button",
+          "name": "Save",
+          "verified": true,
+          "evidence": "Each Folio locale exposed one accessible Save control and retained its product-specific values after reload."
         },
         "submission_options_restricted_capability_container": {
-          "strategy": "css",
-          "selector": "",
-          "verified": false,
-          "evidence": "Restricted capabilities section must be observed on Submission Options after a package declaring runFullTrust is saved."
+          "strategy": "heading_and_exact_capability",
+          "selector": "Restricted capabilities",
+          "exact_capability": "runFullTrust",
+          "verified": true,
+          "evidence": "The Folio Submission Options page exposed the Restricted capabilities section and exact runFullTrust token."
         },
         "submission_options_restricted_capability_textarea": {
           "strategy": "css",
-          "selector": "",
-          "verified": false,
-          "evidence": "Explanation input selector is intentionally unverified until the live Submission Options field is observed."
+          "selector": "textarea[maxlength='500']",
+          "verified": true,
+          "evidence": "The single restricted-capability explanation retained the product-specific Folio text after reload."
+        },
+        "submission_options_manual_publish": {
+          "strategy": "css",
+          "selector": "#radioReleaseDate_manual",
+          "verified": true,
+          "evidence": "The manual Publish-now gate was saved and retained after reload."
         },
         "submission_options_save_button": {
           "strategy": "role",
-          "selector": "",
+          "selector": "button",
           "name": "Save",
-          "verified": false,
-          "evidence": "Submission Options Save control must be observed and uniquely verified before automatic writing."
+          "verified": true,
+          "evidence": "Exactly one accessible Save control was used for Folio Submission Options."
         },
         "submission_options_save_success": {
-          "strategy": "css",
-          "selector": "",
-          "verified": false,
-          "evidence": "Post-save success signal must be observed and verified before automatic writing."
+          "strategy": "composite_reload_and_overview",
+          "selector": "#radioReleaseDate_manual, textarea[maxlength='500']",
+          "verified": true,
+          "evidence": "Manual publish remained checked, the explanation remained exact, and Overview reported Submission options Complete after reload."
         }
       },
       "observed_pages": {
         "pricing_availability": {
           "heading": "Pricing and availability",
-          "save_label": "Save draft",
+          "save_label": "Save",
           "notes": [
-            "All worldwide markets selected",
-            "Public audience selected",
-            "Discoverable selected",
-            "Base price not configured"
+            "Product profile supplied exact JPY 780 one-time price",
+            "Current markets preserved without additions or removals",
+            "Save and reload retained the price; Overview reported Complete"
           ]
         },
         "properties": {
-          "heading": "Offline Notes Canary | Properties",
+          "heading": "Folio AI | Properties",
           "save_label": "Save",
           "notes": [
-            "Primary category unselected",
-            "Privacy declaration unselected"
+            "Product-specific category, privacy, support, and generative-AI values retained after reload",
+            "Overview reported Complete"
           ]
         },
         "age_ratings": {
           "heading": "Age ratings",
-          "save_label": "Save draft",
+          "save_label": "Save",
           "notes": [
-            "Dynamic IARC questionnaire visible",
-            "No answer was changed"
+            "Product-specific questionnaire generated a rating preview",
+            "The owner, not the script, performed the combined legal and age attestation",
+            "Overview and /ageratings/summary reload both retained Complete state"
           ]
         },
         "packages": {
-          "heading": "Offline Notes Canary | Packages",
+          "heading": "Folio AI | Packages",
           "save_label": "Save",
           "notes": [
-            "No package present",
-            "Windows 10/11 Desktop unchecked",
-            "Future device families checked"
+            "FolioAI_1.0.3.0_x64_STORE_CANDIDATE_UNSIGNED.msix present after one upload",
+            "Version 1.0.3.0 and X64 recognized",
+            "Windows 10/11 Desktop checked automatically after analysis",
+            "Exact runFullTrust warning observed",
+            "Save redirected to Overview; Overview showed Validated/Complete; recovery and subsequent Packages reopen retained the package"
           ]
         },
         "store_listings": {
           "heading": "Manage Store listing languages",
           "save_label": "Save",
           "notes": [
-            "Languages populate only after package upload",
-            "No listing language present"
+            "English and Japanese product-profile text retained after reload",
+            "Five Desktop screenshots per locale retained",
+            "Chooser timeout reconciliation uses thumbnail and Desktop count before retry"
           ]
         },
         "submission_options": {
-          "heading": "Offline Notes Canary | Submission Options",
+          "heading": "Folio AI | Submission Options",
           "save_label": "Save",
           "notes": [
-            "Publish as soon as certification passes was selected",
-            "Save disabled",
-            "No value was changed"
+            "Manual Publish-now gate retained",
+            "Product-specific runFullTrust explanation retained",
+            "Overview reported Complete"
           ]
         }
-      }
+      },
+      "hold_code": "READY_FOR_CERTIFICATION_REVIEW_MANUAL_GATE"
     },
     "exe_msi_app": {
       "live_write_supported": false,
@@ -150,7 +312,7 @@
     },
     "msix_pwa_game": {
       "live_write_supported": false,
-      "observed_at_utc": "2026-11-05T00:00:00Z",
+      "observed_at_utc": "2026-11-05T04:32:24Z",
       "observation_scope": {
         "observed_product_count": 2,
         "products": [
@@ -165,7 +327,7 @@
             "draft_id": "1152921505702134539"
           }
         ],
-        "mode": "TWO_PRODUCT_SUBMISSION_OPTIONS_SAVE_AND_RELOAD_VERIFICATION"
+        "mode": "TWO_PRODUCT_FULL_DRAFT_READ_AND_STORE_LISTING_OBSERVATION"
       },
       "submission_options_restricted_capability_write_supported": true,
       "section_verification": {
@@ -176,10 +338,10 @@
         "package_validation": "OBSERVED_WARNING_ONLY",
         "packages_save": "VERIFIED_MANUAL_SAVE",
         "reload_verification": "VERIFIED_SAVED_PACKAGE_RECONCILIATION",
-        "pricing_availability": "UNVERIFIED",
-        "properties": "UNVERIFIED",
-        "age_ratings": "UNVERIFIED",
-        "store_listings": "UNVERIFIED",
+        "pricing_availability": "VERIFIED_COMPLETE_READ_2_PRODUCTS",
+        "properties": "VERIFIED_COMPLETE_READ_2_PRODUCTS",
+        "age_ratings": "VERIFIED_COMPLETE_READ_2_PRODUCTS",
+        "store_listings": "VERIFIED_FORM_AND_LANGUAGE_READ_2_PRODUCTS_WRITE_PENDING",
         "submission_options": "VERIFIED_2_PRODUCTS_RESTRICTED_CAPABILITY_EXPLANATION",
         "submission_options_restricted_capabilities": "VERIFIED_2_PRODUCTS",
         "submission_options_save": "VERIFIED_2_PRODUCTS",
@@ -286,13 +448,89 @@
           "verified": true,
           "observed_products": 2,
           "evidence": "On both US and JP, Save redirected to the draft URL, Overview showed Submission options Complete, and reopening returned the exact explanation with a pristine textarea."
+        },
+        "store_listing_language_links": {
+          "strategy": "css",
+          "selector": "a[href*='/listings?languageid='][href*='languagecode=']",
+          "verified": true,
+          "observed_products": 2,
+          "evidence": "US exposed English (United States) and Japanese (Japan); JP exposed Japanese (Japan) plus the explicitly added English and Japanese rows."
+        },
+        "store_listing_description": {
+          "strategy": "css",
+          "selector": "textarea#description-required",
+          "verified": true,
+          "observed_products": 2,
+          "evidence": "The same unique required Description textarea id was observed on US and JP listing forms."
+        },
+        "store_listing_release_notes": {
+          "strategy": "css",
+          "selector": "textarea#releaseNotes",
+          "verified": true,
+          "observed_products": 2,
+          "evidence": "The optional What's new textarea used the same id on both products."
+        },
+        "store_listing_first_feature": {
+          "strategy": "css",
+          "selector": "input#feature-0",
+          "verified": true,
+          "observed_products": 2,
+          "evidence": "The first repeatable Product features input used the same id on both products."
+        },
+        "store_listing_desktop_tab": {
+          "strategy": "css",
+          "selector": "#tab-0",
+          "verified": true,
+          "observed_products": 2,
+          "evidence": "Desktop was tab-0 on US and JP. The panel requires at least one PNG and recommends 1366x768 or larger."
+        },
+        "store_listing_screenshot_input": {
+          "strategy": "css",
+          "selector": "",
+          "verified": false,
+          "evidence": "The accessible tree exposed the upload button but not a unique file input. Live upload stays fail-closed until the DOM input is observed."
+        },
+        "store_listing_short_title": {
+          "strategy": "css",
+          "selector": "input#shortTitle",
+          "verified": true,
+          "observed_products": 2,
+          "evidence": "Observed on the shared Supplemental fields form."
+        },
+        "store_listing_short_description": {
+          "strategy": "css",
+          "selector": "textarea#shortDescription",
+          "verified": true,
+          "observed_products": 2,
+          "evidence": "Observed on the shared Supplemental fields form."
+        },
+        "store_listing_developed_by": {
+          "strategy": "css",
+          "selector": "input#devStudio",
+          "verified": true,
+          "observed_products": 2,
+          "evidence": "Observed on both products. US currently contains internal review text that must be replaced by a public developer name."
+        },
+        "store_listing_save_button": {
+          "strategy": "role",
+          "selector": "button",
+          "name": "Save",
+          "verified": true,
+          "observed_products": 2,
+          "evidence": "Exactly one accessible Save button was present on each listing form. Save success still requires reload and Overview reconciliation."
+        },
+        "store_listing_save_success": {
+          "strategy": "composite_overview_reload_assets",
+          "selector": "",
+          "verified": false,
+          "evidence": "Write is pending. Success will require exact reloaded text, expected screenshot count, pristine form, and Overview Complete."
         }
       },
-      "hold_code": "RESTRICTED_CAPABILITY_REVIEW_REQUIRED",
-      "hold_detail": "The raw package acceptance state remains WARNING. Submission Options capability write/save/reload is route-level verified across two products, but certification and the full route remain fail-closed.",
+      "hold_code": "STORE_LISTINGS_WRITE_AND_RELOAD_PENDING",
+      "hold_detail": "Pricing, Properties, Age ratings, Packages, and Submission Options are Complete for both products. Final US and JP runtime screenshots are captured and version-bound. Store listing upload, Save/reload, and the JP existing-save migration concern remain fail-closed.",
       "product_certification_gates": {
-        "9PJCWW6G6D42": "HOLD_RESTRICTED_CAPABILITY_APPROVAL_REQUIRED",
-        "9PM2R3N22JX8": "HOLD_JP_START_FLOW_UNRESOLVED"
+        "9PJCWW6G6D42": "HOLD_STORE_LISTING_PENDING",
+        "9PM2R3N22JX8": "HOLD_STORE_LISTING_AND_EXISTING_SAVE_MIGRATION"
       }
     }
   },

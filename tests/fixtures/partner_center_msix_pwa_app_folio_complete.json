@@ -1,0 +1,127 @@
+{
+  "schema_version": 1,
+  "observed_at_utc": "2026-11-12T11:03:00Z",
+  "route_id": "msix_pwa_app",
+  "observed_products": 1,
+  "product_profile": {
+    "name": "Folio AI",
+    "store_id": "9P0VNLJ5FPF5",
+    "draft_id": "1152921505702219486",
+    "identity": "OkinawaDesktopTools.FolioAI",
+    "publisher": "CN=46263F21-A700-41DB-8C9B-114C22FB82FC",
+    "package": {
+      "filename": "FolioAI_1.0.3.0_x64_STORE_CANDIDATE_UNSIGNED.msix",
+      "sha256": "AEECFA80D79FFD9AFE2B290DCEF8E390FC0CA9433CC73335368B1164D9F4E459",
+      "version": "1.0.3.0",
+      "architecture": "X64",
+      "device_family": "Windows.Desktop"
+    },
+    "pricing": {
+      "sale_model": "one_time_purchase",
+      "currency": "JPY",
+      "retail_price": 780,
+      "markets": "preserved"
+    },
+    "properties": {
+      "category": "Productivity",
+      "generative_ai": true,
+      "privacy_delivery": "partner_center_inline_text",
+      "support_url": "https://github.com/tsuhasqni-pixel/rag-ollama/issues"
+    },
+    "iarc_answers_source": "product implementation evidence; never copy to another product",
+    "listing_locales": ["en-US", "ja-JP"],
+    "screenshot_count_per_listing": 5,
+    "publish_gate": "manual",
+    "restricted_capability": "runFullTrust"
+  },
+  "route_observation": {
+    "packages": {
+      "state": "PACKAGE_SAVED",
+      "raw_validation": "WARNING",
+      "known_warning": "runFullTrust",
+      "unknown_warning": false,
+      "error": false,
+      "overview": "Complete",
+      "reload_retained": true
+    },
+    "pricing": {
+      "state": "PRICING_SAVED",
+      "overview": "Complete",
+      "reload_retained": true
+    },
+    "properties": {
+      "state": "PROPERTIES_SAVED",
+      "overview": "Complete",
+      "reload_retained": true
+    },
+    "iarc": {
+      "state": "IARC_SAVED",
+      "app_type": "All Other App Types",
+      "legal_attestation": "PERFORMED_BY_PRODUCT_OWNER",
+      "save_redirect": "Application overview",
+      "overview": "Complete",
+      "reload_retained": true,
+      "summary_heading": "Age ratings",
+      "iarc_version": "10.4",
+      "current_rating_id": "Pending",
+      "ratings": {
+        "ESRB": "Everyone",
+        "IARC": "3+",
+        "Microsoft": "3+",
+        "PEGI": "3+"
+      }
+    },
+    "store_listings": {
+      "state": "LISTING_SAVED",
+      "locales": ["en-US", "ja-JP"],
+      "desktop_screenshot_count": 5,
+      "overview": "Complete",
+      "reload_retained": true
+    },
+    "submission_options": {
+      "state": "SUBMISSION_OPTIONS_SAVED",
+      "manual_publish": true,
+      "run_full_trust_explanation_retained": true,
+      "overview": "Complete",
+      "reload_retained": true
+    },
+    "overview": {
+      "pricing_and_availability": "Complete",
+      "properties": "Complete",
+      "age_ratings": "Complete",
+      "packages": "Complete",
+      "store_listings": "Complete",
+      "submission_options": "Complete",
+      "package_validation_label": "Validated",
+      "reloaded_after_iarc": true
+    }
+  },
+  "iarc_teacher_rule": {
+    "route_reuse": [
+      "Age ratings navigation",
+      "questionnaire/preview/summary state detection",
+      "legal-attestation-required detection",
+      "Save redirect detection",
+      "Overview Complete reconciliation",
+      "summary reload verification"
+    ],
+    "product_specific_do_not_copy": [
+      "App Type",
+      "questionnaire answers",
+      "generated ratings"
+    ],
+    "legal_attestation_must_not_be_inferred": true
+  },
+  "safety": {
+    "submit_for_certification": false,
+    "publish": false,
+    "new_product_created": false,
+    "identity_changed": false,
+    "publisher_changed": false
+  },
+  "outcome": {
+    "draft_state": "STORE_DRAFT_COMPLETE",
+    "status": "READY_FOR_CERTIFICATION_REVIEW",
+    "teacher_data_status": "LOCAL_COMPLETE_REMOTE_PENDING"
+  }
+}
