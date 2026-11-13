@@ -72,8 +72,9 @@ class FolioMsixAppPreuploadTeacherDataTests(unittest.TestCase):
             self.assertTrue(app_route["selectors"][key]["verified"], key)
         self.assertEqual(
             app_route["observation_scope"]["mode"],
-            "FULL_STORE_DRAFT_SAVE_RELOAD_VERIFIED",
+            "TWO_PRODUCT_FULL_STORE_DRAFT_SAVE_RELOAD_VERIFIED",
         )
+        self.assertEqual(app_route["observation_scope"]["observed_product_count"], 2)
         self.assertFalse(app_route["live_write_supported"])
         self.assertFalse(app_route["certification_write_supported"])
         self.assertFalse(app_route["publish_write_supported"])

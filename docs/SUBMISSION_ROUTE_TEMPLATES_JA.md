@@ -103,9 +103,9 @@ AIはテンプレートを変更しない。AIはテンプレートが許可し�
 
 ## Live書込みの状態
 
-- `msix_pwa_app`: READ_ONLY観測あり。ただしvalidation/save/reloadのselector evidenceが未完成なため、同梱mapは `live_write_supported=false`。
+- `msix_pwa_app`: Folio AIとDaymark AIの2製品で、既存製品照合、MSIX upload、Microsoft解析、既知exact `runFullTrust` warning、Packages Save、価格、Properties、IARC、英日listing、Submission Options、全sectionのSave/reloadまで実測済み。`store_draft_write_supported=VERIFIED_2_PRODUCT_PROFILE_GATED`。ただし現在の実装adapterは全sectionのGUI実行をまだ一つの公開コマンドへ統合していないため、`live_write_supported=false`を維持する。Certification / Publishは別gate。
 - `exe_msi_app` / `gdk_game`: 専用実画面map未検証。`LIVE_ROUTE_NOT_VERIFIED` でブラウザー書込み前に製品HOLD。
-- `msix_pwa_game`: 2026-11-04に `STRATEGY MARKET US` の既存draftで、Identity照合、MSIX upload、100%到達、解析中表示、version/architecture表示、`runFullTrust` 警告、警告後のreloadを実測した。`WARNING = HOLD` のためSaveは押しておらず、VALID / Save成功 / required sectionsは未検証。route全体の `live_write_supported` はfalseのまま維持する。
+- `msix_pwa_game`: STRATEGY MARKET US / JPの2製品で複数sectionを観測済みだが、App routeとは別mapとしてfail-closedを維持する。Game固有のcategory / IARC / listingをApp routeからコピーしない。
 - selector mapはschema 3でroute別に管理し、別routeのselectorを流用しない。
-- package validationの `WARNING` はHOLD。`VALID` かつrequired sectionの保存証跡が揃った場合だけ `DRAFT_SAVED`。
+- package validationの `WARNING` は、全文が既知exact `runFullTrust` warningのみで、Manifest/Partner Center capabilityが一致する場合だけ既知routeとして続行する。未知warning/errorはHOLD。
 - certification submit / publishは自動操作対象外。

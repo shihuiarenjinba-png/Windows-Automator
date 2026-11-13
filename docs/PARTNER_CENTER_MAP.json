@@ -3,31 +3,40 @@
   "routes": {
     "msix_pwa_app": {
       "live_write_supported": false,
-      "store_draft_write_supported": "VERIFIED_1_PRODUCT_PROFILE_GATED",
+      "store_draft_write_supported": "VERIFIED_2_PRODUCT_PROFILE_GATED",
       "certification_write_supported": false,
       "publish_write_supported": false,
       "store_draft_status": "READY_FOR_CERTIFICATION_REVIEW",
-      "observed_at_utc": "2026-11-12T11:03:00Z",
+      "observed_at_utc": "2026-11-13T00:30:00Z",
       "observation_scope": {
-        "observed_product_count": 1,
-        "product_name": "Folio AI",
-        "product_id": "9P0VNLJ5FPF5",
-        "draft_id": "1152921505702219486",
-        "mode": "FULL_STORE_DRAFT_SAVE_RELOAD_VERIFIED"
+        "observed_product_count": 2,
+        "products": [
+          {
+            "product_name": "Folio AI",
+            "product_id": "9P0VNLJ5FPF5",
+            "draft_id": "1152921505702219486"
+          },
+          {
+            "product_name": "Daymark AI",
+            "product_id": "9PKJ9KMJZBC0",
+            "draft_id": "1152921505702220032"
+          }
+        ],
+        "mode": "TWO_PRODUCT_FULL_STORE_DRAFT_SAVE_RELOAD_VERIFIED"
       },
       "section_verification": {
         "product_match": "VERIFIED",
         "identity_match": "VERIFIED",
-        "packages_upload": "VERIFIED_1_PRODUCT",
-        "package_analysis": "VERIFIED_1_PRODUCT",
-        "package_validation": "OBSERVED_EXACT_RUNFULLTRUST_WARNING_ONLY",
-        "packages_save": "VERIFIED_1_PRODUCT",
-        "reload_verification": "VERIFIED_FULL_DRAFT_RECONCILIATION_1_PRODUCT",
-        "pricing_availability": "VERIFIED_COMPLETE_1_PRODUCT",
-        "properties": "VERIFIED_COMPLETE_1_PRODUCT",
-        "age_ratings": "VERIFIED_COMPLETE_1_PRODUCT_OWNER_ATTESTATION",
-        "store_listings": "VERIFIED_COMPLETE_1_PRODUCT",
-        "submission_options": "VERIFIED_COMPLETE_1_PRODUCT"
+        "packages_upload": "VERIFIED_2_PRODUCTS",
+        "package_analysis": "VERIFIED_2_PRODUCTS",
+        "package_validation": "OBSERVED_EXACT_RUNFULLTRUST_WARNING_ONLY_2_PRODUCTS",
+        "packages_save": "VERIFIED_2_PRODUCTS",
+        "reload_verification": "VERIFIED_FULL_DRAFT_RECONCILIATION_2_PRODUCTS",
+        "pricing_availability": "VERIFIED_COMPLETE_2_PRODUCTS",
+        "properties": "VERIFIED_COMPLETE_2_PRODUCTS",
+        "age_ratings": "VERIFIED_COMPLETE_2_PRODUCTS_OWNER_ATTESTATION",
+        "store_listings": "VERIFIED_COMPLETE_2_PRODUCTS",
+        "submission_options": "VERIFIED_COMPLETE_2_PRODUCTS"
       },
       "selectors": {
         "overview_packages_link": {
@@ -40,7 +49,7 @@
           "strategy": "css",
           "selector": "input[name='fileuploader'][type='file'][multiple]",
           "verified": true,
-          "evidence": "The visible browse your files control opened this exact multiple file input and accepted the authorized Folio MSIX once."
+          "evidence": "The visible browse your files control accepted one exact authorized MSIX on both Folio AI and Daymark AI; each product was reconciled before any retry."
         },
         "packages_upload_status": {
           "strategy": "exact_text_states",
@@ -50,7 +59,7 @@
             "Analyzing package": "ANALYZING"
           },
           "verified": true,
-          "evidence": "Folio exposed the exact accessible states after 100 percent upload and during Microsoft analysis."
+          "evidence": "Folio AI and Daymark AI exposed the same accessible upload and Microsoft analysis states."
         },
         "packages_warning_alert": {
           "strategy": "css",
@@ -59,20 +68,20 @@
             "Package acceptance validation warning: The following restricted capabilities require approval before you can use them in your app: runFullTrust.": "WARNING"
           },
           "verified": true,
-          "evidence": "The exact warning text and DOM selector were observed after Folio analysis completed."
+          "evidence": "The exact runFullTrust warning text was observed after analysis on both Folio AI and Daymark AI."
         },
         "packages_package_row": {
           "strategy": "css_and_exact_text",
           "selector": "table.package-table .package-name .text-base",
           "verified": true,
-          "evidence": "The Folio row exposed the exact filename plus v1.0.3.0 and X64 after analysis."
+          "evidence": "Both app products exposed their product-specific filename, four-part version, and X64 after analysis."
         },
         "packages_desktop_checkbox": {
           "strategy": "role",
           "selector": "checkbox",
           "name": "Windows 10/11 Desktop",
           "verified": true,
-          "evidence": "The accessible checkbox changed from unchecked before upload to checked after Folio analysis."
+          "evidence": "The Desktop checkbox was checked after analysis on both independent app products."
         },
         "packages_save_button": {
           "strategy": "role",
@@ -128,13 +137,84 @@
             "Complete": "COMPLETE"
           },
           "verified": true,
-          "evidence": "After the final reload, Pricing and availability, Properties, Age ratings, Packages, Store listings, and Submission options all exposed Complete on the Folio overview."
+          "evidence": "After final reload, all six required sections exposed Complete on both the Folio AI and Daymark AI overviews."
+        },
+        "pricing_lazy_render": {
+          "strategy": "scroll_section_into_view_then_role",
+          "section": "Pricing",
+          "verified": true,
+          "evidence": "Daymark AI did not expose the Currency and Retail price controls until the Pricing section was scrolled into view; the script must render the section before locating either control."
+        },
+        "pricing_currency": {
+          "strategy": "role",
+          "selector": "combobox",
+          "name": "Currency",
+          "verified": true,
+          "evidence": "The product profile value JPY - Japan was selected and retained after reload without changing markets."
+        },
+        "pricing_retail_price": {
+          "strategy": "role_exact_option",
+          "selector": "combobox",
+          "name": "Retail price",
+          "exact_option_from_product_profile": true,
+          "verified": true,
+          "evidence": "Daymark AI exposed an exact 780 option. The route rejects missing or non-unique exact price options instead of choosing a nearby tier."
+        },
+        "properties_category": {
+          "strategy": "role_native_select",
+          "selector": "combobox",
+          "name": "App category combobox",
+          "index": 0,
+          "verified": true,
+          "evidence": "Daymark AI selected and retained the product-specific Lifestyle category; Folio AI retained Productivity."
+        },
+        "properties_privacy_url": {
+          "strategy": "role",
+          "selector": "textbox",
+          "name": "Apps privacy policy URL",
+          "verified": true,
+          "evidence": "The Daymark-specific public privacy URL retained after reload."
+        },
+        "properties_support_url": {
+          "strategy": "role",
+          "selector": "textbox",
+          "name": "Apps support contact URL",
+          "verified": true,
+          "evidence": "The Daymark-specific public support URL retained after reload."
+        },
+        "properties_generative_ai": {
+          "strategy": "role_prefix",
+          "selector": "checkbox",
+          "name_prefix": "This product incorporates generative AI features",
+          "verified": true,
+          "evidence": "Daymark AI retained Generative AI checked while core functionality remained usable without AI."
         },
         "age_ratings_link": {
           "strategy": "css",
           "selector": "a[href$='/ageratings']",
           "verified": true,
           "evidence": "The Folio overview opened the current draft Age ratings route."
+        },
+        "age_ratings_app_type": {
+          "strategy": "radiogroup_option_text",
+          "group_name_prefix": "Which of the below would best describe your app?",
+          "verified": true,
+          "product_profile_value_required": true,
+          "evidence": "Both products used the same control, but App Type remains a product-specific evidence value and is never copied from a previous product."
+        },
+        "age_ratings_online_content": {
+          "strategy": "radiogroup_exact_question",
+          "question_prefix": "Does the app feature or promote content that isn't part of the initial app download",
+          "verified": true,
+          "product_profile_value_required": true,
+          "evidence": "Daymark AI answered Yes because optional local generative-AI output exists, then answered the conditional content questions from its constrained source-grounded implementation evidence."
+        },
+        "age_ratings_preview_button": {
+          "strategy": "role",
+          "selector": "button",
+          "name": "Preview ratings",
+          "verified": true,
+          "evidence": "After all visible questions became Complete, Preview ratings opened the generated IARC 10.4 ratings and the owner-attestation boundary."
         },
         "age_ratings_legal_attestation": {
           "strategy": "role_exact_accessible_name",
@@ -193,13 +273,13 @@
           "strategy": "css",
           "selector": "#panel-2 he-button.new-image-button button",
           "verified": true,
-          "evidence": "The visible plus control opened a one-file chooser; the script waits for thumbnail and Desktop count increment before the next file."
+          "evidence": "The visible plus control opened a one-file chooser on both products. Daymark proved that unnamed button order changes after thumbnails exist, so the control must remain scoped to the Desktop new-image-button."
         },
         "store_listing_screenshot_thumbnail": {
           "strategy": "css",
           "selector": "#panel-2 img[alt='listing-screenshot-image']",
           "verified": true,
-          "evidence": "Thumbnail count plus the Desktop (n) counter reconciles chooser timeouts and prevents duplicate uploads."
+          "evidence": "Thumbnail count plus the Desktop (n) counter reconciles chooser timeouts and delayed Microsoft API responses. setFiles completion alone is never write proof."
         },
         "store_listing_save_button": {
           "strategy": "role",
@@ -219,7 +299,7 @@
           "strategy": "css",
           "selector": "textarea[maxlength='500']",
           "verified": true,
-          "evidence": "The single restricted-capability explanation retained the product-specific Folio text after reload."
+          "evidence": "Both products retained their product-specific explanation after reload. Daymark additionally proved that text over 500 characters can remain visible while the section stays Incomplete, so maxlength is a pre-save hard gate."
         },
         "submission_options_manual_publish": {
           "strategy": "css",
@@ -252,10 +332,10 @@
           ]
         },
         "properties": {
-          "heading": "Folio AI | Properties",
+          "heading_template": "{product_name} | Properties",
           "save_label": "Save",
           "notes": [
-            "Product-specific category, privacy, support, and generative-AI values retained after reload",
+            "Folio AI and Daymark AI retained different product-specific category/privacy/support values after reload",
             "Overview reported Complete"
           ]
         },
@@ -269,11 +349,11 @@
           ]
         },
         "packages": {
-          "heading": "Folio AI | Packages",
+          "heading_template": "{product_name} | Packages",
           "save_label": "Save",
           "notes": [
-            "FolioAI_1.0.3.0_x64_STORE_CANDIDATE_UNSIGNED.msix present after one upload",
-            "Version 1.0.3.0 and X64 recognized",
+            "The exact product-profile MSIX remained present after one reconciled upload",
+            "The product-profile four-part version and X64 were recognized",
             "Windows 10/11 Desktop checked automatically after analysis",
             "Exact runFullTrust warning observed",
             "Save redirected to Overview; Overview showed Validated/Complete; recovery and subsequent Packages reopen retained the package"
@@ -289,11 +369,11 @@
           ]
         },
         "submission_options": {
-          "heading": "Folio AI | Submission Options",
+          "heading_template": "{product_name} | Submission Options",
           "save_label": "Save",
           "notes": [
             "Manual Publish-now gate retained",
-            "Product-specific runFullTrust explanation retained",
+            "Product-specific runFullTrust explanation at or below 500 characters retained",
             "Overview reported Complete"
           ]
         }

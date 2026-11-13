@@ -175,6 +175,27 @@ class LiveDraftTests(unittest.TestCase):
             with self.assertRaisesRegex(LiveGateError,"EXACT_MATCH_REQUIRED"):
                 save_restricted_capability_explanations(product,context,FakeRestrictedCapabilityPort(("runFullTrust","other")))
 
+    def test_restricted_capability_workflow_rejects_over_500_characters(self):
+        with tempfile.TemporaryDirectory() as directory:
+            product=live_product(Path(directory))
+            manifest=b'''<?xml version="1.0" encoding="utf-8"?>
+<Package xmlns="http://schemas.microsoft.com/appx/manifest/foundation/windows10"
+ xmlns:rescap="http://schemas.microsoft.com/appx/manifest/foundation/windows10/restrictedcapabilities">
+ <Identity Name="Example.Identity" Publisher="CN=EXAMPLE" Version="1.2.3.4" ProcessorArchitecture="x64" />
+ <Capabilities><rescap:Capability Name="runFullTrust" /></Capabilities>
+</Package>'''
+            with zipfile.ZipFile(product.package_path,"w") as archive:
+                archive.writestr("AppxManifest.xml",manifest)
+            sha=file_sha256(product.package_path)
+            product.restricted_capability_justifications["runFullTrust"]=RestrictedCapabilityJustification(
+                "x"*501,"owner_input",True,sha
+            )
+            context=DraftContext(product.store_product_id,"12345","https://partner.microsoft.com/draft/12345")
+            port=FakeRestrictedCapabilityPort()
+            with self.assertRaisesRegex(LiveGateError,"JUSTIFICATION_TOO_LONG"):
+                save_restricted_capability_explanations(product,context,port)
+            self.assertEqual(port.filled,{})
+
     def test_success_requires_reload_and_emits_explicit_live_evidence(self):
         with tempfile.TemporaryDirectory() as directory:
             product = live_product(Path(directory))

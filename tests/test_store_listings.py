@@ -10,6 +10,7 @@ from store_manager.store_listings import (
     StoreListingDraft,
     StoreListingValidationError,
     plan_listing_languages,
+    screenshot_upload_next_action,
     store_listing_save_succeeded,
     validate_store_listing,
 )
@@ -113,6 +114,42 @@ class StoreListingTests(unittest.TestCase):
             changed[key] = bad
             with self.subTest(key=key):
                 self.assertFalse(store_listing_save_succeeded(**changed))
+
+    def test_single_file_screenshot_upload_waits_for_both_counters(self):
+        self.assertEqual(
+            screenshot_upload_next_action(
+                previous_count=2,
+                desktop_count=3,
+                thumbnail_count=3,
+            ),
+            "SCREENSHOT_UPLOAD_CONFIRMED",
+        )
+        self.assertEqual(
+            screenshot_upload_next_action(
+                previous_count=2,
+                desktop_count=2,
+                thumbnail_count=2,
+            ),
+            "SCREENSHOT_RECONCILE_REQUIRED",
+        )
+        self.assertEqual(
+            screenshot_upload_next_action(
+                previous_count=2,
+                desktop_count=2,
+                thumbnail_count=2,
+                explicit_error=True,
+                reloaded=True,
+            ),
+            "SAFE_RETRY_ALLOWED",
+        )
+        self.assertEqual(
+            screenshot_upload_next_action(
+                previous_count=2,
+                desktop_count=4,
+                thumbnail_count=4,
+            ),
+            "HOLD_AMBIGUOUS_SCREENSHOT_UPLOAD",
+        )
 
     def test_us_jp_live_fixture_has_public_text_and_version_bound_assets(self):
         fixture_path = (

@@ -48,6 +48,7 @@
 
 ### Submission options
 - Restricted capabilityをパッケージが宣言している場合、その利用理由
+- `runFullTrust`理由は500文字以内。画面に文章が残っていても`n/500`超過ならSave成功とは扱わない
 
 ## AIへ任せられる主な項目
 
@@ -84,4 +85,9 @@
 - ManifestとPartner CenterのCapability一覧がexact matchしない場合はHOLD
 - 未知Capabilityは`NEEDS_OWNER_INPUT`としてHOLDし、AIで補完しない
 - Submission Options Save成功は、同一draftへの遷移、Overview Complete、reload後の説明一致をすべて確認する
+- Pricing / Restricted capabilitiesのようなlazy-render sectionは、sectionを表示してからselectorを評価する
+- screenshotはvisible `+`から1 PNGずつ投入し、Desktop countとthumbnail countの両方が1増えるまで次へ進まない。`setFiles`完了やtimeoutだけで成功/失敗を決めず、reload後も不変かをreconcileしてからretryする
+- screenshot追加ボタンはDesktop panel内の`new-image-button`へscopeする。thumbnail追加後に並びが変わるunnamed buttonの先頭/末尾を推測しない
+- Generative AI製品はIARCのOnline Content分岐を実装証拠から判断し、追加の暴力・性的内容・言語・薬物設問を前製品からコピーしない
+- IARC最後のTerms/成年宣誓は常にproduct owner handoff。Save後はOverview `Complete` と最終reloadを自動確認する
 - Submit for certificationは別承認まで自動化しない

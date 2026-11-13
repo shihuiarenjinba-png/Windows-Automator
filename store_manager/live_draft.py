@@ -331,9 +331,12 @@ def save_restricted_capability_explanations(
         explanation=product.restricted_capability_justifications.get(capability)
         if not explanation or not explanation.text.strip():
             raise LiveGateError(f"RESTRICTED_CAPABILITY_JUSTIFICATION_REQUIRED: {capability}")
+        normalized_text=normalize_explanation_text(explanation.text)
+        if len(normalized_text)>500:
+            raise LiveGateError(f"RESTRICTED_CAPABILITY_JUSTIFICATION_TOO_LONG: {capability}")
         if not explanation.confirmed or explanation.package_sha256.casefold()!=package_sha.casefold():
             raise LiveGateError(f"RESTRICTED_CAPABILITY_CONFIRMATION_REQUIRED: {capability}")
-        port.fill_capability_explanation(capability,explanation.text)
+        port.fill_capability_explanation(capability,normalized_text)
     redirected_url=port.save_submission_options(context)
     overview_state=port.read_submission_options_overview_state(product,context)
     reloaded,dirty=port.reload_capability_explanations(product,context)

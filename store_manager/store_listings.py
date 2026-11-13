@@ -128,3 +128,38 @@ def store_listing_save_succeeded(
         and expected_screenshot_count > 0
         and dirty is False
     )
+
+
+def screenshot_upload_next_action(
+    *,
+    previous_count: int,
+    desktop_count: int,
+    thumbnail_count: int,
+    upload_pending: bool = False,
+    explicit_error: bool = False,
+    reloaded: bool = False,
+) -> str:
+    """Reconcile one single-file Partner Center screenshot upload.
+
+    The chooser completing is not proof that Partner Center accepted the file.
+    Counts can update several seconds after ``setFiles`` returns, and the button
+    order changes after the first thumbnail appears.  Callers must therefore
+    wait for both counters, and must not click an unscoped first/last button as
+    a retry shortcut.
+    """
+
+    if min(previous_count, desktop_count, thumbnail_count) < 0:
+        return "HOLD_INVALID_SCREENSHOT_COUNT"
+    if desktop_count == previous_count + 1 and thumbnail_count == desktop_count:
+        return "SCREENSHOT_UPLOAD_CONFIRMED"
+    if desktop_count > previous_count + 1 or thumbnail_count > previous_count + 1:
+        return "HOLD_AMBIGUOUS_SCREENSHOT_UPLOAD"
+    if desktop_count != thumbnail_count:
+        return "SCREENSHOT_RECONCILE_REQUIRED"
+    if upload_pending:
+        return "SCREENSHOT_UPLOAD_IN_PROGRESS"
+    if desktop_count == previous_count:
+        if explicit_error and reloaded:
+            return "SAFE_RETRY_ALLOWED"
+        return "SCREENSHOT_RECONCILE_REQUIRED"
+    return "HOLD_AMBIGUOUS_SCREENSHOT_UPLOAD"
