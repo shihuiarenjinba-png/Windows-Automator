@@ -1,0 +1,45 @@
+{
+  "observed_at_utc": "2026-11-05T00:00:00Z",
+  "route_id": "msix_pwa_game",
+  "product": {
+    "name": "STRATEGY MARKET",
+    "store_id": "9PM2R3N22JX8",
+    "draft_id": "1152921505702134539",
+    "identity": "OkinawaDesktopTools.STRATEGYMARKET",
+    "package": "STRATEGY_MARKET_JP_0.1.24.0_STORE_CANDIDATE_x64.msix",
+    "package_sha256": "A4A16A8942A339C8C71C7795A50E7E111A8AD9AE31B6FEB9243998B3128139AB"
+  },
+  "restricted_capability": {
+    "name": "runFullTrust",
+    "section_count": 1,
+    "textarea_count": 1,
+    "container_selector": "section.section:has(h2[data-l10n-key='resCapSectionHeader'])",
+    "textarea_selector": "section.section:has(h2[data-l10n-key='resCapSectionHeader']):has(span:text-is('runFullTrust')) textarea.text-area-width[maxlength='500']",
+    "textarea_class_after_reload": "text-area-width ng-untouched ng-pristine ng-valid",
+    "explanation_length": 397,
+    "explanation": "STRATEGY MARKET is a packaged Windows desktop game that runs as a normal Win32 desktop process. The runFullTrust capability is required so the packaged game can launch and operate its desktop process at medium integrity outside the AppContainer sandbox, including its local runtime and save-data functionality. It is not used to request administrator elevation or bypass Windows security controls."
+  },
+  "publishing_hold": {
+    "value": "Manual",
+    "label": "Don't publish this submission until I select Publish now",
+    "checked_after_reload": true
+  },
+  "save_observation": {
+    "save_button_role": "button",
+    "save_button_name": "Save",
+    "redirected_to_draft_overview": true,
+    "overview_state": "Complete",
+    "reload_value_exact_match": true,
+    "textarea_dirty_after_reload": false,
+    "errors_after_reload": [],
+    "save_button_enabled_is_success_signal": false
+  },
+  "outcome": {
+    "restricted_capability_explanation_saved": true,
+    "submission_options_saved": true,
+    "certification_gate": "HOLD",
+    "hold_code": "JP_START_FLOW_UNRESOLVED",
+    "submitted": false,
+    "published": false
+  }
+}

@@ -1,0 +1,626 @@
+{
+  "schema_version": 3,
+  "routes": {
+    "msix_pwa_app": {
+      "live_write_supported": false,
+      "store_draft_write_supported": "VERIFIED_2_PRODUCT_PROFILE_GATED",
+      "certification_write_supported": false,
+      "publish_write_supported": false,
+      "store_draft_status": "READY_FOR_CERTIFICATION_REVIEW",
+      "observed_at_utc": "2026-11-13T00:30:00Z",
+      "observation_scope": {
+        "observed_product_count": 2,
+        "products": [
+          {
+            "product_name": "Folio AI",
+            "product_id": "9P0VNLJ5FPF5",
+            "draft_id": "1152921505702219486"
+          },
+          {
+            "product_name": "Daymark AI",
+            "product_id": "9PKJ9KMJZBC0",
+            "draft_id": "1152921505702220032"
+          }
+        ],
+        "mode": "TWO_PRODUCT_FULL_STORE_DRAFT_SAVE_RELOAD_VERIFIED"
+      },
+      "section_verification": {
+        "product_match": "VERIFIED",
+        "identity_match": "VERIFIED",
+        "packages_upload": "VERIFIED_2_PRODUCTS",
+        "package_analysis": "VERIFIED_2_PRODUCTS",
+        "package_validation": "OBSERVED_EXACT_RUNFULLTRUST_WARNING_ONLY_2_PRODUCTS",
+        "packages_save": "VERIFIED_2_PRODUCTS",
+        "reload_verification": "VERIFIED_FULL_DRAFT_RECONCILIATION_2_PRODUCTS",
+        "pricing_availability": "VERIFIED_COMPLETE_2_PRODUCTS",
+        "properties": "VERIFIED_COMPLETE_2_PRODUCTS",
+        "age_ratings": "VERIFIED_COMPLETE_2_PRODUCTS_OWNER_ATTESTATION",
+        "store_listings": "VERIFIED_COMPLETE_2_PRODUCTS",
+        "submission_options": "VERIFIED_COMPLETE_2_PRODUCTS"
+      },
+      "selectors": {
+        "overview_packages_link": {
+          "strategy": "css",
+          "selector": "a[href$='/packages']",
+          "verified": true,
+          "evidence": "Application overview exposed one Packages link containing the current submission id."
+        },
+        "packages_file_input": {
+          "strategy": "css",
+          "selector": "input[name='fileuploader'][type='file'][multiple]",
+          "verified": true,
+          "evidence": "The visible browse your files control accepted one exact authorized MSIX on both Folio AI and Daymark AI; each product was reconciled before any retry."
+        },
+        "packages_upload_status": {
+          "strategy": "exact_text_states",
+          "selector": "Uploading | Analyzing package",
+          "exact_states": {
+            "Uploading": "UPLOAD_IN_PROGRESS",
+            "Analyzing package": "ANALYZING"
+          },
+          "verified": true,
+          "evidence": "Folio AI and Daymark AI exposed the same accessible upload and Microsoft analysis states."
+        },
+        "packages_warning_alert": {
+          "strategy": "css",
+          "selector": ".alert.alert-warning .alert-string",
+          "exact_states": {
+            "Package acceptance validation warning: The following restricted capabilities require approval before you can use them in your app: runFullTrust.": "WARNING"
+          },
+          "verified": true,
+          "evidence": "The exact runFullTrust warning text was observed after analysis on both Folio AI and Daymark AI."
+        },
+        "packages_package_row": {
+          "strategy": "css_and_exact_text",
+          "selector": "table.package-table .package-name .text-base",
+          "verified": true,
+          "evidence": "Both app products exposed their product-specific filename, four-part version, and X64 after analysis."
+        },
+        "packages_desktop_checkbox": {
+          "strategy": "role",
+          "selector": "checkbox",
+          "name": "Windows 10/11 Desktop",
+          "verified": true,
+          "evidence": "The Desktop checkbox was checked after analysis on both independent app products."
+        },
+        "packages_save_button": {
+          "strategy": "role",
+          "selector": "button",
+          "name": "Save",
+          "verified": true,
+          "evidence": "Exactly one Save button was exposed on the live Packages page."
+        },
+        "packages_validation_state": {
+          "strategy": "css",
+          "selector": ".alert .alert-string",
+          "exact_states": {
+            "Package acceptance validation warning: The following restricted capabilities require approval before you can use them in your app: runFullTrust.": "WARNING"
+          },
+          "verified": true,
+          "evidence": "The warning path is verified for Folio. Unknown text still normalizes to UNKNOWN and remains fail-closed; VALID and ERROR evidence are not inferred."
+        },
+        "packages_section_state": {
+          "strategy": "overview_aria_label",
+          "selector": "a[name='packages'][aria-label='Packages Status:  - Complete']",
+          "exact_states": {
+            "Packages Status:  - Complete": "COMPLETE"
+          },
+          "verified": true,
+          "evidence": "After Folio Save, Application overview exposed the exact package filename, Validated, Complete, and the exact Packages status aria-label."
+        },
+        "packages_save_success": {
+          "strategy": "composite_overview_reopen_recovery",
+          "selector": "a[name='packages'][aria-label='Packages Status:  - Complete']",
+          "verified": true,
+          "evidence": "One Save redirected to Folio overview; Overview showed filename/Validated/Complete; Packages reopen before reload and again after breadcrumb recovery retained v1.0.3.0, X64, Windows.Desktop, Desktop checked, and the exact warning."
+        },
+        "product_breadcrumb_overview_recovery": {
+          "strategy": "role",
+          "selector": "link",
+          "name_template": "{product_name}",
+          "href": "#",
+          "verified": true,
+          "evidence": "When a section reload displayed Sign in required, selecting the top product breadcrumb returned to the same product overview without automating the authentication dialog."
+        },
+        "product_overview_recovery_success": {
+          "strategy": "composite_url_heading_package_status",
+          "selector": "a[name='packages'][aria-label='Packages Status:  - Complete']",
+          "url_template": "/en-us/dashboard/products/{product_id}/overview",
+          "heading_template": "{product_name}",
+          "verified": true,
+          "evidence": "The recovered Folio overview URL and heading matched the immutable product, and Packages remained Validated/Complete."
+        },
+        "overview_section_states": {
+          "strategy": "overview_accessible_name_template",
+          "selector": "{section_name} Status: - Complete",
+          "exact_states": {
+            "Complete": "COMPLETE"
+          },
+          "verified": true,
+          "evidence": "After final reload, all six required sections exposed Complete on both the Folio AI and Daymark AI overviews."
+        },
+        "pricing_lazy_render": {
+          "strategy": "scroll_section_into_view_then_role",
+          "section": "Pricing",
+          "verified": true,
+          "evidence": "Daymark AI did not expose the Currency and Retail price controls until the Pricing section was scrolled into view; the script must render the section before locating either control."
+        },
+        "pricing_currency": {
+          "strategy": "role",
+          "selector": "combobox",
+          "name": "Currency",
+          "verified": true,
+          "evidence": "The product profile value JPY - Japan was selected and retained after reload without changing markets."
+        },
+        "pricing_retail_price": {
+          "strategy": "role_exact_option",
+          "selector": "combobox",
+          "name": "Retail price",
+          "exact_option_from_product_profile": true,
+          "verified": true,
+          "evidence": "Daymark AI exposed an exact 780 option. The route rejects missing or non-unique exact price options instead of choosing a nearby tier."
+        },
+        "properties_category": {
+          "strategy": "role_native_select",
+          "selector": "combobox",
+          "name": "App category combobox",
+          "index": 0,
+          "verified": true,
+          "evidence": "Daymark AI selected and retained the product-specific Lifestyle category; Folio AI retained Productivity."
+        },
+        "properties_privacy_url": {
+          "strategy": "role",
+          "selector": "textbox",
+          "name": "Apps privacy policy URL",
+          "verified": true,
+          "evidence": "The Daymark-specific public privacy URL retained after reload."
+        },
+        "properties_support_url": {
+          "strategy": "role",
+          "selector": "textbox",
+          "name": "Apps support contact URL",
+          "verified": true,
+          "evidence": "The Daymark-specific public support URL retained after reload."
+        },
+        "properties_generative_ai": {
+          "strategy": "role_prefix",
+          "selector": "checkbox",
+          "name_prefix": "This product incorporates generative AI features",
+          "verified": true,
+          "evidence": "Daymark AI retained Generative AI checked while core functionality remained usable without AI."
+        },
+        "age_ratings_link": {
+          "strategy": "css",
+          "selector": "a[href$='/ageratings']",
+          "verified": true,
+          "evidence": "The Folio overview opened the current draft Age ratings route."
+        },
+        "age_ratings_app_type": {
+          "strategy": "radiogroup_option_text",
+          "group_name_prefix": "Which of the below would best describe your app?",
+          "verified": true,
+          "product_profile_value_required": true,
+          "evidence": "Both products used the same control, but App Type remains a product-specific evidence value and is never copied from a previous product."
+        },
+        "age_ratings_online_content": {
+          "strategy": "radiogroup_exact_question",
+          "question_prefix": "Does the app feature or promote content that isn't part of the initial app download",
+          "verified": true,
+          "product_profile_value_required": true,
+          "evidence": "Daymark AI answered Yes because optional local generative-AI output exists, then answered the conditional content questions from its constrained source-grounded implementation evidence."
+        },
+        "age_ratings_preview_button": {
+          "strategy": "role",
+          "selector": "button",
+          "name": "Preview ratings",
+          "verified": true,
+          "evidence": "After all visible questions became Complete, Preview ratings opened the generated IARC 10.4 ratings and the owner-attestation boundary."
+        },
+        "age_ratings_legal_attestation": {
+          "strategy": "role_exact_accessible_name",
+          "selector": "checkbox",
+          "name": "By checking this box, I hereby agree to the IARC Terms of Use and I agree that I am the age of majority in my jurisdiction.",
+          "verified": true,
+          "requires_product_owner": true,
+          "evidence": "The combined terms and age-of-majority declaration was observed. Its truth must never be inferred or copied between products."
+        },
+        "age_ratings_save_button": {
+          "strategy": "role",
+          "selector": "button",
+          "name": "Save",
+          "verified": true,
+          "evidence": "The owner performed the legal attestation and Save. The automation verifies the resulting redirect and retained state."
+        },
+        "age_ratings_save_success": {
+          "strategy": "composite_overview_summary_reload",
+          "selector": "a[href$='/ageratings/summary']",
+          "heading": "Age ratings",
+          "verified": true,
+          "evidence": "Overview changed to Age ratings Complete; reopening and reloading /ageratings/summary retained the generated rating summary, then Continue returned to the same overview."
+        },
+        "age_ratings_continue": {
+          "strategy": "role",
+          "selector": "link",
+          "name": "Continue",
+          "verified": true,
+          "evidence": "Continue returned from the retained Age ratings summary to the same Folio overview."
+        },
+        "store_listing_description": {
+          "strategy": "css",
+          "selector": "#description-required",
+          "verified": true,
+          "evidence": "The required Description field was used and retained in both Folio listing locales."
+        },
+        "store_listing_short_description": {
+          "strategy": "css",
+          "selector": "#shortDescription",
+          "verified": true,
+          "evidence": "The Short description field was used and retained in both Folio listing locales."
+        },
+        "store_listing_features": {
+          "strategy": "css",
+          "selector": "[id^='feature-']",
+          "verified": true,
+          "evidence": "Folio feature fields were saved and retained; values remain product-profile data."
+        },
+        "store_listing_desktop_tab": {
+          "strategy": "css",
+          "selector": "#tab-0",
+          "verified": true,
+          "evidence": "The Desktop screenshot panel was uniquely identified."
+        },
+        "store_listing_screenshot_add_button": {
+          "strategy": "css",
+          "selector": "#panel-2 he-button.new-image-button button",
+          "verified": true,
+          "evidence": "The visible plus control opened a one-file chooser on both products. Daymark proved that unnamed button order changes after thumbnails exist, so the control must remain scoped to the Desktop new-image-button."
+        },
+        "store_listing_screenshot_thumbnail": {
+          "strategy": "css",
+          "selector": "#panel-2 img[alt='listing-screenshot-image']",
+          "verified": true,
+          "evidence": "Thumbnail count plus the Desktop (n) counter reconciles chooser timeouts and delayed Microsoft API responses. setFiles completion alone is never write proof."
+        },
+        "store_listing_save_button": {
+          "strategy": "role",
+          "selector": "button",
+          "name": "Save",
+          "verified": true,
+          "evidence": "Each Folio locale exposed one accessible Save control and retained its product-specific values after reload."
+        },
+        "submission_options_restricted_capability_container": {
+          "strategy": "heading_and_exact_capability",
+          "selector": "Restricted capabilities",
+          "exact_capability": "runFullTrust",
+          "verified": true,
+          "evidence": "The Folio Submission Options page exposed the Restricted capabilities section and exact runFullTrust token."
+        },
+        "submission_options_restricted_capability_textarea": {
+          "strategy": "css",
+          "selector": "textarea[maxlength='500']",
+          "verified": true,
+          "evidence": "Both products retained their product-specific explanation after reload. Daymark additionally proved that text over 500 characters can remain visible while the section stays Incomplete, so maxlength is a pre-save hard gate."
+        },
+        "submission_options_manual_publish": {
+          "strategy": "css",
+          "selector": "#radioReleaseDate_manual",
+          "verified": true,
+          "evidence": "The manual Publish-now gate was saved and retained after reload."
+        },
+        "submission_options_save_button": {
+          "strategy": "role",
+          "selector": "button",
+          "name": "Save",
+          "verified": true,
+          "evidence": "Exactly one accessible Save control was used for Folio Submission Options."
+        },
+        "submission_options_save_success": {
+          "strategy": "composite_reload_and_overview",
+          "selector": "#radioReleaseDate_manual, textarea[maxlength='500']",
+          "verified": true,
+          "evidence": "Manual publish remained checked, the explanation remained exact, and Overview reported Submission options Complete after reload."
+        }
+      },
+      "observed_pages": {
+        "pricing_availability": {
+          "heading": "Pricing and availability",
+          "save_label": "Save",
+          "notes": [
+            "Product profile supplied exact JPY 780 one-time price",
+            "Current markets preserved without additions or removals",
+            "Save and reload retained the price; Overview reported Complete"
+          ]
+        },
+        "properties": {
+          "heading_template": "{product_name} | Properties",
+          "save_label": "Save",
+          "notes": [
+            "Folio AI and Daymark AI retained different product-specific category/privacy/support values after reload",
+            "Overview reported Complete"
+          ]
+        },
+        "age_ratings": {
+          "heading": "Age ratings",
+          "save_label": "Save",
+          "notes": [
+            "Product-specific questionnaire generated a rating preview",
+            "The owner, not the script, performed the combined legal and age attestation",
+            "Overview and /ageratings/summary reload both retained Complete state"
+          ]
+        },
+        "packages": {
+          "heading_template": "{product_name} | Packages",
+          "save_label": "Save",
+          "notes": [
+            "The exact product-profile MSIX remained present after one reconciled upload",
+            "The product-profile four-part version and X64 were recognized",
+            "Windows 10/11 Desktop checked automatically after analysis",
+            "Exact runFullTrust warning observed",
+            "Save redirected to Overview; Overview showed Validated/Complete; recovery and subsequent Packages reopen retained the package"
+          ]
+        },
+        "store_listings": {
+          "heading": "Manage Store listing languages",
+          "save_label": "Save",
+          "notes": [
+            "English and Japanese product-profile text retained after reload",
+            "Five Desktop screenshots per locale retained",
+            "Chooser timeout reconciliation uses thumbnail and Desktop count before retry"
+          ]
+        },
+        "submission_options": {
+          "heading_template": "{product_name} | Submission Options",
+          "save_label": "Save",
+          "notes": [
+            "Manual Publish-now gate retained",
+            "Product-specific runFullTrust explanation at or below 500 characters retained",
+            "Overview reported Complete"
+          ]
+        }
+      },
+      "hold_code": "READY_FOR_CERTIFICATION_REVIEW_MANUAL_GATE"
+    },
+    "exe_msi_app": {
+      "live_write_supported": false,
+      "selectors": {},
+      "hold_code": "LIVE_ROUTE_NOT_VERIFIED"
+    },
+    "gdk_game": {
+      "live_write_supported": false,
+      "selectors": {},
+      "hold_code": "LIVE_ROUTE_NOT_VERIFIED"
+    },
+    "msix_pwa_game": {
+      "live_write_supported": false,
+      "observed_at_utc": "2026-11-05T04:32:24Z",
+      "observation_scope": {
+        "observed_product_count": 2,
+        "products": [
+          {
+            "product_name": "STRATEGY MARKET US",
+            "product_id": "9PJCWW6G6D42",
+            "draft_id": "1152921505702134687"
+          },
+          {
+            "product_name": "STRATEGY MARKET",
+            "product_id": "9PM2R3N22JX8",
+            "draft_id": "1152921505702134539"
+          }
+        ],
+        "mode": "TWO_PRODUCT_FULL_DRAFT_READ_AND_STORE_LISTING_OBSERVATION"
+      },
+      "submission_options_restricted_capability_write_supported": true,
+      "section_verification": {
+        "product_match": "VERIFIED",
+        "identity_match": "VERIFIED",
+        "packages_upload": "VERIFIED",
+        "package_analysis": "VERIFIED",
+        "package_validation": "OBSERVED_WARNING_ONLY",
+        "packages_save": "VERIFIED_MANUAL_SAVE",
+        "reload_verification": "VERIFIED_SAVED_PACKAGE_RECONCILIATION",
+        "pricing_availability": "VERIFIED_COMPLETE_READ_2_PRODUCTS",
+        "properties": "VERIFIED_COMPLETE_READ_2_PRODUCTS",
+        "age_ratings": "VERIFIED_COMPLETE_READ_2_PRODUCTS",
+        "store_listings": "VERIFIED_FORM_AND_LANGUAGE_READ_2_PRODUCTS_WRITE_PENDING",
+        "submission_options": "VERIFIED_2_PRODUCTS_RESTRICTED_CAPABILITY_EXPLANATION",
+        "submission_options_restricted_capabilities": "VERIFIED_2_PRODUCTS",
+        "submission_options_save": "VERIFIED_2_PRODUCTS",
+        "submission_options_reload": "VERIFIED_2_PRODUCTS"
+      },
+      "selectors": {
+        "overview_packages_link": {
+          "strategy": "css",
+          "selector": "a[href$='/packages']",
+          "verified": true,
+          "evidence": "The existing US draft exposed one Packages link containing draft id 1152921505702134687."
+        },
+        "packages_file_input": {
+          "strategy": "css",
+          "selector": "input[name='fileuploader'][type='file'][multiple]",
+          "verified": true,
+          "evidence": "The visible 'browse your files.' control opened this input and accepted the authorized MSIX."
+        },
+        "packages_upload_status": {
+          "strategy": "css",
+          "selector": "div.uploadStatus-text",
+          "exact_states": {
+            "Analyzing package": "ANALYZING"
+          },
+          "verified": true,
+          "evidence": "Observed after upload reached 100 percent for version 0.25.25.0."
+        },
+        "packages_warning_alert": {
+          "strategy": "css",
+          "selector": ".alert.alert-warning .alert-string",
+          "exact_states": {
+            "Package acceptance validation warning: The following restricted capabilities require approval before you can use them in your app: runFullTrust.": "WARNING"
+          },
+          "verified": true,
+          "evidence": "Observed for both the existing and newly uploaded package after analysis."
+        },
+        "packages_save_button": {
+          "strategy": "role",
+          "selector": "button",
+          "name": "Save",
+          "verified": true,
+          "evidence": "Exactly one accessible Save control was present. The user clicked it manually; its enabled state after reload is not a success signal."
+        },
+        "packages_validation_state": {
+          "strategy": "css",
+          "selector": ".alert .alert-string",
+          "exact_states": {
+            "Package acceptance validation warning: The following restricted capabilities require approval before you can use them in your app: runFullTrust.": "WARNING"
+          },
+          "verified": false,
+          "evidence": "Only the WARNING path was observed. VALID and ERROR selectors/states remain unverified."
+        },
+        "packages_section_state": {
+          "strategy": "composite_overview_and_reload",
+          "selector": "a[href$='/packages']",
+          "exact_states": {
+            "Complete": "COMPLETE"
+          },
+          "verified": true,
+          "evidence": "After the manual Save, Overview showed Packages Complete and Validated; reload retained only version 0.25.25.0."
+        },
+        "packages_save_success": {
+          "strategy": "composite_overview_and_reload",
+          "selector": "a[href$='/packages']",
+          "verified": true,
+          "evidence": "Manual Save success was proven by Overview Complete/Validated plus reload retaining 0.25.25.0 and removing 0.25.15.0. Save button enabled state is not a success signal."
+        },
+        "overview_section_states": {
+          "strategy": "css",
+          "selector": "",
+          "exact_states": {},
+          "verified": false,
+          "evidence": "Post-save section states were observed, but a reusable generic selector for every required section is not yet verified."
+        },
+        "submission_options_restricted_capability_container": {
+          "strategy": "css",
+          "selector": "section.section:has(h2[data-l10n-key='resCapSectionHeader'])",
+          "verified": true,
+          "observed_products": 2,
+          "evidence": "US and JP each exposed exactly one section with the localized Restricted capabilities heading and exact runFullTrust token."
+        },
+        "submission_options_restricted_capability_textarea": {
+          "strategy": "css",
+          "selector": "section.section:has(h2[data-l10n-key='resCapSectionHeader']):has(span:text-is('runFullTrust')) textarea.text-area-width[maxlength='500']",
+          "verified": true,
+          "observed_products": 2,
+          "evidence": "The same exact-match textarea selector was unique on US and JP; each retained its product-specific explanation after reload."
+        },
+        "submission_options_save_button": {
+          "strategy": "role",
+          "selector": "button",
+          "name": "Save",
+          "verified": true,
+          "observed_products": 2,
+          "evidence": "Exactly one accessible Save button was observed and used on both US and JP. Its enabled state after reload is not a success signal."
+        },
+        "submission_options_save_success": {
+          "strategy": "composite_redirect_overview_reload",
+          "selector": "a[href$='/options']",
+          "redirect_suffix": "/submissions/{draft_id}",
+          "exact_states": {
+            "Complete": "SAVED"
+          },
+          "verified": true,
+          "observed_products": 2,
+          "evidence": "On both US and JP, Save redirected to the draft URL, Overview showed Submission options Complete, and reopening returned the exact explanation with a pristine textarea."
+        },
+        "store_listing_language_links": {
+          "strategy": "css",
+          "selector": "a[href*='/listings?languageid='][href*='languagecode=']",
+          "verified": true,
+          "observed_products": 2,
+          "evidence": "US exposed English (United States) and Japanese (Japan); JP exposed Japanese (Japan) plus the explicitly added English and Japanese rows."
+        },
+        "store_listing_description": {
+          "strategy": "css",
+          "selector": "textarea#description-required",
+          "verified": true,
+          "observed_products": 2,
+          "evidence": "The same unique required Description textarea id was observed on US and JP listing forms."
+        },
+        "store_listing_release_notes": {
+          "strategy": "css",
+          "selector": "textarea#releaseNotes",
+          "verified": true,
+          "observed_products": 2,
+          "evidence": "The optional What's new textarea used the same id on both products."
+        },
+        "store_listing_first_feature": {
+          "strategy": "css",
+          "selector": "input#feature-0",
+          "verified": true,
+          "observed_products": 2,
+          "evidence": "The first repeatable Product features input used the same id on both products."
+        },
+        "store_listing_desktop_tab": {
+          "strategy": "css",
+          "selector": "#tab-0",
+          "verified": true,
+          "observed_products": 2,
+          "evidence": "Desktop was tab-0 on US and JP. The panel requires at least one PNG and recommends 1366x768 or larger."
+        },
+        "store_listing_screenshot_input": {
+          "strategy": "css",
+          "selector": "",
+          "verified": false,
+          "evidence": "The accessible tree exposed the upload button but not a unique file input. Live upload stays fail-closed until the DOM input is observed."
+        },
+        "store_listing_short_title": {
+          "strategy": "css",
+          "selector": "input#shortTitle",
+          "verified": true,
+          "observed_products": 2,
+          "evidence": "Observed on the shared Supplemental fields form."
+        },
+        "store_listing_short_description": {
+          "strategy": "css",
+          "selector": "textarea#shortDescription",
+          "verified": true,
+          "observed_products": 2,
+          "evidence": "Observed on the shared Supplemental fields form."
+        },
+        "store_listing_developed_by": {
+          "strategy": "css",
+          "selector": "input#devStudio",
+          "verified": true,
+          "observed_products": 2,
+          "evidence": "Observed on both products. US currently contains internal review text that must be replaced by a public developer name."
+        },
+        "store_listing_save_button": {
+          "strategy": "role",
+          "selector": "button",
+          "name": "Save",
+          "verified": true,
+          "observed_products": 2,
+          "evidence": "Exactly one accessible Save button was present on each listing form. Save success still requires reload and Overview reconciliation."
+        },
+        "store_listing_save_success": {
+          "strategy": "composite_overview_reload_assets",
+          "selector": "",
+          "verified": false,
+          "evidence": "Write is pending. Success will require exact reloaded text, expected screenshot count, pristine form, and Overview Complete."
+        }
+      },
+      "hold_code": "STORE_LISTINGS_WRITE_AND_RELOAD_PENDING",
+      "hold_detail": "Pricing, Properties, Age ratings, Packages, and Submission Options are Complete for both products. Final US and JP runtime screenshots are captured and version-bound. Store listing upload, Save/reload, and the JP existing-save migration concern remain fail-closed.",
+      "product_certification_gates": {
+        "9PJCWW6G6D42": "HOLD_STORE_LISTING_PENDING",
+        "9PM2R3N22JX8": "HOLD_STORE_LISTING_AND_EXISTING_SAVE_MIGRATION"
+      }
+    }
+  },
+  "safety": {
+    "never_guess_selector": true,
+    "never_fuzzy_match_choice": true,
+    "never_auto_submit_for_certification": true,
+    "never_auto_publish": true,
+    "require_action_time_live_confirmation": true,
+    "continue_after_product_error": true,
+    "stop_all_on_auth_failure": true
+  }
+}

@@ -1,0 +1,72 @@
+{
+  "schema_version": 1,
+  "observed_at_utc": "2026-11-12T03:52:39Z",
+  "route_id": "msix_pwa_app",
+  "mode": "LIVE_PACKAGES_SAVE_OVERVIEW_REOPEN_RECOVERY",
+  "product": {
+    "name": "Folio AI",
+    "store_id": "9P0VNLJ5FPF5",
+    "draft_id": "1152921505702219486"
+  },
+  "candidate": {
+    "filename": "FolioAI_1.0.3.0_x64_STORE_CANDIDATE_UNSIGNED.msix",
+    "version": "1.0.3.0",
+    "architecture": "X64",
+    "device_family": "Windows.Desktop min version 10.0.19041.0",
+    "sha256": "AEECFA80D79FFD9AFE2B290DCEF8E390FC0CA9433CC73335368B1164D9F4E459"
+  },
+  "save": {
+    "clicked_once": true,
+    "redirect_url": "https://partner.microsoft.com/en-us/dashboard/products/9P0VNLJ5FPF5/overview",
+    "same_draft": true,
+    "overview_package_filename_visible": true,
+    "overview_validation": "Validated",
+    "overview_section_state": "Complete"
+  },
+  "reopen_before_reload": {
+    "package_retained": true,
+    "version_retained": true,
+    "architecture_retained": true,
+    "desktop_retained": true,
+    "known_warning_retained": true
+  },
+  "reload_recovery": {
+    "reload_url": "https://partner.microsoft.com/en-us/dashboard/products/9P0VNLJ5FPF5/submissions/1152921505702219486/packages",
+    "observed_dialog_heading": "Sign in required",
+    "observed_dialog_text": "Your session has expired. Please sign-in again to continue. Unfortunately any unsaved changes will be lost.",
+    "authentication_automated": false,
+    "recovery_control": {
+      "role": "link",
+      "name": "Folio AI",
+      "href": "#",
+      "semantic_selector": "getByRole('link', { name: product_name, exact: true })"
+    },
+    "recovery_action_observed_by": "user",
+    "overview_postcondition_verified_by": "automation",
+    "overview_url": "https://partner.microsoft.com/en-us/dashboard/products/9P0VNLJ5FPF5/overview",
+    "overview_heading": "Folio AI",
+    "overview_packages_status": "Complete",
+    "overview_packages_validation": "Validated"
+  },
+  "reopen_after_recovery": {
+    "package_retained": true,
+    "version": "v1.0.3.0",
+    "architecture": "X64",
+    "device_family": "Windows.Desktop min version 10.0.19041.0",
+    "desktop_checked": true,
+    "raw_validation": "WARNING",
+    "warning": "Package acceptance validation warning: The following restricted capabilities require approval before you can use them in your app: runFullTrust."
+  },
+  "outcome": {
+    "status": "PACKAGE_SAVED",
+    "next_action": "PRICING_REQUIRED",
+    "route_live_write_supported": false,
+    "route_hold": "Remaining Store sections and their owner decisions are not complete."
+  },
+  "safety": {
+    "duplicate_upload": false,
+    "duplicate_save": false,
+    "submitted": false,
+    "published": false
+  }
+}
