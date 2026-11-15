@@ -16,7 +16,7 @@
 - 製品種別
 - 既存更新 / 新規
 - Discoverable
-- Free trialなし
+- Free trial は既定 `none`。有料製品はオーナー確認済みの製品固有値（例: `7_days`）だけ上書き可
 - Publishing hold = manual publish
 - 既定市場プリセット（運用で固定する場合）
 
