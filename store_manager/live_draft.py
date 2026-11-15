@@ -732,6 +732,56 @@ class PlaywrightPartnerCenterPort:
         if locator.count() != 1:
             raise LiveGateError(f"expected exactly one visible text {text!r}; got {locator.count()}")
 
+    def verify_existing_identity_values(
+        self,
+        *,
+        product_name: str,
+        store_product_id: str,
+        identity_name: str,
+        identity_publisher: str,
+        package_family_name: str = "",
+        package_sid: str = "",
+    ) -> dict[str, object]:
+        """Read-only exact-match verification of an existing Partner Center identity.
+
+        This never creates/reserves a product, starts a submission, uploads a
+        package, changes pricing, submits certification, or publishes.
+        """
+        identity_url = f"{PARTNER_HOST}en-us/dashboard/products/{store_product_id}/identity"
+        self._goto(identity_url)
+        required = (
+            ("product_name", product_name),
+            ("store_product_id", store_product_id),
+            ("identity_name", identity_name),
+            ("identity_publisher", identity_publisher),
+        )
+        optional = (
+            ("package_family_name", package_family_name),
+            ("package_sid", package_sid),
+        )
+        matched: list[str] = []
+        for key, value in required:
+            if not str(value or "").strip():
+                raise LiveGateError(f"existing identity verifier requires {key}")
+            self._exact_text_present(str(value))
+            matched.append(key)
+        for key, value in optional:
+            if str(value or "").strip():
+                self._exact_text_present(str(value))
+                matched.append(key)
+        return {
+            "status": "EXISTING_IDENTITY_EXACT_MATCH",
+            "partner_center_reverified": True,
+            "identity_url": identity_url,
+            "matched_fields": matched,
+            "store_product_id": store_product_id,
+            "product_name": product_name,
+            "identity_name": identity_name,
+            "identity_publisher": identity_publisher,
+            "package_family_name": package_family_name,
+            "package_sid": package_sid,
+        }
+
     def verify_product_and_draft(self, product: ProductInput) -> DraftContext:
         identity_url = f"{PARTNER_HOST}en-us/dashboard/products/{product.store_product_id}/identity"
         self._goto(identity_url)
