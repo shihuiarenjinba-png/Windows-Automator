@@ -398,12 +398,13 @@
       "store_draft_status": "STORE_DRAFT_COMPLETE",
       "teacher_data_status": "MULTI_PRODUCT_MSIX_GAME_ROUTE_VERIFIED",
       "runtime_qa_status": "RUNTIME_QA_REQUIRED_POLICY_BLOCK",
+      "source_ui_proxy_status": "PASS_SUPPORTING_EVIDENCE_ONLY_NOT_MSIX_WRAPPER",
       "certification_review_prerequisites": [
         "STORE_DRAFT_COMPLETE",
         "RUNTIME_FUNCTIONAL_QA_PASS",
         "PACKAGE_KEEP"
       ],
-      "observed_at_utc": "2026-11-15T09:08:45Z",
+      "observed_at_utc": "2026-11-15T16:15:00Z",
       "observation_scope": {
         "observed_product_count": 2,
         "products": [
@@ -433,6 +434,7 @@
         "properties": "VERIFIED_COMPLETE_2_PRODUCTS",
         "age_ratings": "VERIFIED_COMPLETE_2_PRODUCTS",
         "store_listings": "VERIFIED_COMPLETE_2_PRODUCTS",
+        "runtime_source_ui_proxy": "PASS_SUPPORTING_EVIDENCE_ONLY_NOT_MSIX_WRAPPER",
         "runtime_functional_qa": "REQUIRED_NOT_PASSED_APPLICATION_CONTROL_POLICY_BLOCK",
         "submission_options": "VERIFIED_2_PRODUCTS_RESTRICTED_CAPABILITY_EXPLANATION",
         "submission_options_restricted_capabilities": "VERIFIED_2_PRODUCTS",

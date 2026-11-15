@@ -21,6 +21,9 @@ Partner Center `Validated` and six `Complete` sections do not satisfy the runtim
 - Package-extracted and QA-runtime `app.asar`: exact SHA match
 - Package-extracted and QA-runtime executable: exact SHA match
 - Static regression and Store packaging tests: PASS
+- Source UI browser proxy: PASS for clean-profile Start, automatic time progress, pause/resume, all seven primary tabs, browser autosave, reload/restore, continued progress, and a capital-investment 30 decision through 2026Q4 quarter close
+- Source UI retained after reload: date `2026-12-30`, cash `$971.3M`, and `2026Q4` result
+- Proxy boundary: this exercised the exact source commit in Edge, not the MSIX desktop wrapper; normal desktop-app exit was not represented
 - Clean launch: blocked before launch by Windows Application Control policy
 - Start / gameplay / controls / Save / relaunch / Restore / continue / exit: NOT RUN because the exact payload did not launch
 
@@ -39,6 +42,9 @@ The package is not approved for sale or certification review in this state. The 
 - Package-extracted and QA-runtime `app.asar`: exact SHA match
 - Package-extracted and QA-runtime executable: exact SHA match
 - Native-save, Store packaging, new-profile start, current-save restore, malformed-save protection tests: PASS
+- Source UI browser proxy: PASS for clean-profile Start, automatic time progress, pause/resume, all seven primary tabs, browser autosave, reload/restore, continued progress, and a capital-investment 30 decision through 2020Q1 quarter close
+- Source UI retained after reload: date `2020-03-31`, cash `¥1,006M`, and `2020Q1` result
+- Proxy boundary: this exercised the exact source commit in Edge, not the MSIX desktop wrapper; normal desktop-app exit was not represented
 - Clean launch: blocked before launch by Windows Application Control policy
 - Start / gameplay / controls / Save / relaunch / Restore / continue / exit: NOT RUN because the exact payload did not launch
 
@@ -49,6 +55,10 @@ State: `RUNTIME_QA_REQUIRED_POLICY_BLOCK`.
 The located historical saves are under `store-screenshots/qa-user-data` and have QA/rejected/MSIX-test profile names. The game products are still unpublished Store drafts. These saves are classified `LEGACY_DEV_SAVE_NONBLOCKING`, not public-user saves.
 
 No old save was deleted. The current source tests prove that an invalid or old save remains protected, blocks Start, exposes export and explicit reset controls, and is not automatically removed. This is useful safety evidence but does not substitute for the missing exact-payload UI E2E.
+
+## Source UI proxy interpretation
+
+The Edge runs materially reduce uncertainty about Start, gameplay state transitions, navigation, quarterly decisions, browser persistence, and restore logic. They do not prove MSIX installation, Electron startup, native save-file behavior, process exit, or relaunch under the packaged identity. Therefore the proxy receives no certification-gate credit and the fail-closed state remains unchanged.
 
 ## Final outcome
 

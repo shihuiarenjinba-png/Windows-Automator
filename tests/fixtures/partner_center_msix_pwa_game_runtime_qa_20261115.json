@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "observed_at_utc": "2026-11-15T09:35:00Z",
+  "observed_at_utc": "2026-11-15T16:15:00Z",
   "route_id": "msix_pwa_game",
   "products": [
     {
@@ -24,6 +24,20 @@
         "package_and_runtime_exe_match": true
       },
       "static_regression": "PASS",
+      "source_ui_proxy": {
+        "scope": "BROWSER_SOURCE_UI_ONLY_NOT_MSIX_WRAPPER",
+        "clean_profile_start": "PASS",
+        "gameplay_progress": "PASS",
+        "major_navigation": "PASS_7_TABS",
+        "pause_resume": "PASS",
+        "save": "PASS_BROWSER_AUTOSAVE",
+        "relaunch": "PASS_BROWSER_RELOAD_PROXY",
+        "restore": "PASS_DATE_AND_FINANCIAL_STATE_RETAINED",
+        "continue": "PASS_DATE_ADVANCED_AFTER_RESTORE",
+        "major_decision": "PASS_CAPITAL_INVESTMENT_30_AND_QUARTER_CLOSE",
+        "normal_exit": "NOT_RUN_NOT_REPRESENTATIVE_OF_MSIX_EXIT",
+        "certification_gate_credit": false
+      },
       "runtime": {
         "clean_launch": "NOT_RUN_APPLICATION_CONTROL_POLICY_BLOCK",
         "start": "NOT_RUN",
@@ -60,6 +74,20 @@
         "package_and_runtime_exe_match": true
       },
       "static_regression": "PASS",
+      "source_ui_proxy": {
+        "scope": "BROWSER_SOURCE_UI_ONLY_NOT_MSIX_WRAPPER",
+        "clean_profile_start": "PASS",
+        "gameplay_progress": "PASS",
+        "major_navigation": "PASS_7_TABS",
+        "pause_resume": "PASS",
+        "save": "PASS_BROWSER_AUTOSAVE",
+        "relaunch": "PASS_BROWSER_RELOAD_PROXY",
+        "restore": "PASS_DATE_AND_FINANCIAL_STATE_RETAINED",
+        "continue": "PASS_DATE_ADVANCED_AFTER_RESTORE",
+        "major_decision": "PASS_CAPITAL_INVESTMENT_30_AND_QUARTER_CLOSE",
+        "normal_exit": "NOT_RUN_NOT_REPRESENTATIVE_OF_MSIX_EXIT",
+        "certification_gate_credit": false
+      },
       "runtime": {
         "clean_launch": "NOT_RUN_APPLICATION_CONTROL_POLICY_BLOCK",
         "start": "NOT_RUN",

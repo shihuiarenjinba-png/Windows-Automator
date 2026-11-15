@@ -180,6 +180,16 @@ class MsixGameCompleteTeacherDataTests(unittest.TestCase):
         )
         us, jp = runtime_fixture["products"]
         self.assertEqual(us["package"]["package_source_provenance"], "PASS")
+        self.assertEqual(
+            us["source_ui_proxy"]["scope"],
+            "BROWSER_SOURCE_UI_ONLY_NOT_MSIX_WRAPPER",
+        )
+        self.assertFalse(us["source_ui_proxy"]["certification_gate_credit"])
+        self.assertEqual(
+            us["runtime"]["clean_launch"],
+            "NOT_RUN_APPLICATION_CONTROL_POLICY_BLOCK",
+        )
+        self.assertFalse(jp["source_ui_proxy"]["certification_gate_credit"])
         self.assertEqual(jp["legacy_save"]["classification"], "LEGACY_DEV_SAVE_NONBLOCKING")
         self.assertFalse(jp["legacy_save"]["public_release_exposure"])
 
