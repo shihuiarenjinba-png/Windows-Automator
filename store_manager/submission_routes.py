@@ -106,7 +106,9 @@ ROUTE_TEMPLATES = {
         False,
         (
             "Use for existing UWP/MSIX games or PWA games.",
-            "Dedicated game live mapping and save-state evidence are not yet verified.",
+            "Two independent MSIX game Store Drafts have verified full Save/reload evidence.",
+            "The public one-command live adapter remains disabled until all verified GUI steps are integrated behind the product-profile gate.",
+            "Certification and Publish remain separate explicit owner gates.",
         ),
     ),
 }

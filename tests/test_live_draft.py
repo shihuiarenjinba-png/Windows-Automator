@@ -353,33 +353,47 @@ class LiveDraftTests(unittest.TestCase):
         mapping = json.loads((root / "docs" / "PARTNER_CENTER_MAP.json").read_text(encoding="utf-8"))
         game = mapping["routes"]["msix_pwa_game"]
         self.assertFalse(game["live_write_supported"])
-        self.assertEqual(game["hold_code"], "STORE_LISTINGS_WRITE_AND_RELOAD_PENDING")
+        self.assertEqual(game["hold_code"], "CERTIFICATION_REVIEW_GATES_PRESERVED")
         self.assertEqual(game["section_verification"]["packages_save"], "VERIFIED_MANUAL_SAVE")
         self.assertTrue(game["selectors"]["packages_warning_alert"]["verified"])
         self.assertFalse(game["selectors"]["packages_validation_state"]["verified"])
 
-    def test_two_product_listing_observation_keeps_upload_and_save_fail_closed(self):
+    def test_two_product_listing_write_is_verified_but_public_live_adapter_stays_gated(self):
         root = Path(__file__).parents[1]
         mapping = json.loads((root / "docs" / "PARTNER_CENTER_MAP.json").read_text(encoding="utf-8"))
         game = mapping["routes"]["msix_pwa_game"]
         self.assertEqual(game["observation_scope"]["observed_product_count"], 2)
-        self.assertEqual(game["section_verification"]["pricing_availability"], "VERIFIED_COMPLETE_READ_2_PRODUCTS")
-        self.assertEqual(game["section_verification"]["properties"], "VERIFIED_COMPLETE_READ_2_PRODUCTS")
-        self.assertEqual(game["section_verification"]["age_ratings"], "VERIFIED_COMPLETE_READ_2_PRODUCTS")
+        self.assertEqual(game["section_verification"]["pricing_availability"], "VERIFIED_COMPLETE_2_PRODUCTS")
+        self.assertEqual(game["section_verification"]["properties"], "VERIFIED_COMPLETE_2_PRODUCTS")
+        self.assertEqual(game["section_verification"]["age_ratings"], "VERIFIED_COMPLETE_2_PRODUCTS")
+        self.assertEqual(game["section_verification"]["store_listings"], "VERIFIED_COMPLETE_2_PRODUCTS")
         for key in (
             "store_listing_language_links",
             "store_listing_description",
             "store_listing_release_notes",
             "store_listing_first_feature",
+            "store_listing_add_feature",
+            "store_listing_keywords",
             "store_listing_desktop_tab",
+            "store_listing_screenshot_input",
+            "store_listing_screenshot_count",
             "store_listing_short_title",
             "store_listing_short_description",
             "store_listing_developed_by",
             "store_listing_save_button",
+            "store_listing_save_success",
+            "product_breadcrumb_overview_recovery",
+            "overview_section_states",
         ):
             self.assertTrue(game["selectors"][key]["verified"], key)
-        self.assertFalse(game["selectors"]["store_listing_screenshot_input"]["verified"])
-        self.assertFalse(game["selectors"]["store_listing_save_success"]["verified"])
+        self.assertEqual(
+            game["store_draft_write_supported"],
+            "VERIFIED_2_PRODUCT_PROFILE_GATED",
+        )
+        self.assertEqual(
+            game["teacher_data_status"],
+            "MULTI_PRODUCT_MSIX_GAME_ROUTE_VERIFIED",
+        )
         self.assertFalse(game["live_write_supported"])
 
     def test_observed_submission_options_fixture_teaches_composite_save_success(self):

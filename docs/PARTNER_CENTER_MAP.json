@@ -392,7 +392,12 @@
     },
     "msix_pwa_game": {
       "live_write_supported": false,
-      "observed_at_utc": "2026-11-05T04:32:24Z",
+      "store_draft_write_supported": "VERIFIED_2_PRODUCT_PROFILE_GATED",
+      "certification_write_supported": false,
+      "publish_write_supported": false,
+      "store_draft_status": "STORE_DRAFT_COMPLETE",
+      "teacher_data_status": "MULTI_PRODUCT_MSIX_GAME_ROUTE_VERIFIED",
+      "observed_at_utc": "2026-11-15T09:08:45Z",
       "observation_scope": {
         "observed_product_count": 2,
         "products": [
@@ -407,7 +412,7 @@
             "draft_id": "1152921505702134539"
           }
         ],
-        "mode": "TWO_PRODUCT_FULL_DRAFT_READ_AND_STORE_LISTING_OBSERVATION"
+        "mode": "TWO_PRODUCT_FULL_STORE_DRAFT_SAVE_RELOAD_VERIFIED"
       },
       "submission_options_restricted_capability_write_supported": true,
       "section_verification": {
@@ -418,10 +423,10 @@
         "package_validation": "OBSERVED_WARNING_ONLY",
         "packages_save": "VERIFIED_MANUAL_SAVE",
         "reload_verification": "VERIFIED_SAVED_PACKAGE_RECONCILIATION",
-        "pricing_availability": "VERIFIED_COMPLETE_READ_2_PRODUCTS",
-        "properties": "VERIFIED_COMPLETE_READ_2_PRODUCTS",
-        "age_ratings": "VERIFIED_COMPLETE_READ_2_PRODUCTS",
-        "store_listings": "VERIFIED_FORM_AND_LANGUAGE_READ_2_PRODUCTS_WRITE_PENDING",
+        "pricing_availability": "VERIFIED_COMPLETE_2_PRODUCTS",
+        "properties": "VERIFIED_COMPLETE_2_PRODUCTS",
+        "age_ratings": "VERIFIED_COMPLETE_2_PRODUCTS",
+        "store_listings": "VERIFIED_COMPLETE_2_PRODUCTS",
         "submission_options": "VERIFIED_2_PRODUCTS_RESTRICTED_CAPABILITY_EXPLANATION",
         "submission_options_restricted_capabilities": "VERIFIED_2_PRODUCTS",
         "submission_options_save": "VERIFIED_2_PRODUCTS",
@@ -490,11 +495,14 @@
           "evidence": "Manual Save success was proven by Overview Complete/Validated plus reload retaining 0.25.25.0 and removing 0.25.15.0. Save button enabled state is not a success signal."
         },
         "overview_section_states": {
-          "strategy": "css",
-          "selector": "",
-          "exact_states": {},
-          "verified": false,
-          "evidence": "Post-save section states were observed, but a reusable generic selector for every required section is not yet verified."
+          "strategy": "exact_section_label_parent_text",
+          "selector": "Pricing and availability | Properties | Age ratings | Packages | Store listings | Submission options",
+          "exact_states": {
+            "Complete": "COMPLETE"
+          },
+          "verified": true,
+          "observed_products": 2,
+          "evidence": "After final reload, all six required rows reported Complete on both independent game product Overviews. Package identity and Validated remain separate required postconditions."
         },
         "submission_options_restricted_capability_container": {
           "strategy": "css",
@@ -557,6 +565,24 @@
           "observed_products": 2,
           "evidence": "The first repeatable Product features input used the same id on both products."
         },
+        "store_listing_add_feature": {
+          "strategy": "role",
+          "selector": "button",
+          "name": "Add more",
+          "exact": true,
+          "verified": true,
+          "observed_products": 2,
+          "evidence": "Each additional Product features field was created through the exact Add more button; five exact feature values were retained after Save/reload."
+        },
+        "store_listing_keywords": {
+          "strategy": "role_scoped_to_field",
+          "selector": "[role='combobox']",
+          "scope": "Additional info keyword field",
+          "commit_key": "Enter",
+          "verified": true,
+          "observed_products": 2,
+          "evidence": "Each exact keyword was committed with Enter and all seven chips were present exactly once before Save and after language reconciliation."
+        },
         "store_listing_desktop_tab": {
           "strategy": "css",
           "selector": "#tab-0",
@@ -565,10 +591,20 @@
           "evidence": "Desktop was tab-0 on US and JP. The panel requires at least one PNG and recommends 1366x768 or larger."
         },
         "store_listing_screenshot_input": {
-          "strategy": "css",
-          "selector": "",
-          "verified": false,
-          "evidence": "The accessible tree exposed the upload button but not a unique file input. Live upload stays fail-closed until the DOM input is observed."
+          "strategy": "scoped_filechooser",
+          "selector": "he-button.new-image-button",
+          "scope": "selected Desktop tab in he-tabs",
+          "verified": true,
+          "observed_products": 2,
+          "evidence": "One exact PNG was supplied per chooser invocation. Desktop and thumbnail counts increased by exactly one before the next upload; both products retained five final-version screenshots per listing."
+        },
+        "store_listing_screenshot_count": {
+          "strategy": "exact_tab_text_and_thumbnail_count",
+          "selector": "#tab-0",
+          "exact_final_count": 5,
+          "verified": true,
+          "observed_products": 2,
+          "evidence": "The verified count sequence was 0,1,2,3,4,5 for the US Japanese listing; equivalent five-image postconditions were retained across both products."
         },
         "store_listing_short_title": {
           "strategy": "css",
@@ -589,7 +625,7 @@
           "selector": "input#devStudio",
           "verified": true,
           "observed_products": 2,
-          "evidence": "Observed on both products. US currently contains internal review text that must be replaced by a public developer name."
+          "evidence": "Observed and saved on both products. The public value Okinawa Desktop Tools replaced the former US internal review note and was retained after reload."
         },
         "store_listing_save_button": {
           "strategy": "role",
@@ -601,16 +637,28 @@
         },
         "store_listing_save_success": {
           "strategy": "composite_overview_reload_assets",
-          "selector": "",
-          "verified": false,
-          "evidence": "Write is pending. Success will require exact reloaded text, expected screenshot count, pristine form, and Overview Complete."
+          "selector": "a[href*='/listings?languageid='][href*='languagecode=']",
+          "exact_states": {
+            "Complete": "SAVED"
+          },
+          "verified": true,
+          "observed_products": 2,
+          "evidence": "Save returned to the same product Overview. Reopen/reload retained exact text and five Desktop images, Manage languages reported every selected locale Complete, and Overview reported Store listings Complete."
+        },
+        "product_breadcrumb_overview_recovery": {
+          "strategy": "exact_product_name",
+          "selector": "shell_he-breadcrumb-item[data-bi-name='functionBreadcrumb'][href='#']",
+          "name_template": "{product_name}",
+          "verified": true,
+          "observed_products": 2,
+          "evidence": "Selecting the top exact product breadcrumb returned a section page to the same Store ID product Overview; the automation must then verify the same product before continuing."
         }
       },
-      "hold_code": "STORE_LISTINGS_WRITE_AND_RELOAD_PENDING",
-      "hold_detail": "Pricing, Properties, Age ratings, Packages, and Submission Options are Complete for both products. Final US and JP runtime screenshots are captured and version-bound. Store listing upload, Save/reload, and the JP existing-save migration concern remain fail-closed.",
+      "hold_code": "CERTIFICATION_REVIEW_GATES_PRESERVED",
+      "hold_detail": "All six required Store Draft sections are Complete and retained after reload on both game products. Certification and publication remain prohibited. The JP product also retains its separately recorded protected legacy-save compatibility review hold.",
       "product_certification_gates": {
-        "9PJCWW6G6D42": "HOLD_STORE_LISTING_PENDING",
-        "9PM2R3N22JX8": "HOLD_STORE_LISTING_AND_EXISTING_SAVE_MIGRATION"
+        "9PJCWW6G6D42": "READY_FOR_CERTIFICATION_REVIEW",
+        "9PM2R3N22JX8": "HOLD_EXISTING_SAVE_MIGRATION_REVIEW"
       }
     }
   },

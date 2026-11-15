@@ -43,6 +43,27 @@ class StoreListingDraft:
     screenshots: tuple[str, ...]
 
 
+@dataclass(frozen=True)
+class StoreListingSaveObservation:
+    """Signals required to advance a live Store listing after Save.
+
+    A button click, redirect, or file-chooser completion is never sufficient on
+    its own.  The route advances only after the exact listing is reloaded, all
+    expected assets are retained, and every selected language is Complete.
+    """
+
+    save_requested: bool = False
+    redirected_to_overview: bool = False
+    overview_state: str = "Unknown"
+    reload_completed: bool = False
+    exact_fields_retained: bool = False
+    expected_screenshot_count: int = 0
+    reloaded_screenshot_count: int = 0
+    language_states: tuple[str, ...] = ()
+    dirty: bool = True
+    product_breadcrumb_available: bool = False
+
+
 def plan_listing_languages(
     package_languages: tuple[str, ...],
     additional_languages: tuple[str, ...],
@@ -163,3 +184,31 @@ def screenshot_upload_next_action(
             return "SAFE_RETRY_ALLOWED"
         return "SCREENSHOT_RECONCILE_REQUIRED"
     return "HOLD_AMBIGUOUS_SCREENSHOT_UPLOAD"
+
+
+def store_listing_next_action(observation: StoreListingSaveObservation) -> str:
+    """Return the deterministic next action for the listing Save/reload flow."""
+
+    if not observation.save_requested:
+        return "SAVE_LISTING"
+    if not observation.redirected_to_overview:
+        if observation.product_breadcrumb_available:
+            return "CLICK_EXACT_PRODUCT_BREADCRUMB"
+        return "OVERVIEW_RECONCILE_REQUIRED"
+    if observation.overview_state == "Incomplete":
+        return "HOLD_STORE_LISTING_INCOMPLETE"
+    if observation.overview_state != "Complete":
+        return "HOLD_UNKNOWN_STORE_LISTING_STATE"
+    if not observation.reload_completed:
+        return "REOPEN_AND_RELOAD_LISTING"
+    if observation.expected_screenshot_count <= 0:
+        return "HOLD_INVALID_SCREENSHOT_COUNT"
+    if observation.reloaded_screenshot_count != observation.expected_screenshot_count:
+        return "HOLD_STORE_LISTING_RECONCILE_FAILED"
+    if not observation.exact_fields_retained or observation.dirty:
+        return "HOLD_STORE_LISTING_RECONCILE_FAILED"
+    if not observation.language_states or any(
+        state != "Complete" for state in observation.language_states
+    ):
+        return "HOLD_STORE_LISTING_LANGUAGE_INCOMPLETE"
+    return "LISTING_SAVED"

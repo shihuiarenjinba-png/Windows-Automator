@@ -82,7 +82,7 @@ GDK専用の実画面/API/MakePkg upload経路を観測してからlive有効化
 - PWA game
 
 アプリ用MSIXと共通する部分はあるが、game genre / IARC / game propertiesを別テンプレートとして保持する。
-ゲーム専用live mapping確認前は自動書込み禁止。
+STRATEGY MARKET US / JPの2製品で、ゲーム固有のStore Draft全6section、言語別listing、画像upload、Save、再読込、Overview照合まで実測済み。製品profileを固定した既知Store Draft操作は教師データとして使用できるが、公開された一括GUI adapterへ全手順を統合するまでは`live_write_supported=false`を維持する。
 
 ## 共通処理
 
@@ -105,7 +105,7 @@ AIはテンプレートを変更しない。AIはテンプレートが許可し�
 
 - `msix_pwa_app`: Folio AIとDaymark AIの2製品で、既存製品照合、MSIX upload、Microsoft解析、既知exact `runFullTrust` warning、Packages Save、価格、Properties、IARC、英日listing、Submission Options、全sectionのSave/reloadまで実測済み。`store_draft_write_supported=VERIFIED_2_PRODUCT_PROFILE_GATED`。ただし現在の実装adapterは全sectionのGUI実行をまだ一つの公開コマンドへ統合していないため、`live_write_supported=false`を維持する。Certification / Publishは別gate。
 - `exe_msi_app` / `gdk_game`: 専用実画面map未検証。`LIVE_ROUTE_NOT_VERIFIED` でブラウザー書込み前に製品HOLD。
-- `msix_pwa_game`: STRATEGY MARKET US / JPの2製品で複数sectionを観測済みだが、App routeとは別mapとしてfail-closedを維持する。Game固有のcategory / IARC / listingをApp routeからコピーしない。
+- `msix_pwa_game`: STRATEGY MARKET US / JPの2製品で、Packages、価格、Properties、IARC、言語別listing、Submission Options、全sectionのSave/reloadとOverview再照合を実測済み。`store_draft_write_supported=VERIFIED_2_PRODUCT_PROFILE_GATED`、`teacher_data_status=MULTI_PRODUCT_MSIX_GAME_ROUTE_VERIFIED`。ただし現在の実装adapterは全sectionのGUI実行を一つの公開コマンドへ統合していないため、`live_write_supported=false`を維持する。Game固有のcategory / IARC / listingをApp routeからコピーしない。
 - selector mapはschema 3でroute別に管理し、別routeのselectorを流用しない。
 - package validationの `WARNING` は、全文が既知exact `runFullTrust` warningのみで、Manifest/Partner Center capabilityが一致する場合だけ既知routeとして続行する。未知warning/errorはHOLD。
 - certification submit / publishは自動操作対象外。

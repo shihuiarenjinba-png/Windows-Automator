@@ -8,9 +8,11 @@ import unittest
 
 from store_manager.store_listings import (
     StoreListingDraft,
+    StoreListingSaveObservation,
     StoreListingValidationError,
     plan_listing_languages,
     screenshot_upload_next_action,
+    store_listing_next_action,
     store_listing_save_succeeded,
     validate_store_listing,
 )
@@ -150,6 +152,61 @@ class StoreListingTests(unittest.TestCase):
             ),
             "HOLD_AMBIGUOUS_SCREENSHOT_UPLOAD",
         )
+
+    def test_listing_state_machine_teaches_save_reload_and_breadcrumb_recovery(self):
+        base = dict(
+            save_requested=True,
+            redirected_to_overview=True,
+            overview_state="Complete",
+            reload_completed=True,
+            exact_fields_retained=True,
+            expected_screenshot_count=5,
+            reloaded_screenshot_count=5,
+            language_states=("Complete", "Complete"),
+            dirty=False,
+        )
+        self.assertEqual(
+            store_listing_next_action(StoreListingSaveObservation(**base)),
+            "LISTING_SAVED",
+        )
+        recovery = dict(base)
+        recovery.update(
+            redirected_to_overview=False,
+            reload_completed=False,
+            product_breadcrumb_available=True,
+        )
+        self.assertEqual(
+            store_listing_next_action(StoreListingSaveObservation(**recovery)),
+            "CLICK_EXACT_PRODUCT_BREADCRUMB",
+        )
+
+    def test_listing_state_machine_fails_closed_on_unknown_or_partial_writes(self):
+        base = dict(
+            save_requested=True,
+            redirected_to_overview=True,
+            overview_state="Complete",
+            reload_completed=True,
+            exact_fields_retained=True,
+            expected_screenshot_count=5,
+            reloaded_screenshot_count=5,
+            language_states=("Complete", "Complete"),
+            dirty=False,
+        )
+        cases = (
+            ("overview_state", "Unknown", "HOLD_UNKNOWN_STORE_LISTING_STATE"),
+            ("reloaded_screenshot_count", 4, "HOLD_STORE_LISTING_RECONCILE_FAILED"),
+            ("exact_fields_retained", False, "HOLD_STORE_LISTING_RECONCILE_FAILED"),
+            ("dirty", True, "HOLD_STORE_LISTING_RECONCILE_FAILED"),
+            ("language_states", ("Complete", "Incomplete"), "HOLD_STORE_LISTING_LANGUAGE_INCOMPLETE"),
+        )
+        for key, value, expected in cases:
+            with self.subTest(key=key):
+                changed = dict(base)
+                changed[key] = value
+                self.assertEqual(
+                    store_listing_next_action(StoreListingSaveObservation(**changed)),
+                    expected,
+                )
 
     def test_us_jp_live_fixture_has_public_text_and_version_bound_assets(self):
         fixture_path = (
