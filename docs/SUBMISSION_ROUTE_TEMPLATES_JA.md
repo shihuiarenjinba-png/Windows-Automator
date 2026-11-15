@@ -18,7 +18,7 @@ Partner Center の `New product` で表示される4種類を、Windows-Automato
 固定:
 - app
 - discoverable
-- free trial = none
+- free trial = `none` を安全な既定値とする。上流でオーナー承認済みの有料製品は、`7_days` などPartner Center実選択肢に完全一致する値だけ製品固有入力として上書き可
 - publish hold = manual publish
 - 既定市場 = all_markets
 
