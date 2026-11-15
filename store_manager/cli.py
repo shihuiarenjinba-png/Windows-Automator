@@ -3,7 +3,11 @@ import argparse,json
 from pathlib import Path
 from .core import ProductInput,apply_fixed_rules,validate_product,run_queue,QueuePolicy,render_markdown
 from .partner_center import dryrun_uploader
-from .live_draft import LiveDraftWorkflow,LivePlaywrightConnection
+from .live_draft import (
+    LiveDraftWorkflow,
+    LivePlaywrightConnection,
+    UNKNOWN_PARTNER_CENTER_STATE,
+)
 from .github_context import fetch_context
 from .ollama import complete_product
 
@@ -17,6 +21,12 @@ def main():
     i.add_argument("--cdp-url",required=True,help="CDP endpoint for one already-authenticated Partner Center tab")
     i.add_argument("--selector-map",default=str(Path(__file__).resolve().parents[1]/"docs"/"PARTNER_CENTER_MAP.json"))
     i.add_argument("--evidence-dir",default="partner-center-evidence")
+    s=sp.add_parser("inspect-existing-submission-state")
+    s.add_argument("--input",required=True,help="Prepared ProductInput JSON for one existing Store product")
+    s.add_argument("--output",required=True,help="Read-only submission-state receipt JSON")
+    s.add_argument("--cdp-url",required=True,help="CDP endpoint for one already-authenticated Partner Center tab")
+    s.add_argument("--selector-map",default=str(Path(__file__).resolve().parents[1]/"docs"/"PARTNER_CENTER_MAP.json"))
+    s.add_argument("--evidence-dir",default="partner-center-evidence")
     n=sp.add_parser("night-run"); n.add_argument("--queue",required=True); n.add_argument("--json-report",required=True); n.add_argument("--markdown-report",required=True)
     n.add_argument("--execution-mode",choices=("dry_run","live"),default="dry_run")
     n.add_argument("--confirm-live-draft",action="store_true",help="Explicitly authorize Partner Center package upload and Save draft only")
@@ -78,6 +88,49 @@ def main():
         Path(a.output).parent.mkdir(parents=True,exist_ok=True)
         Path(a.output).write_text(json.dumps(receipt,ensure_ascii=False,indent=2)+"\n",encoding="utf-8")
         print(json.dumps({"status":receipt["status"],"output":a.output},ensure_ascii=False))
+        return
+    if a.cmd=="inspect-existing-submission-state":
+        product=ProductInput.load(a.input)
+        if not all(str(getattr(product,name,"") or "").strip() for name in (
+            "product_name","store_product_id","identity_name","identity_publisher"
+        )):
+            raise SystemExit("submission-state inspection requires existing product and exact identity values")
+        with LivePlaywrightConnection(a.cdp_url,a.selector_map,a.evidence_dir) as port:
+            result=port.inspect_existing_product_submission_state(product)
+        kind_matches=(
+            not result.required_submission_kind
+            or product.submission_kind==result.required_submission_kind
+        )
+        status=(
+            "HOLD_UNKNOWN_SUBMISSION_STATE"
+            if result.state==UNKNOWN_PARTNER_CENTER_STATE
+            else "HOLD_SUBMISSION_KIND_MISMATCH"
+            if not kind_matches
+            else "READ_ONLY_SUBMISSION_STATE_CLASSIFIED"
+        )
+        receipt={
+            "schema_version":"existing-product-submission-state-receipt/1",
+            "status":status,
+            "submission_state":result.state,
+            "required_submission_kind":result.required_submission_kind,
+            "current_submission_kind":product.submission_kind,
+            "submission_kind_matches":kind_matches,
+            "hold_code":result.hold_code,
+            "store_id":product.store_product_id,
+            "draft_id":result.draft_id,
+            "draft_url":result.draft_url,
+            "created_or_reserved_product":False,
+            "submission_started":False,
+            "start_submission_clicked":False,
+            "start_update_clicked":False,
+            "package_uploaded":False,
+            "pricing_changed":False,
+            "submitted":False,
+            "published":False,
+        }
+        Path(a.output).parent.mkdir(parents=True,exist_ok=True)
+        Path(a.output).write_text(json.dumps(receipt,ensure_ascii=False,indent=2)+"\n",encoding="utf-8")
+        print(json.dumps({"status":status,"submission_state":result.state,"output":a.output},ensure_ascii=False))
         return
     raw=json.loads(Path(a.queue).read_text(encoding="utf-8")); products=[ProductInput.from_dict(x) for x in raw]
     if a.execution_mode=="live":

@@ -61,6 +61,110 @@ class DraftContext:
     draft_url: str
 
 
+EXISTING_PRODUCT_INITIAL_SUBMISSION = "EXISTING_PRODUCT_INITIAL_SUBMISSION"
+EXISTING_PRODUCT_DRAFT_PRESENT = "EXISTING_PRODUCT_DRAFT_PRESENT"
+EXISTING_PRODUCT_UPDATE_AVAILABLE = "EXISTING_PRODUCT_UPDATE_AVAILABLE"
+UNKNOWN_PARTNER_CENTER_STATE = "UNKNOWN_PARTNER_CENTER_STATE"
+
+
+@dataclass(frozen=True)
+class SubmissionStateObservation:
+    """Read-only signals from one existing Partner Center product.
+
+    Buttons are evidence only. No caller may infer permission to click Start
+    submission or Start update from this observation.
+    """
+
+    store_product_id: str
+    existing_product_verified: bool
+    draft_packages_urls: tuple[str, ...] = ()
+    start_submission_visible: bool = False
+    start_update_visible: bool = False
+    current_packages_page_verified: bool = False
+    active_package_count: int | None = None
+
+
+@dataclass(frozen=True)
+class SubmissionStateResult:
+    state: str
+    required_submission_kind: str = ""
+    draft_id: str = ""
+    draft_url: str = ""
+    hold_code: str = ""
+
+
+def classify_existing_product_submission_state(
+    observation: SubmissionStateObservation,
+) -> SubmissionStateResult:
+    """Classify an existing product without starting or updating a submission."""
+
+    product_id = observation.store_product_id.strip()
+    if not product_id or not observation.existing_product_verified:
+        return SubmissionStateResult(
+            UNKNOWN_PARTNER_CENTER_STATE,
+            hold_code="HOLD_UNKNOWN_SUBMISSION_STATE",
+        )
+
+    draft_matches: list[tuple[str, str]] = []
+    for url in observation.draft_packages_urls:
+        match = re.search(
+            rf"/products/{re.escape(product_id)}/submissions/(\d+)/packages(?:$|[?#])",
+            url,
+        )
+        if match:
+            draft_id = match.group(1)
+            draft_matches.append(
+                (
+                    draft_id,
+                    f"{PARTNER_HOST}en-us/dashboard/products/{product_id}/submissions/{draft_id}",
+                )
+            )
+    if len(observation.draft_packages_urls) == 1 and len(draft_matches) == 1:
+        draft_id, draft_url = draft_matches[0]
+        return SubmissionStateResult(
+            EXISTING_PRODUCT_DRAFT_PRESENT,
+            draft_id=draft_id,
+            draft_url=draft_url,
+        )
+    if observation.draft_packages_urls:
+        return SubmissionStateResult(
+            UNKNOWN_PARTNER_CENTER_STATE,
+            hold_code="HOLD_UNKNOWN_SUBMISSION_STATE",
+        )
+
+    initial_submission = (
+        observation.start_submission_visible
+        and not observation.start_update_visible
+        and observation.current_packages_page_verified
+        and observation.active_package_count == 0
+    )
+    if initial_submission:
+        return SubmissionStateResult(
+            EXISTING_PRODUCT_INITIAL_SUBMISSION,
+            required_submission_kind="new",
+            hold_code="HOLD_INITIAL_SUBMISSION_ROUTE_REQUIRED",
+        )
+
+    update_available = (
+        observation.start_update_visible
+        and not observation.start_submission_visible
+        and observation.current_packages_page_verified
+        and isinstance(observation.active_package_count, int)
+        and observation.active_package_count > 0
+    )
+    if update_available:
+        return SubmissionStateResult(
+            EXISTING_PRODUCT_UPDATE_AVAILABLE,
+            required_submission_kind="update",
+            hold_code="HOLD_UPDATE_SUBMISSION_ROUTE_REQUIRED",
+        )
+
+    return SubmissionStateResult(
+        UNKNOWN_PARTNER_CENTER_STATE,
+        hold_code="HOLD_UNKNOWN_SUBMISSION_STATE",
+    )
+
+
 @dataclass(frozen=True)
 class PackageState:
     validation: str
@@ -376,6 +480,7 @@ def submission_options_save_succeeded(
 
 class PartnerCenterPort(Protocol):
     def ensure_route_ready(self, product: ProductInput) -> None: ...
+    def inspect_existing_product_submission_state(self, product: ProductInput) -> SubmissionStateResult: ...
     def verify_product_and_draft(self, product: ProductInput) -> DraftContext: ...
     def upload_package(self, product: ProductInput, context: DraftContext) -> PackageState: ...
     def save_packages(self, product: ProductInput, context: DraftContext) -> None: ...
@@ -732,6 +837,12 @@ class PlaywrightPartnerCenterPort:
         if locator.count() != 1:
             raise LiveGateError(f"expected exactly one visible text {text!r}; got {locator.count()}")
 
+    def _visible_exact_text_count(self, text: str) -> int:
+        return sum(1 for item in self.page.get_by_text(text, exact=True).all() if item.is_visible())
+
+    def _visible_locator_count(self, selector: str) -> int:
+        return sum(1 for item in self.page.locator(selector).all() if item.is_visible())
+
     def verify_existing_identity_values(
         self,
         *,
@@ -782,7 +893,9 @@ class PlaywrightPartnerCenterPort:
             "package_sid": package_sid,
         }
 
-    def verify_product_and_draft(self, product: ProductInput) -> DraftContext:
+    def inspect_existing_product_submission_state(self, product: ProductInput) -> SubmissionStateResult:
+        """Read one existing product state without clicking any Start control."""
+
         identity_url = f"{PARTNER_HOST}en-us/dashboard/products/{product.store_product_id}/identity"
         self._goto(identity_url)
         self._exact_text_present(product.product_name)
@@ -792,16 +905,54 @@ class PlaywrightPartnerCenterPort:
 
         overview_url = f"{PARTNER_HOST}en-us/dashboard/products/{product.store_product_id}/overview"
         self._goto(overview_url)
-        packages_link = self._one("overview_packages_link")
-        href = packages_link.get_attribute("href") or ""
-        match = re.search(r"/submissions/(\d+)/packages(?:$|[?#])", href)
-        if not match:
-            raise LiveGateError("an existing draft Packages URL was not found; Start update is not guessed")
-        draft_id = match.group(1)
-        if product.draft_id and product.draft_id != draft_id:
+        draft_packages_urls = tuple(
+            href
+            for link in self.page.locator("a[href]").all()
+            if (href := (link.get_attribute("href") or "").strip())
+            and re.search(
+                rf"/products/{re.escape(product.store_product_id)}/submissions/\d+/packages(?:$|[?#])",
+                href,
+            )
+        )
+        start_submission_visible = self._visible_exact_text_count("Start submission") == 1
+        start_update_visible = self._visible_exact_text_count("Start update") == 1
+
+        current_packages_url = f"{PARTNER_HOST}en-us/dashboard/apps/{product.store_product_id}/managepackages"
+        self._goto(current_packages_url)
+        current_packages_page_verified = (
+            self._visible_exact_text_count("Your active packages are listed below.") == 1
+        )
+        active_package_count = None
+        if current_packages_page_verified:
+            active_package_count = self._visible_locator_count("table tbody tr")
+
+        observation = SubmissionStateObservation(
+            store_product_id=product.store_product_id,
+            existing_product_verified=True,
+            draft_packages_urls=draft_packages_urls,
+            start_submission_visible=start_submission_visible,
+            start_update_visible=start_update_visible,
+            current_packages_page_verified=current_packages_page_verified,
+            active_package_count=active_package_count,
+        )
+        return classify_existing_product_submission_state(observation)
+
+    def verify_product_and_draft(self, product: ProductInput) -> DraftContext:
+        result = self.inspect_existing_product_submission_state(product)
+        if result.state == EXISTING_PRODUCT_INITIAL_SUBMISSION:
+            raise LiveGateError(
+                "HOLD_INITIAL_SUBMISSION_ROUTE_REQUIRED: existing product has no active package or draft; "
+                "submission_kind must be new and Start submission is never clicked automatically"
+            )
+        if result.state == EXISTING_PRODUCT_UPDATE_AVAILABLE:
+            raise LiveGateError(
+                "HOLD_UPDATE_SUBMISSION_ROUTE_REQUIRED: Start update is available but is never clicked automatically"
+            )
+        if result.state != EXISTING_PRODUCT_DRAFT_PRESENT:
+            raise LiveGateError("HOLD_UNKNOWN_SUBMISSION_STATE: Partner Center state is not an exact supported state")
+        if product.draft_id and product.draft_id != result.draft_id:
             raise LiveGateError("draft_id does not match the current Partner Center draft")
-        draft_url = f"{PARTNER_HOST}en-us/dashboard/products/{product.store_product_id}/submissions/{draft_id}"
-        return DraftContext(product.store_product_id, draft_id, draft_url)
+        return DraftContext(product.store_product_id, result.draft_id, result.draft_url)
 
     def _read_package_state(self) -> PackageState:
         validation_spec = self.map.exact("packages_validation_state")
