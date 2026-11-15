@@ -23,6 +23,7 @@ from store_manager.live_draft import (
     PackageValidationError,
     REQUIRED_SECTIONS,
     SelectorMap,
+    PlaywrightPartnerCenterPort,
     normalize_partner_center_state,
     restricted_capability_text_retained,
     save_restricted_capability_explanations,
@@ -136,7 +137,49 @@ class FakeRestrictedCapabilityPort:
         return dict(self.filled),{key:False for key in self.filled}
 
 
+class _IdentityLocator:
+    def __init__(self,count): self._count=count
+    def count(self): return self._count
+
+class _IdentityPage:
+    def __init__(self,texts):
+        self.texts=set(texts)
+        self.url="https://partner.microsoft.com/en-us/dashboard/apps-and-games/overview"
+    def goto(self,url,wait_until=None,timeout=None): self.url=url
+    def locator(self,selector):
+        if selector=="input[type='password']": return _IdentityLocator(0)
+        return _IdentityLocator(0)
+    def get_by_text(self,text,exact=True):
+        return _IdentityLocator(1 if exact and text in self.texts else 0)
+
 class LiveDraftTests(unittest.TestCase):
+    def test_existing_identity_reverify_is_read_only_exact_match(self):
+        values={
+            "Folder Automation Engine",
+            "9P99MJX1R4V6",
+            "OkinawaDesktopTools.FolderAutomationEngine",
+            "CN=46263F21-A700-41DB-8C9B-114C22FB82FC",
+            "OkinawaDesktopTools.FolderAutomationEngine_j8yefg9jgfh58",
+            "S-1-15-2-795676864-310991790-2802347502-2718627192-2651328981-310414558-459028798",
+        }
+        page=_IdentityPage(values)
+        port=PlaywrightPartnerCenterPort(
+            page,
+            SelectorMap({"schema_version":3,"routes":{}}),
+            Path("."),
+        )
+        result=port.verify_existing_identity_values(
+            product_name="Folder Automation Engine",
+            store_product_id="9P99MJX1R4V6",
+            identity_name="OkinawaDesktopTools.FolderAutomationEngine",
+            identity_publisher="CN=46263F21-A700-41DB-8C9B-114C22FB82FC",
+            package_family_name="OkinawaDesktopTools.FolderAutomationEngine_j8yefg9jgfh58",
+            package_sid="S-1-15-2-795676864-310991790-2802347502-2718627192-2651328981-310414558-459028798",
+        )
+        self.assertEqual(result["status"],"EXISTING_IDENTITY_EXACT_MATCH")
+        self.assertTrue(result["partner_center_reverified"])
+        self.assertIn("/products/9P99MJX1R4V6/identity",page.url)
+
     def test_restricted_capability_workflow_fills_saves_and_reload_verifies(self):
         with tempfile.TemporaryDirectory() as directory:
             product=live_product(Path(directory))
