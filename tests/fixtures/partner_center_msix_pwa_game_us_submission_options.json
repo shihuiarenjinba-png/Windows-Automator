@@ -1,0 +1,46 @@
+{
+  "schema_version": 1,
+  "observed_at_utc": "2026-11-04T12:19:25Z",
+  "route_id": "msix_pwa_game",
+  "product": {
+    "name": "STRATEGY MARKET US",
+    "store_product_id": "9PJCWW6G6D42",
+    "draft_id": "1152921505702134687"
+  },
+  "package_state": {
+    "filename": "STRATEGY_MARKET_USA_0.25.25.0_FINAL_UI_STORE_CANDIDATE_x64.msix",
+    "version": "0.25.25.0",
+    "architecture": "X64",
+    "old_version_present_after_reload": false,
+    "package_acceptance_state": "WARNING",
+    "packages_overview_state": "COMPLETE"
+  },
+  "restricted_capability": {
+    "name": "runFullTrust",
+    "manifest_declared": true,
+    "container_selector": "section.section:has(h2[data-l10n-key='resCapSectionHeader'])",
+    "textarea_selector": "section.section:has(h2[data-l10n-key='resCapSectionHeader']):has(span:text-is('runFullTrust')) textarea.text-area-width[maxlength='500']",
+    "textarea_count": 1,
+    "maxlength": 500,
+    "explanation": "This product is a packaged Windows desktop game. The runFullTrust capability is required because the package launches its normal desktop process at the standard desktop (medium integrity) trust level rather than as an AppContainer application. The capability is used only to run the packaged desktop game and provide its normal local desktop functionality. It is not used to request administrator elevation."
+  },
+  "save_observation": {
+    "save_button_role": "button",
+    "save_button_name": "Save",
+    "after_click_url_suffix": "/submissions/1152921505702134687",
+    "overview_section_state": "Complete",
+    "overview_state": "Complete",
+    "reload_value_exact_match": true,
+    "reload_textarea_state": "PRISTINE",
+    "textarea_dirty_after_reload": false,
+    "save_button_enabled_after_reload": true,
+    "save_button_enabled_is_success_signal": false
+  },
+  "outcome": {
+    "status": "PACKAGE_SAVED_CAPABILITY_REVIEW",
+    "restricted_capability_explanation_saved": true,
+    "certification_gate": "HOLD",
+    "submitted": false,
+    "published": false
+  }
+}

@@ -1,0 +1,91 @@
+{
+  "schema_version": 1,
+  "observed_at_utc": "2026-11-11T00:00:00Z",
+  "route_id": "msix_pwa_app",
+  "mode": "READ_ONLY_PREUPLOAD_NO_SAVE",
+  "product": {
+    "name": "Folio AI",
+    "product_type": "MSIX or PWA app",
+    "store_id": "9P0VNLJ5FPF5",
+    "draft_id": "1152921505702219486",
+    "submission_number": 1,
+    "submission_state": "In draft"
+  },
+  "identity": {
+    "name": "OkinawaDesktopTools.FolioAI",
+    "publisher": "CN=46263F21-A700-41DB-8C9B-114C22FB82FC",
+    "publisher_display_name": "Okinawa Desktop Tools"
+  },
+  "candidate": {
+    "filename": "FolioAI_1.0.3.0_x64_STORE_CANDIDATE_UNSIGNED.msix",
+    "version": "1.0.3.0",
+    "architecture": "x64",
+    "sha256": "AEECFA80D79FFD9AFE2B290DCEF8E390FC0CA9433CC73335368B1164D9F4E459",
+    "source_sha": "cbb9de223c0eac79563651ba2d0ae22e43653d68"
+  },
+  "observed_sections": {
+    "pricing_availability": {
+      "overview_state": "In progress",
+      "markets": "All worldwide markets",
+      "future_markets": true,
+      "audience": "Public audience",
+      "discoverability": "Make this product available and discoverable in the Microsoft Store.",
+      "release": "as soon as possible",
+      "stop_acquisition": "never",
+      "base_price_configured": false,
+      "observed_messages": [
+        "No PriceSchedule created for purchasable product.",
+        "You must configure a price for this product."
+      ]
+    },
+    "properties": {
+      "overview_state": "Not started",
+      "primary_category": "Pick a category",
+      "privacy_declaration": "Choose an answer to see corresponding actions",
+      "support_website": "",
+      "support_contact": "",
+      "generative_ai_checked": false
+    },
+    "age_ratings": {
+      "overview_state": "Not started",
+      "questionnaire_mode": "I'm ready to complete the International Age Rating Coalition (IARC) questionnaire.",
+      "app_type_selected": false,
+      "direct_board_rating": "No"
+    },
+    "packages": {
+      "overview_state": "In progress",
+      "package_count": 0,
+      "desktop_checked": false,
+      "mobile_checked": false,
+      "xbox_checked": false,
+      "team_checked": false,
+      "mixed_reality_checked": false,
+      "future_device_families_checked": true,
+      "save_label": "Save"
+    },
+    "store_listings": {
+      "overview_state": "In progress",
+      "package_languages_visible": false,
+      "observed_message": "We'll display languages here after you upload packages.",
+      "save_enabled": false
+    },
+    "submission_options": {
+      "overview_state": "In progress",
+      "publish_hold": "Publish this submission as soon as it passes certification (or per dates you selected in the Schedule section)",
+      "restricted_capability_section_visible": false,
+      "save_enabled": false
+    }
+  },
+  "safety": {
+    "package_uploaded": false,
+    "desktop_changed": false,
+    "save_clicked": false,
+    "submitted": false,
+    "published": false
+  },
+  "outcome": {
+    "status": "HOLD_PRE_UPLOAD_CONFIRMATION",
+    "next_action": "Upload the immutable candidate only after explicit action-time confirmation, then classify Microsoft analysis before Save.",
+    "route_live_write_supported": false
+  }
+}

@@ -1,0 +1,133 @@
+{
+  "schema_version": 1,
+  "observed_at": "2026-11-05",
+  "route_id": "msix_pwa_game",
+  "selectors": {
+    "description": "textarea#description-required",
+    "release_notes": "textarea#releaseNotes",
+    "first_feature": "input#feature-0",
+    "desktop_screenshots_tab": "#tab-0",
+    "short_title": "input#shortTitle",
+    "short_description": "textarea#shortDescription",
+    "trademark": "input#trademark",
+    "additional_license_terms": "textarea#additionalLicenseTerms",
+    "developed_by": "input#devStudio",
+    "save": { "strategy": "role", "role": "button", "name": "Save", "exact": true }
+  },
+  "products": [
+    {
+      "product_name": "STRATEGY MARKET US",
+      "product_id": "9PJCWW6G6D42",
+      "draft_id": "1152921505702134687",
+      "package_version": "0.25.25.0",
+      "package_languages": [
+        { "name": "English (United States)", "locale": "en-US", "status": "Complete" },
+        { "name": "Japanese (Japan)", "locale": "ja-JP", "status": "Incomplete" }
+      ],
+      "current_findings": {
+        "english_desktop_screenshot_count": 7,
+        "english_screenshot_source_version": "0.25.21.0",
+        "english_developed_by": "Okinawa Desktop Tools — use this only if it is the correct public developer name.",
+        "japanese_desktop_screenshot_count": 0
+      },
+      "desired_listings": {
+        "en-US": {
+          "description": "STRATEGY MARKET US is an offline business strategy simulation for Windows, set in a fictional U.S. market. Start and manage a fictional company, make quarterly decisions about pricing, advertising, investment, and staffing, and review how your choices affect revenue, profit, cash, debt, and assets.\n\nChoose from eight business sectors: medical, tourism, technology, retail, manufacturing, energy, finance, and logistics. Follow fictional competitors and market events, compare business conditions, and save your progress locally to continue later.\n\nAll companies, stock prices, market events, and financial values are fictional. The game does not provide real-time financial market data or investment advice. Normal gameplay does not require an online account or an external server.",
+          "features": [
+            "Offline fictional U.S. business simulation",
+            "Quarterly pricing, marketing, investment, staffing, and financing decisions",
+            "Eight business sectors",
+            "Revenue, profit, cash, debt, and asset tracking",
+            "Local saves with no account or external server required"
+          ],
+          "short_title": "STRATEGY MARKET US",
+          "short_description": "Run a fictional U.S. business in an offline strategy simulation. Make quarterly decisions across eight sectors and track financial results.",
+          "keywords": [
+            "economic simulation",
+            "market simulation",
+            "finance simulation",
+            "offline game",
+            "business strategy simulation",
+            "company management game",
+            "business sectors simulation"
+          ],
+          "developed_by": "Okinawa Desktop Tools",
+          "screenshots": [
+            ["01_dashboard.png", "F2E2B5A8E1048F2C5EC3135D9A45FC3EF9BA55243BCBF7179643A4C91AC97986"],
+            ["02_operations.png", "AF736D10261112FB4267CA05F1E44D2234DDE1B74AC7E7FFE2599C1A00502F28"],
+            ["03_market.png", "575AAB7AC721F690F2EC158B9D74C02AE5014D9868F91619F444C43649913579"],
+            ["04_finance.png", "E1E564F2A76A8F09DBD82B9C279F68CC80E67DE769D1B956616C22777EE4F644"],
+            ["05_strategy.png", "A3DC99B9C21E348EE776399F983B2BB29538AF00B6041F05C5E51C0D0ED7E4EB"]
+          ]
+        },
+        "ja-JP": {
+          "description": "STRATEGY MARKET USは、架空の米国市場を舞台にしたWindows向けオフライン経営戦略シミュレーションです。架空の会社を設立・運営し、価格、広告、設備投資、人員、資金調達などの四半期判断を行います。判断結果は売上、利益、現金、借入、資産に反映されます。\n\n医療、観光、テクノロジー、小売、製造、エネルギー、金融、物流の8業種から選択できます。架空の競合企業や市場イベントを追い、経営状況を比較しながら、ローカル保存したデータから続けて遊べます。\n\n登場する企業、株価、市場イベント、財務数値はすべて架空です。実際の金融市場データや投資助言は提供しません。通常のプレイにオンラインアカウントや外部サーバーは不要です。",
+          "features": [
+            "架空の米国市場を扱うオフライン経営シミュレーション",
+            "価格・広告・設備投資・人員・資金調達の四半期判断",
+            "8つの事業分野",
+            "売上・利益・現金・借入・資産の追跡",
+            "アカウント不要のローカル保存"
+          ],
+          "short_title": "STRATEGY MARKET US",
+          "short_description": "架空の米国市場で会社を経営するオフライン戦略シミュレーション。8業種から選び、四半期ごとの判断と財務結果を追跡します。",
+          "keywords": ["経営シミュレーション", "市場シミュレーション", "財務シミュレーション", "オフラインゲーム", "経営戦略", "会社経営", "米国市場"],
+          "developed_by": "Okinawa Desktop Tools",
+          "screenshots": [
+            ["01_dashboard.png", "A395FADA2BA4ED7AA33032ADC4D84973A05AF073F38957667279929104A2B693"],
+            ["02_operations.png", "87937E0A05426C14FF1643260E2D5F7C92F1B7E578E184FDD119BA590E75FAC7"],
+            ["03_market.png", "89A9D3CBF65B8E0C095674EA19C80AE3E2E0D8C9DCD8F31C07A6896172DF27A9"],
+            ["04_finance.png", "2A42E2BEF06DE0A3E2AB445490EC8F224569480735A38F904E0159026140C168"],
+            ["05_strategy.png", "32D639485C505B58A4CFCCBF1A94ECAB7037C60CC7977769A3E2C0A6FAC15393"]
+          ]
+        }
+      }
+    },
+    {
+      "product_name": "STRATEGY MARKET",
+      "product_id": "9PM2R3N22JX8",
+      "draft_id": "1152921505702134539",
+      "package_version": "0.1.24.0",
+      "package_languages": [
+        { "name": "Japanese (Japan)", "locale": "ja-JP", "status": "Incomplete" }
+      ],
+      "additional_languages": ["English", "Japanese"],
+      "desired_additional_language_removals": ["English", "Japanese"],
+      "desired_listings": {
+        "ja-JP": {
+          "description": "STRATEGY MARKETは、架空の日本市場で企業経営を体験するWindows向けオフライン経営戦略シミュレーションです。時代背景と業種を選び、価格、広告、設備投資、資金調達、人員配置などを判断します。400社の架空企業が同じ市場で活動し、景気、業種需要、金融環境、競争によって結果が変化します。\n\n四半期の売上・損益・現金・借入・資産を確認し、架空株式市場や市場イベントも追跡できます。複数の経営データをWindowsのローカル領域へ保存し、JSONバックアップを使って管理できます。\n\n登場する企業、株価、市場イベント、財務数値はすべて架空です。史実に着想を得たパラメータを含みますが、実在市場の再現、予測、投資助言ではありません。通常のプレイにオンラインアカウントや外部サーバーは不要です。",
+          "features": [
+            "架空の日本市場を扱うオフライン経営シミュレーション",
+            "時代背景と8業種から経営条件を選択",
+            "価格・広告・投資・資金調達・人員の経営判断",
+            "400社の架空企業と架空株式市場",
+            "複数セーブとJSONバックアップ"
+          ],
+          "short_title": "STRATEGY MARKET",
+          "short_description": "架空の日本市場で会社を経営するオフライン戦略シミュレーション。時代と業種を選び、四半期判断、財務、競合、市場変化を追跡します。",
+          "keywords": ["経営シミュレーション", "日本市場", "会社経営", "経営戦略", "財務シミュレーション", "株式市場", "オフラインゲーム"],
+          "developed_by": "Okinawa Desktop Tools",
+          "screenshots": [
+            ["01_dashboard.png", "5FD6BD903E514A4D037509C0E292BB106AB55B6CA57F252A305E1CEBE850B28B"],
+            ["02_operations.png", "21DAC16FA720DDF7AED3515426296746599A928EE118D61C5A1C02005241477E"],
+            ["03_market.png", "9086E4E657D7C223EEAF064093078C32EF610B60F7A057DE28284F1CF13EE035"],
+            ["04_finance.png", "6A7E9354E529E607BE70270819E7069421570A203559581E2DCBC30D1127B97B"],
+            ["05_strategy.png", "5747C9CCA6CAC9FD5846D5597012B8B2CBED697C0152E07F02096E0003A641E3"]
+          ],
+          "asset_state": "FINAL_RUNTIME_CAPTURED",
+          "asset_directory": "_store_final_screenshots_20261105/JP-0.1.24.0",
+          "runtime_qa": {
+            "clean_profile_start": "PASS",
+            "existing_profile_restore_guard": "BLOCKED_INVALID_OR_INCOMPLETE_V4_SAVE_WITHOUT_DELETION"
+          }
+        }
+      }
+    }
+  ],
+  "safety": {
+    "delete_old_assets_requires_action_time_confirmation": true,
+    "save_requires_action_time_confirmation": true,
+    "submit_for_certification": false,
+    "publish": false
+  }
+}

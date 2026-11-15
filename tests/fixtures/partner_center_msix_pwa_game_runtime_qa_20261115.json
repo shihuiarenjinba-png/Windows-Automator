@@ -1,0 +1,129 @@
+{
+  "schema_version": 1,
+  "observed_at_utc": "2026-11-15T16:15:00Z",
+  "route_id": "msix_pwa_game",
+  "products": [
+    {
+      "name": "STRATEGY MARKET US",
+      "store_id": "9PJCWW6G6D42",
+      "draft_id": "1152921505702134687",
+      "package": {
+        "filename": "STRATEGY_MARKET_USA_0.25.25.0_FINAL_UI_STORE_CANDIDATE_x64.msix",
+        "version": "0.25.25.0",
+        "sha256": "38D50DF72E43D491FEAD9C69DED0780C5E35952B601260967D4AE96BA609455F",
+        "source_commit": "e1a4b9262947558236db4903de3cfecdb9efc94c",
+        "manifest_identity": "OkinawaDesktopTools.1662426D23FD4",
+        "publisher": "CN=46263F21-A700-41DB-8C9B-114C22FB82FC",
+        "architecture": "x64",
+        "package_source_provenance": "PASS"
+      },
+      "payload_evidence": {
+        "app_asar_sha256": "3296550B59597ECC08F4E49DF1A906AD515ED927BFD761D51F8EF67F46B61D9F",
+        "package_and_runtime_app_asar_match": true,
+        "exe_sha256": "7E5678093AAA1CC1BE014C77160499D6F71AD5F4B42EF8930357E176038A7DF2",
+        "package_and_runtime_exe_match": true
+      },
+      "static_regression": "PASS",
+      "source_ui_proxy": {
+        "scope": "BROWSER_SOURCE_UI_ONLY_NOT_MSIX_WRAPPER",
+        "clean_profile_start": "PASS",
+        "gameplay_progress": "PASS",
+        "major_navigation": "PASS_7_TABS",
+        "pause_resume": "PASS",
+        "save": "PASS_BROWSER_AUTOSAVE",
+        "relaunch": "PASS_BROWSER_RELOAD_PROXY",
+        "restore": "PASS_DATE_AND_FINANCIAL_STATE_RETAINED",
+        "continue": "PASS_DATE_ADVANCED_AFTER_RESTORE",
+        "major_decision": "PASS_CAPITAL_INVESTMENT_30_AND_QUARTER_CLOSE",
+        "normal_exit": "NOT_RUN_NOT_REPRESENTATIVE_OF_MSIX_EXIT",
+        "certification_gate_credit": false
+      },
+      "runtime": {
+        "clean_launch": "NOT_RUN_APPLICATION_CONTROL_POLICY_BLOCK",
+        "start": "NOT_RUN",
+        "gameplay": "NOT_RUN",
+        "major_controls": "NOT_RUN",
+        "save": "NOT_RUN",
+        "relaunch": "NOT_RUN",
+        "restore": "NOT_RUN",
+        "continue": "NOT_RUN",
+        "normal_exit": "NOT_RUN"
+      },
+      "runtime_qa_state": "RUNTIME_QA_REQUIRED_POLICY_BLOCK",
+      "package_decision": "UNDECIDED_RUNTIME_QA_BLOCKED",
+      "certification_readiness": "NO"
+    },
+    {
+      "name": "STRATEGY MARKET",
+      "store_id": "9PM2R3N22JX8",
+      "draft_id": "1152921505702134539",
+      "package": {
+        "filename": "STRATEGY_MARKET_JP_0.1.24.0_STORE_CANDIDATE_x64.msix",
+        "version": "0.1.24.0",
+        "sha256": "A4A16A8942A339C8C71C7795A50E7E111A8AD9AE31B6FEB9243998B3128139AB",
+        "source_commit": "b6d98e31a7b8abfe24c915bab7f38be0f089ebc6",
+        "manifest_identity": "OkinawaDesktopTools.STRATEGYMARKET",
+        "publisher": "CN=46263F21-A700-41DB-8C9B-114C22FB82FC",
+        "architecture": "x64",
+        "package_source_provenance": "PASS"
+      },
+      "payload_evidence": {
+        "app_asar_sha256": "3E2A5E24BB06257A8655D14CCCC17729F8AA2D4A2F4ADAE2FDDEEA4EBB1D848E",
+        "package_and_runtime_app_asar_match": true,
+        "exe_sha256": "A20B9FA7A474A7418E53C9779A441B1BAE3445C1E1A17BC9FE2A914B88828374",
+        "package_and_runtime_exe_match": true
+      },
+      "static_regression": "PASS",
+      "source_ui_proxy": {
+        "scope": "BROWSER_SOURCE_UI_ONLY_NOT_MSIX_WRAPPER",
+        "clean_profile_start": "PASS",
+        "gameplay_progress": "PASS",
+        "major_navigation": "PASS_7_TABS",
+        "pause_resume": "PASS",
+        "save": "PASS_BROWSER_AUTOSAVE",
+        "relaunch": "PASS_BROWSER_RELOAD_PROXY",
+        "restore": "PASS_DATE_AND_FINANCIAL_STATE_RETAINED",
+        "continue": "PASS_DATE_ADVANCED_AFTER_RESTORE",
+        "major_decision": "PASS_CAPITAL_INVESTMENT_30_AND_QUARTER_CLOSE",
+        "normal_exit": "NOT_RUN_NOT_REPRESENTATIVE_OF_MSIX_EXIT",
+        "certification_gate_credit": false
+      },
+      "runtime": {
+        "clean_launch": "NOT_RUN_APPLICATION_CONTROL_POLICY_BLOCK",
+        "start": "NOT_RUN",
+        "gameplay": "NOT_RUN",
+        "major_controls": "NOT_RUN",
+        "save": "NOT_RUN",
+        "relaunch": "NOT_RUN",
+        "restore": "NOT_RUN",
+        "continue": "NOT_RUN",
+        "normal_exit": "NOT_RUN"
+      },
+      "legacy_save": {
+        "source": "development_qa",
+        "classification": "LEGACY_DEV_SAVE_NONBLOCKING",
+        "evidence_root": "_strategy_market_player_ui_20261017/store-screenshots/qa-user-data",
+        "public_release_exposure": false,
+        "automatic_deletion": false,
+        "invalid_or_old_save_behavior": "blocked with export and explicit reset offered"
+      },
+      "runtime_qa_state": "RUNTIME_QA_REQUIRED_POLICY_BLOCK",
+      "package_decision": "UNDECIDED_RUNTIME_QA_BLOCKED",
+      "certification_readiness": "NO"
+    }
+  ],
+  "safety": {
+    "security_policy_changed": false,
+    "certificate_installed": false,
+    "legacy_save_deleted": false,
+    "submit_for_certification": false,
+    "publish": false
+  },
+  "outcome": {
+    "store_draft_state": "STORE_DRAFT_COMPLETE",
+    "runtime_qa_state": "RUNTIME_QA_REQUIRED_POLICY_BLOCK",
+    "current_packages_may_be_sold_now": false,
+    "replacement_proven": false,
+    "certification_readiness": "NO"
+  }
+}

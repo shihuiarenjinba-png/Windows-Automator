@@ -1,0 +1,168 @@
+{
+  "schema_version": 1,
+  "observed_at_utc": "2026-11-13T00:30:00Z",
+  "route_id": "msix_pwa_app",
+  "observed_products": 2,
+  "product_profile": {
+    "name": "Daymark AI",
+    "store_id": "9PKJ9KMJZBC0",
+    "draft_id": "1152921505702220032",
+    "identity": "OkinawaDesktopTools.DaymarkAI",
+    "publisher": "CN=46263F21-A700-41DB-8C9B-114C22FB82FC",
+    "source_sha": "b8008c6ec0f0d37906d212f9d055de12743bd70a",
+    "readiness_commit": "d5839b1541c23e0db4ae6ffeca815741ea056faa",
+    "package": {
+      "filename": "DaymarkAI_1.0.4.0_x64_STORE_CANDIDATE_UNSIGNED.msix",
+      "sha256": "7E7996AD240AC27A3060080591475DA0C013CC9A5E7BC969379E2778B04E5D24",
+      "version": "1.0.4.0",
+      "architecture": "X64",
+      "device_family": "Windows.Desktop"
+    },
+    "pricing": {
+      "sale_model": "one_time_purchase",
+      "currency": "JPY",
+      "retail_price": 780,
+      "markets": "preserved"
+    },
+    "properties": {
+      "category": "Lifestyle",
+      "generative_ai": true,
+      "ai_required": false,
+      "privacy_url": "https://daymark-ai-help.bronzekoi37.chatgpt.site/privacy",
+      "support_url": "https://daymark-ai-help.bronzekoi37.chatgpt.site/support"
+    },
+    "listing_locales": ["en-US", "ja-JP"],
+    "screenshot_count_per_listing": 5,
+    "screenshot_ui_language": "ja-JP",
+    "publish_gate": "manual",
+    "restricted_capability": "runFullTrust"
+  },
+  "route_observation": {
+    "packages": {
+      "state": "PACKAGE_SAVED",
+      "raw_validation": "WARNING",
+      "known_warning": "runFullTrust",
+      "unknown_warning": false,
+      "error": false,
+      "overview": "Complete",
+      "reload_retained": true
+    },
+    "pricing": {
+      "state": "PRICING_SAVED",
+      "currency_control": "JPY - Japan",
+      "retail_price_control": "780",
+      "lazy_render_required": true,
+      "overview": "Complete",
+      "reload_retained": true
+    },
+    "properties": {
+      "state": "PROPERTIES_SAVED",
+      "overview": "Complete",
+      "reload_retained": true
+    },
+    "iarc": {
+      "state": "IARC_SAVED",
+      "app_type": "All Other App Types",
+      "answers": {
+        "downloaded_ratings_content": false,
+        "user_content_sharing": false,
+        "online_content": true,
+        "violence": false,
+        "sexuality": false,
+        "offensive_language": false,
+        "controlled_substance": false,
+        "age_restricted_products": false,
+        "precise_location_sharing": false,
+        "digital_goods": false,
+        "rewards_or_transferable_assets": false,
+        "browser_or_search_engine": false,
+        "news_or_education": false
+      },
+      "answers_source": "Daymark implementation evidence; constrained optional local Ollama output is generated only from user-selected diary evidence",
+      "legal_attestation": "PERFORMED_BY_PRODUCT_OWNER",
+      "overview": "Complete",
+      "reload_retained": true,
+      "iarc_version": "10.4",
+      "ratings": {
+        "ESRB": "Everyone",
+        "IARC": "3+",
+        "Microsoft": "3+",
+        "PEGI": "3+"
+      }
+    },
+    "store_listings": {
+      "state": "LISTING_SAVED",
+      "locales": ["en-US", "ja-JP"],
+      "desktop_screenshot_count_per_locale": 5,
+      "shared_verified_japanese_ui_assets": true,
+      "overview": "Complete",
+      "reload_retained": true
+    },
+    "submission_options": {
+      "state": "SUBMISSION_OPTIONS_SAVED",
+      "manual_publish": true,
+      "run_full_trust_explanation_length": 495,
+      "run_full_trust_maxlength": 500,
+      "run_full_trust_explanation_retained": true,
+      "overview": "Complete",
+      "reload_retained": true
+    },
+    "overview": {
+      "pricing_and_availability": "Complete",
+      "properties": "Complete",
+      "age_ratings": "Complete",
+      "packages": "Complete",
+      "store_listings": "Complete",
+      "submission_options": "Complete",
+      "package_validation_label": "Validated",
+      "final_reload_retained": true
+    }
+  },
+  "teacher_rules": {
+    "pricing": {
+      "render_rule": "scroll pricing section into view before locating Currency and Retail price",
+      "exact_match_only": "JPY - Japan / 780",
+      "preserve_markets": true
+    },
+    "screenshots": {
+      "chooser": "single PNG per visible plus control",
+      "add_control": "scope to the Desktop panel new-image-button; never use the first unnamed button after a thumbnail exists",
+      "postcondition": "both Desktop count and thumbnail count increment by exactly one",
+      "delayed_update": "setFiles completion is not write proof; wait and reconcile before retry",
+      "safe_retry": "only after explicit error plus reload proves both counts unchanged"
+    },
+    "submission_options": {
+      "render_rule": "scroll to the lazy-rendered Restricted capabilities section",
+      "exact_capability": "runFullTrust",
+      "max_characters": 500,
+      "invalid_observation": "609/500 kept Submission options Incomplete",
+      "valid_observation": "495/500 saved, reloaded, and completed"
+    },
+    "iarc": {
+      "generated_ai_requires_online_content_yes": true,
+      "conditional_questions_must_use_product_evidence": true,
+      "legal_attestation_must_not_be_inferred": true,
+      "owner_handoff_count": 1
+    }
+  },
+  "unexpected_states": [
+    "Store listing upload count could lag after setFiles returned",
+    "Partner Center emitted a transient Bad Response while the delayed upload later appeared",
+    "Unnamed screenshot buttons changed order after the first thumbnail",
+    "Restricted capabilities was lazy-rendered only after scrolling",
+    "An over-500-character runFullTrust explanation was retained but did not complete the section"
+  ],
+  "safety": {
+    "submit_for_certification": false,
+    "publish": false,
+    "new_product_created": false,
+    "identity_changed": false,
+    "publisher_changed": false,
+    "human_interventions": 1
+  },
+  "outcome": {
+    "draft_state": "STORE_DRAFT_COMPLETE",
+    "status": "READY_FOR_CERTIFICATION_REVIEW",
+    "teacher_data_status": "MULTI_PRODUCT_MSIX_APP_ROUTE_VERIFIED"
+  }
+}

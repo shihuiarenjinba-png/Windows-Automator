@@ -1,0 +1,112 @@
+# Partner Center 申請ルートテンプレート
+
+Partner Center の `New product` で表示される4種類を、Windows-Automatorでは固定テンプレートとして扱う。
+
+`submission_route` は上流工程が確定した不変値であり、通常のhandoffではAutomator側から変更しない。読み込み優先順位は、上流handoff、ローカルpackage検査（比較専用）、旧JSON互換既定値、手動製品の明示選択の順とする。旧JSONはapp→`msix_pwa_app`、game→`msix_pwa_game`だけを許し、GDK/EXEは推測しない。
+
+経路とpackageが一致しない場合はrouteを書き換えず、`SUBMISSION_ROUTE_PACKAGE_MISMATCH` で製品HOLDにする。
+
+## 1. MSIX or PWA app
+
+内部ID: `msix_pwa_app`
+
+対象:
+- 一般アプリ
+- MSIX / MSIXUPLOAD / MSIXBundle / AppX 系
+- PWA系は同じPartner Center分類だが、PWA固有の実アップロード挙動は実画面で別途確認する
+
+固定:
+- app
+- discoverable
+- free trial = none
+- publish hold = manual publish
+- 既定市場 = all_markets
+
+製品ごと:
+- package
+- screenshots
+- price
+- security profile
+- category
+- description等
+
+現在のREAD_ONLY Partner Center観測はこのルートで行われている。
+
+## 2. EXE or MSI app
+
+内部ID: `exe_msi_app`
+
+Partner CenterではStoreへEXE/MSIファイルを直接アップロードするのではなく、バージョン固定されたHTTPS installer URLとinstaller metadataを登録する別経路。
+
+必須テンプレート入力:
+- ローカルEXE/MSI（QA用）
+- HTTPS package URL
+- EXE / MSI
+- architecture
+- silent install arguments
+- language
+- screenshots
+- security
+- pricing
+
+このlive経路は未実証なので、専用selector mapが完成するまで自動書込み禁止。
+
+## 3. GDK game
+
+内部ID: `gdk_game`
+
+対象:
+- Win32 PC gameをGDKでStore公開
+- PC package = MSIXVC / MSIXVC2
+
+テンプレート:
+- Game setup
+- package
+- EKB
+- symbols
+- submission validator
+- Properties
+- Age ratings
+- Store listings
+- Pricing and availability
+
+現在のWindows-AutomatorのMSIX App selectorを流用しない。
+GDK専用の実画面/API/MakePkg upload経路を観測してからlive有効化する。
+
+## 4. MSIX or PWA game
+
+内部ID: `msix_pwa_game`
+
+対象:
+- 既存UWP/MSIX game
+- PWA game
+
+アプリ用MSIXと共通する部分はあるが、game genre / IARC / game propertiesを別テンプレートとして保持する。
+STRATEGY MARKET US / JPの2製品で、ゲーム固有のStore Draft全6section、言語別listing、画像upload、Save、再読込、Overview照合まで実測済み。製品profileを固定した既知Store Draft操作は教師データとして使用できるが、公開された一括GUI adapterへ全手順を統合するまでは`live_write_supported=false`を維持する。
+
+## 共通処理
+
+通常は上流工程で確定した申請種類を `[上流工程で確定済み]` として読取専用表示する。手動製品だけは最初に申請種類を1つ選ぶ。
+
+その選択から自動的に:
+1. 上流routeとpackage type/SHAを比較
+2. app/gameとの整合を確認
+3. 固定プリセットを適用
+4. 必要入力項目とroute固有セクションを決定
+5. AI補完可能項目を決定
+6. package validation方式を決定
+7. Partner Center adapterとselector mapを決定
+
+AIはテンプレートを変更しない。AIはテンプレートが許可した入力欄だけを補完する。
+
+セキュリティ・Identity・Store ID・package provenanceはAI確定禁止。
+
+## Live書込みの状態
+
+- `msix_pwa_app`: Folio AIとDaymark AIの2製品で、既存製品照合、MSIX upload、Microsoft解析、既知exact `runFullTrust` warning、Packages Save、価格、Properties、IARC、英日listing、Submission Options、全sectionのSave/reloadまで実測済み。`store_draft_write_supported=VERIFIED_2_PRODUCT_PROFILE_GATED`。ただし現在の実装adapterは全sectionのGUI実行をまだ一つの公開コマンドへ統合していないため、`live_write_supported=false`を維持する。Certification / Publishは別gate。
+- `exe_msi_app` / `gdk_game`: 専用実画面map未検証。`LIVE_ROUTE_NOT_VERIFIED` でブラウザー書込み前に製品HOLD。
+- `msix_pwa_game`: STRATEGY MARKET US / JPの2製品で、Packages、価格、Properties、IARC、言語別listing、Submission Options、全sectionのSave/reloadとOverview再照合を実測済み。`store_draft_write_supported=VERIFIED_2_PRODUCT_PROFILE_GATED`、`teacher_data_status=MULTI_PRODUCT_MSIX_GAME_ROUTE_VERIFIED`。ただし現在の実装adapterは全sectionのGUI実行を一つの公開コマンドへ統合していないため、`live_write_supported=false`を維持する。Game固有のcategory / IARC / listingをApp routeからコピーしない。
+- `msix_pwa_game`の認定候補化は、`STORE_DRAFT_COMPLETE`だけでは不可。`STORE_DRAFT_COMPLETE -> RUNTIME_QA_REQUIRED -> RUNTIME_FUNCTIONAL_QA_PASS -> PACKAGE_KEEP -> READY_FOR_CERTIFICATION_REVIEW`を必須とする。Application Control等で実runtimeを起動できない場合は`RUNTIME_QA_REQUIRED_POLICY_BLOCK`で停止し、静的testだけでPASSへ昇格しない。
+- selector mapはschema 3でroute別に管理し、別routeのselectorを流用しない。
+- package validationの `WARNING` は、全文が既知exact `runFullTrust` warningのみで、Manifest/Partner Center capabilityが一致する場合だけ既知routeとして続行する。未知warning/errorはHOLD。
+- certification submit / publishは自動操作対象外。

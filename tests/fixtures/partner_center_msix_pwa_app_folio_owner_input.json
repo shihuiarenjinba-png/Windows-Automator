@@ -1,0 +1,169 @@
+{
+  "schema_version": 1,
+  "observed_at_utc": "2026-11-12T10:39:43Z",
+  "route_id": "msix_pwa_app",
+  "product": {
+    "name": "Folio AI",
+    "store_id": "9P0VNLJ5FPF5",
+    "draft_id": "1152921505702219486"
+  },
+  "completed": {
+    "packages": "PACKAGE_SAVED",
+    "overview_packages_validation": "Validated",
+    "overview_packages_state": "Complete",
+    "pricing_and_availability": "Complete",
+    "properties": "Complete",
+    "store_listings": "Complete",
+    "submission_options": "Complete"
+  },
+  "resolution_policy": {
+    "existing_partner_center_value": "CURRENT_VALUE_PRESERVE",
+    "verified_repository_or_package_fact": "EVIDENCE_VALUE_APPLY",
+    "new_business_or_legal_decision": "OWNER_INPUT_REQUIRED"
+  },
+  "current_value_preserved": {
+    "pricing_and_availability": {
+      "resolution": "CURRENT_VALUE_PRESERVE",
+      "markets": "All worldwide markets",
+      "future_markets": true,
+      "audience": "Public audience",
+      "discoverability": "Store discoverable",
+      "release": "manual_publish_gate",
+      "stop_acquisition": "never"
+    }
+  },
+  "saved_and_reloaded": {
+    "pricing_and_availability": {
+      "state": "PRICE_OWNER_DECISION_CONFIRMED",
+      "action": "select exact JPY retail price 780 without changing markets",
+      "save": "COMPLETED",
+      "reload_postcondition": {
+        "currency": "JPY - Japan",
+        "retail_price": 780,
+        "all_worldwide_markets": true,
+        "future_markets": true,
+        "overview": "Complete"
+      }
+    },
+    "properties": {
+      "state": "EVIDENCE_FIELDS_READY",
+      "action": "apply Productivity, inline privacy text, public support URL, and Generative AI Yes",
+      "save": "COMPLETED",
+      "reload_postcondition": "all values retained; overview Complete"
+    },
+    "store_listings": {
+      "state": "EN_JA_COPY_AND_FIVE_SCREENSHOTS_READY",
+      "action": "save en-us and ja-jp separately",
+      "save": "COMPLETED",
+      "reload_postcondition": "both languages retained with Desktop (5); overview Complete"
+    },
+    "submission_options": {
+      "state": "MANUAL_PUBLISH_AND_RUNFULLTRUST_READY",
+      "action": "select manual publish gate and save the exact capability explanation",
+      "save": "COMPLETED",
+      "reload_postcondition": "manual radio and exact explanation retained; overview Complete"
+    }
+  },
+  "evidence_value_ready": {
+    "properties": {
+      "resolution": "EVIDENCE_VALUE_APPLY",
+      "primary_category": "Productivity",
+      "privacy_personal_information": true,
+      "privacy_delivery_mode": "partner_center_inline_text",
+      "privacy_source": "folio-ai/docs/store/FOLIO_PRIVACY.md",
+      "public_privacy_url_status": "NOT_PUBLISHED_IN_PUBLIC_REPOSITORY",
+      "support_url": "https://github.com/tsuhasqni-pixel/rag-ollama/issues",
+      "support_public_read_status": "VERIFIED_LOGGED_OUT_2026-11-12",
+      "generative_ai_declared": true,
+      "generative_ai_evidence": [
+        "folio-ai/server.py:ollama_summary",
+        "folio-ai/server.py:/api/ask",
+        "folio-ai/docs/store/FOLIO_STORE_LISTING.md"
+      ]
+    },
+    "age_ratings": {
+      "resolution": "EVIDENCE_VALUE_APPLY",
+      "questionnaire": "IARC",
+      "app_type": "All Other App Types",
+      "direct_board_rating": false,
+      "evidence": "Folio is neither a game nor primarily social/communication software",
+      "questionnaire_state": "COMPLETE",
+      "preview_state": "GENERATED",
+      "iarc_version": "10.4",
+      "ratings": {
+        "ESRB": "Everyone",
+        "IARC": "3+",
+        "Microsoft": "3+",
+        "PEGI": "3+"
+      },
+      "legal_attestation_state": "UNCONFIRMED",
+      "save_state": "BLOCKED_BY_LEGAL_ATTESTATION"
+    },
+    "store_listings": {
+      "resolution": "EVIDENCE_VALUE_APPLY",
+      "languages": ["en-us", "ja-jp"],
+      "en_us_status": "Complete",
+      "ja_jp_status": "Complete",
+      "listing_source": "folio-ai/docs/store/FOLIO_STORE_LISTING.md",
+      "screenshots_source": "folio-ai/store-assets/screenshots/ja-JP",
+      "screenshot_asset_count": 5,
+      "screenshot_ui_language": "ja-JP",
+      "screenshot_dimensions": "1920x1080",
+      "screenshot_reuse": "same_verified_assets_for_both_listings",
+      "debug_or_test_labels_visible": false
+    },
+    "submission_options": {
+      "resolution": "EVIDENCE_VALUE_APPLY",
+      "publish_hold": "Don't publish until Publish now",
+      "publish_hold_source": "MANUAL_PUBLISH_GATE",
+      "restricted_capability": "runFullTrust",
+      "textarea_maxlength": 500,
+      "explanation": "Folio AI is a packaged Windows desktop application that runs as a normal Win32 desktop process. The runFullTrust capability is required so the packaged application can launch and operate its desktop process at medium integrity outside the AppContainer sandbox, including its local runtime and save-data functionality. It is not used to request administrator elevation or bypass Windows security controls.",
+      "implementation_evidence": [
+        "uap10:RuntimeBehavior=packagedClassicApp",
+        "uap10:TrustLevel=mediumIL",
+        "rescap:Capability=runFullTrust",
+        "requestedExecutionLevel=asInvoker"
+      ]
+    }
+  },
+  "owner_input_required": {
+    "iarc_legal_attestation": {
+      "checkbox_text": "By checking this box, I hereby agree to the IARC Terms of Use and I agree that I am the age of majority in my jurisdiction.",
+      "required_confirmation": [
+        "agree_to_iarc_terms_of_use",
+        "age_of_majority_in_jurisdiction"
+      ],
+      "script_must_not_infer": true
+    }
+  },
+  "pricing_decision": {
+    "sale_model": "one_time_purchase",
+    "currency": "JPY",
+    "exact_retail_price": 780,
+    "exact_match_available": true,
+    "fallback_used": false
+  },
+  "screenshot_upload_teacher_data": {
+    "target": "visible Desktop new-image plus button",
+    "file_input": "single .png per chooser",
+    "after_set_files": "wait for thumbnail, then wait for Desktop (n) increment and plus-button return before the next upload",
+    "timeout_reconcile": "read Desktop count and thumbnails before retry; do not assume failure or upload a duplicate",
+    "observed_timeout_result": "a chooser timeout coincided with a completed second upload; reconcile prevented duplicate upload"
+  },
+  "safety": {
+    "pricing_changed": true,
+    "markets_changed": false,
+    "properties_saved": true,
+    "iarc_saved": false,
+    "listings_saved": true,
+    "submission_options_saved": true,
+    "submitted": false,
+    "published": false
+  },
+  "outcome": {
+    "status": "OWNER_INPUT_REQUIRED_IARC_LEGAL_ATTESTATION",
+    "complete_sections": ["pricing_and_availability", "properties", "packages", "store_listings", "submission_options"],
+    "next_automatic_action": "After explicit legal-attestation confirmation, check the IARC box, Save, reload, and reconcile the overview without invoking certification or publishing."
+  }
+}

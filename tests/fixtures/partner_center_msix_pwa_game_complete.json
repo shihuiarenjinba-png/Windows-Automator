@@ -1,0 +1,116 @@
+{
+  "schema_version": 1,
+  "observed_at_utc": "2026-11-15T09:08:45Z",
+  "route_id": "msix_pwa_game",
+  "observed_products": 2,
+  "products": [
+    {
+      "name": "STRATEGY MARKET US",
+      "store_id": "9PJCWW6G6D42",
+      "draft_id": "1152921505702134687",
+      "package": {
+        "filename": "STRATEGY_MARKET_USA_0.25.25.0_FINAL_UI_STORE_CANDIDATE_x64.msix",
+        "version": "0.25.25.0",
+        "architecture": "X64",
+        "validation": "Validated"
+      },
+      "listing_locales": ["en-US", "ja-JP"],
+      "language_states": {
+        "English (United States)": "Complete",
+        "Japanese (Japan)": "Complete"
+      },
+      "desktop_screenshot_count_per_locale": 5,
+      "certification_gate": "RUNTIME_QA_REQUIRED_POLICY_BLOCK",
+      "overview": {
+        "pricing_and_availability": "Complete",
+        "properties": "Complete",
+        "age_ratings": "Complete",
+        "packages": "Complete",
+        "store_listings": "Complete",
+        "submission_options": "Complete",
+        "final_reload_retained": true
+      }
+    },
+    {
+      "name": "STRATEGY MARKET",
+      "store_id": "9PM2R3N22JX8",
+      "draft_id": "1152921505702134539",
+      "package": {
+        "filename": "STRATEGY_MARKET_JP_0.1.24.0_STORE_CANDIDATE_x64.msix",
+        "version": "0.1.24.0",
+        "architecture": "X64",
+        "validation": "Validated"
+      },
+      "listing_locales": ["ja-JP"],
+      "language_states": {
+        "Japanese (Japan)": "Complete"
+      },
+      "desktop_screenshot_count_per_locale": 5,
+      "certification_gate": "RUNTIME_QA_REQUIRED_POLICY_BLOCK",
+      "overview": {
+        "pricing_and_availability": "Complete",
+        "properties": "Complete",
+        "age_ratings": "Complete",
+        "packages": "Complete",
+        "store_listings": "Complete",
+        "submission_options": "Complete",
+        "final_reload_retained": true
+      }
+    }
+  ],
+  "store_listing_observation": {
+    "state": "LISTING_SAVED",
+    "fields_retained_exactly": true,
+    "keyword_count_per_locale": 7,
+    "feature_count_per_locale": 5,
+    "desktop_upload_count_sequence": [0, 1, 2, 3, 4, 5],
+    "save_redirect": "product_overview",
+    "manage_languages_reload_verified": true,
+    "overview_reconciled": true
+  },
+  "teacher_rules": {
+    "text_fields": {
+      "description": "textarea#description-required",
+      "features": "input[id^='feature-']",
+      "add_feature": "role=button name=Add more exact=true",
+      "short_title": "input#shortTitle",
+      "short_description": "textarea#shortDescription",
+      "developed_by": "input#devStudio",
+      "postcondition": "reload values must exactly match the product profile"
+    },
+    "keywords": {
+      "control": "role=combobox scoped to the Additional info keyword field",
+      "commit": "Enter",
+      "postcondition": "all seven exact keyword chips are present once"
+    },
+    "screenshots": {
+      "chooser": "one exact PNG per file chooser invocation",
+      "add_control": "scope he-button.new-image-button to the selected Desktop tab; never choose an unscoped global plus",
+      "postcondition": "Desktop count and thumbnail count increment by exactly one before the next upload",
+      "duplicate_prevention": "do not retry until reload reconciliation proves the prior write did not occur"
+    },
+    "save": {
+      "control": "role=button name=Save exact=true",
+      "postcondition": "redirect to the same product Overview, Store listings Complete, exact fields and five screenshots retained after reopen/reload, every selected language Complete"
+    },
+    "overview_recovery": {
+      "control": "shell_he-breadcrumb-item[data-bi-name='functionBreadcrumb'][href='#']",
+      "name": "exact current product name",
+      "action": "click the top product breadcrumb when a section page must return to the product Overview",
+      "postcondition": "same Store ID product Overview loads"
+    }
+  },
+  "safety": {
+    "submit_for_certification": false,
+    "publish": false,
+    "new_product_created": false,
+    "identity_changed": false,
+    "publisher_changed": false,
+    "unknown_warning_accepted": false
+  },
+  "outcome": {
+    "draft_state": "STORE_DRAFT_COMPLETE",
+    "status": "RUNTIME_QA_REQUIRED",
+    "teacher_data_status": "MULTI_PRODUCT_MSIX_GAME_ROUTE_VERIFIED"
+  }
+}
