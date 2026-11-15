@@ -2,6 +2,11 @@ import json
 import unittest
 from pathlib import Path
 
+from store_manager.live_draft import (
+    GameRuntimeQaObservation,
+    game_certification_review_state,
+    game_runtime_qa_next_state,
+)
 from store_manager.store_listings import (
     StoreListingSaveObservation,
     store_listing_next_action,
@@ -90,15 +95,93 @@ class MsixGameCompleteTeacherDataTests(unittest.TestCase):
         self.assertFalse(self.fixture["safety"]["publish"])
         self.assertEqual(
             self.fixture["outcome"]["status"],
-            "CERTIFICATION_REVIEW_GATES_PRESERVED",
+            "RUNTIME_QA_REQUIRED",
         )
         us, jp = self.fixture["products"]
-        self.assertEqual(us["certification_gate"], "READY_FOR_CERTIFICATION_REVIEW")
-        self.assertEqual(jp["certification_gate"], "HOLD_EXISTING_SAVE_MIGRATION_REVIEW")
+        self.assertEqual(us["certification_gate"], "RUNTIME_QA_REQUIRED_POLICY_BLOCK")
+        self.assertEqual(jp["certification_gate"], "RUNTIME_QA_REQUIRED_POLICY_BLOCK")
         self.assertEqual(
             route["product_certification_gates"][jp["store_id"]],
-            "HOLD_EXISTING_SAVE_MIGRATION_REVIEW",
+            "RUNTIME_QA_REQUIRED_POLICY_BLOCK",
         )
+
+    def test_game_route_requires_runtime_state_transitions_before_review(self):
+        blocked = GameRuntimeQaObservation(
+            exact_package_source_provenance=True,
+            runtime_policy_blocked=True,
+            legacy_save_source="development_qa",
+        )
+        state = game_runtime_qa_next_state(blocked)
+        self.assertEqual(state, "RUNTIME_QA_REQUIRED_POLICY_BLOCK")
+        self.assertEqual(
+            game_certification_review_state(
+                draft_state="STORE_DRAFT_COMPLETE",
+                runtime_qa_state=state,
+                package_decision="UNDECIDED",
+                certification_executed=False,
+                publish_executed=False,
+            ),
+            "RUNTIME_QA_REQUIRED_POLICY_BLOCK",
+        )
+
+    def test_game_route_promotes_only_full_e2e_plus_package_keep(self):
+        passed = GameRuntimeQaObservation(
+            exact_package_source_provenance=True,
+            clean_launch=True,
+            start=True,
+            gameplay_progress=True,
+            major_controls=True,
+            save=True,
+            relaunch=True,
+            restore=True,
+            continue_gameplay=True,
+            normal_exit=True,
+            store_listing_matches_runtime=True,
+            legacy_save_source="development_qa",
+        )
+        state = game_runtime_qa_next_state(passed)
+        self.assertEqual(state, "RUNTIME_FUNCTIONAL_QA_PASS")
+        self.assertEqual(
+            game_certification_review_state(
+                draft_state="STORE_DRAFT_COMPLETE",
+                runtime_qa_state=state,
+                package_decision="PACKAGE_KEEP",
+                certification_executed=False,
+                publish_executed=False,
+            ),
+            "READY_FOR_CERTIFICATION_REVIEW",
+        )
+
+    def test_public_legacy_save_incompatibility_requires_replacement(self):
+        observation = GameRuntimeQaObservation(
+            exact_package_source_provenance=True,
+            legacy_save_source="public_release",
+            legacy_save_compatible=False,
+        )
+        self.assertEqual(
+            game_runtime_qa_next_state(observation),
+            "PACKAGE_REPLACEMENT_REQUIRED",
+        )
+
+    def test_current_runtime_qa_fixture_is_fail_closed_without_claiming_replacement(self):
+        runtime_fixture = json.loads(
+            (
+                self.root
+                / "tests"
+                / "fixtures"
+                / "partner_center_msix_pwa_game_runtime_qa_20261115.json"
+            ).read_text(encoding="utf-8")
+        )
+        self.assertFalse(runtime_fixture["outcome"]["current_packages_may_be_sold_now"])
+        self.assertFalse(runtime_fixture["outcome"]["replacement_proven"])
+        self.assertEqual(
+            runtime_fixture["outcome"]["runtime_qa_state"],
+            "RUNTIME_QA_REQUIRED_POLICY_BLOCK",
+        )
+        us, jp = runtime_fixture["products"]
+        self.assertEqual(us["package"]["package_source_provenance"], "PASS")
+        self.assertEqual(jp["legacy_save"]["classification"], "LEGACY_DEV_SAVE_NONBLOCKING")
+        self.assertFalse(jp["legacy_save"]["public_release_exposure"])
 
 
 if __name__ == "__main__":

@@ -246,6 +246,87 @@ def certification_review_state(
 
 
 @dataclass(frozen=True)
+class GameRuntimeQaObservation:
+    """Sales-blocking runtime evidence required for an MSIX game release."""
+
+    exact_package_source_provenance: bool = False
+    clean_launch: bool = False
+    start: bool = False
+    gameplay_progress: bool = False
+    major_controls: bool = False
+    save: bool = False
+    relaunch: bool = False
+    restore: bool = False
+    continue_gameplay: bool = False
+    normal_exit: bool = False
+    store_listing_matches_runtime: bool = False
+    blocking_defect: bool = False
+    runtime_policy_blocked: bool = False
+    package_bytes_changed: bool = False
+    legacy_save_source: str = "none"
+    legacy_save_compatible: bool | None = None
+
+
+def game_runtime_qa_next_state(observation: GameRuntimeQaObservation) -> str:
+    """Require functional state transitions, not DOM handlers or static tests."""
+
+    if observation.package_bytes_changed or observation.blocking_defect:
+        return "PACKAGE_REPLACEMENT_REQUIRED"
+    if observation.legacy_save_source not in {
+        "none",
+        "development_qa",
+        "public_release",
+    }:
+        return "HOLD_LEGACY_SAVE_SOURCE_UNKNOWN"
+    if (
+        observation.legacy_save_source == "public_release"
+        and observation.legacy_save_compatible is not True
+    ):
+        return "PACKAGE_REPLACEMENT_REQUIRED"
+    if observation.runtime_policy_blocked:
+        return "RUNTIME_QA_REQUIRED_POLICY_BLOCK"
+    required = (
+        observation.exact_package_source_provenance,
+        observation.clean_launch,
+        observation.start,
+        observation.gameplay_progress,
+        observation.major_controls,
+        observation.save,
+        observation.relaunch,
+        observation.restore,
+        observation.continue_gameplay,
+        observation.normal_exit,
+        observation.store_listing_matches_runtime,
+    )
+    if not all(required):
+        return "RUNTIME_QA_REQUIRED"
+    return "RUNTIME_FUNCTIONAL_QA_PASS"
+
+
+def game_certification_review_state(
+    *,
+    draft_state: str,
+    runtime_qa_state: str,
+    package_decision: str,
+    certification_executed: bool,
+    publish_executed: bool,
+) -> str:
+    """Keep games behind runtime QA while leaving the app route unchanged."""
+
+    if certification_executed or publish_executed:
+        return "HOLD_PROHIBITED_ACTION_EXECUTED"
+    if draft_state != "STORE_DRAFT_COMPLETE":
+        return draft_state
+    if runtime_qa_state == "PACKAGE_REPLACEMENT_REQUIRED":
+        return runtime_qa_state
+    if runtime_qa_state != "RUNTIME_FUNCTIONAL_QA_PASS":
+        return runtime_qa_state
+    if package_decision != "PACKAGE_KEEP":
+        return "PACKAGE_DECISION_REQUIRED"
+    return "READY_FOR_CERTIFICATION_REVIEW"
+
+
+@dataclass(frozen=True)
 class PackageIdentity:
     name: str
     publisher: str

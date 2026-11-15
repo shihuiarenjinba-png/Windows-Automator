@@ -41,7 +41,9 @@ Both products retained `Complete` for:
 
 The US Overview also retained the exact package filename and `Validated`. `Submit for certification` and `Publish` were not invoked.
 
-Final Store state: `STORE_DRAFT_COMPLETE` for both products. US is `READY_FOR_CERTIFICATION_REVIEW`; JP retains the separately recorded `HOLD_EXISTING_SAVE_MIGRATION_REVIEW` runtime-QA gate until the protected legacy-save compatibility question is resolved.
+Final Store state: `STORE_DRAFT_COMPLETE` for both products. This state alone is not certification readiness. The game route additionally requires `RUNTIME_FUNCTIONAL_QA_PASS` and `PACKAGE_KEEP`.
+
+The 2026-11-15 pre-certification rerun verified exact package/source provenance and static regressions, but Windows Application Control blocked both exact payload executables before launch. The current state is therefore `RUNTIME_QA_REQUIRED_POLICY_BLOCK`, not `READY_FOR_CERTIFICATION_REVIEW`. JP saves found under the workspace QA profiles are development/QA-only and are classified `LEGACY_DEV_SAVE_NONBLOCKING`; no save was deleted.
 
 Teacher-data state: `MULTI_PRODUCT_MSIX_GAME_ROUTE_VERIFIED`.
 

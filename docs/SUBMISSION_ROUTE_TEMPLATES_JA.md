@@ -106,6 +106,7 @@ AIはテンプレートを変更しない。AIはテンプレートが許可し�
 - `msix_pwa_app`: Folio AIとDaymark AIの2製品で、既存製品照合、MSIX upload、Microsoft解析、既知exact `runFullTrust` warning、Packages Save、価格、Properties、IARC、英日listing、Submission Options、全sectionのSave/reloadまで実測済み。`store_draft_write_supported=VERIFIED_2_PRODUCT_PROFILE_GATED`。ただし現在の実装adapterは全sectionのGUI実行をまだ一つの公開コマンドへ統合していないため、`live_write_supported=false`を維持する。Certification / Publishは別gate。
 - `exe_msi_app` / `gdk_game`: 専用実画面map未検証。`LIVE_ROUTE_NOT_VERIFIED` でブラウザー書込み前に製品HOLD。
 - `msix_pwa_game`: STRATEGY MARKET US / JPの2製品で、Packages、価格、Properties、IARC、言語別listing、Submission Options、全sectionのSave/reloadとOverview再照合を実測済み。`store_draft_write_supported=VERIFIED_2_PRODUCT_PROFILE_GATED`、`teacher_data_status=MULTI_PRODUCT_MSIX_GAME_ROUTE_VERIFIED`。ただし現在の実装adapterは全sectionのGUI実行を一つの公開コマンドへ統合していないため、`live_write_supported=false`を維持する。Game固有のcategory / IARC / listingをApp routeからコピーしない。
+- `msix_pwa_game`の認定候補化は、`STORE_DRAFT_COMPLETE`だけでは不可。`STORE_DRAFT_COMPLETE -> RUNTIME_QA_REQUIRED -> RUNTIME_FUNCTIONAL_QA_PASS -> PACKAGE_KEEP -> READY_FOR_CERTIFICATION_REVIEW`を必須とする。Application Control等で実runtimeを起動できない場合は`RUNTIME_QA_REQUIRED_POLICY_BLOCK`で停止し、静的testだけでPASSへ昇格しない。
 - selector mapはschema 3でroute別に管理し、別routeのselectorを流用しない。
 - package validationの `WARNING` は、全文が既知exact `runFullTrust` warningのみで、Manifest/Partner Center capabilityが一致する場合だけ既知routeとして続行する。未知warning/errorはHOLD。
 - certification submit / publishは自動操作対象外。

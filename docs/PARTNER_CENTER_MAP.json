@@ -397,6 +397,12 @@
       "publish_write_supported": false,
       "store_draft_status": "STORE_DRAFT_COMPLETE",
       "teacher_data_status": "MULTI_PRODUCT_MSIX_GAME_ROUTE_VERIFIED",
+      "runtime_qa_status": "RUNTIME_QA_REQUIRED_POLICY_BLOCK",
+      "certification_review_prerequisites": [
+        "STORE_DRAFT_COMPLETE",
+        "RUNTIME_FUNCTIONAL_QA_PASS",
+        "PACKAGE_KEEP"
+      ],
       "observed_at_utc": "2026-11-15T09:08:45Z",
       "observation_scope": {
         "observed_product_count": 2,
@@ -427,6 +433,7 @@
         "properties": "VERIFIED_COMPLETE_2_PRODUCTS",
         "age_ratings": "VERIFIED_COMPLETE_2_PRODUCTS",
         "store_listings": "VERIFIED_COMPLETE_2_PRODUCTS",
+        "runtime_functional_qa": "REQUIRED_NOT_PASSED_APPLICATION_CONTROL_POLICY_BLOCK",
         "submission_options": "VERIFIED_2_PRODUCTS_RESTRICTED_CAPABILITY_EXPLANATION",
         "submission_options_restricted_capabilities": "VERIFIED_2_PRODUCTS",
         "submission_options_save": "VERIFIED_2_PRODUCTS",
@@ -654,11 +661,11 @@
           "evidence": "Selecting the top exact product breadcrumb returned a section page to the same Store ID product Overview; the automation must then verify the same product before continuing."
         }
       },
-      "hold_code": "CERTIFICATION_REVIEW_GATES_PRESERVED",
-      "hold_detail": "All six required Store Draft sections are Complete and retained after reload on both game products. Certification and publication remain prohibited. The JP product also retains its separately recorded protected legacy-save compatibility review hold.",
+      "hold_code": "RUNTIME_QA_REQUIRED_POLICY_BLOCK",
+      "hold_detail": "All six required Store Draft sections are Complete and retained after reload. Exact package/source provenance and static regressions pass, but both exact package payload executables are blocked before launch by Windows Application Control in the current QA environment. Functional Start/gameplay/Save/relaunch/Restore evidence is therefore not complete. JP legacy saves found in the workspace are development/QA-only and classified LEGACY_DEV_SAVE_NONBLOCKING.",
       "product_certification_gates": {
-        "9PJCWW6G6D42": "READY_FOR_CERTIFICATION_REVIEW",
-        "9PM2R3N22JX8": "HOLD_EXISTING_SAVE_MIGRATION_REVIEW"
+        "9PJCWW6G6D42": "RUNTIME_QA_REQUIRED_POLICY_BLOCK",
+        "9PM2R3N22JX8": "RUNTIME_QA_REQUIRED_POLICY_BLOCK"
       }
     }
   },

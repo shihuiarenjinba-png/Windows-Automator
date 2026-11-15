@@ -20,7 +20,7 @@
         "Japanese (Japan)": "Complete"
       },
       "desktop_screenshot_count_per_locale": 5,
-      "certification_gate": "READY_FOR_CERTIFICATION_REVIEW",
+      "certification_gate": "RUNTIME_QA_REQUIRED_POLICY_BLOCK",
       "overview": {
         "pricing_and_availability": "Complete",
         "properties": "Complete",
@@ -46,7 +46,7 @@
         "Japanese (Japan)": "Complete"
       },
       "desktop_screenshot_count_per_locale": 5,
-      "certification_gate": "HOLD_EXISTING_SAVE_MIGRATION_REVIEW",
+      "certification_gate": "RUNTIME_QA_REQUIRED_POLICY_BLOCK",
       "overview": {
         "pricing_and_availability": "Complete",
         "properties": "Complete",
@@ -110,7 +110,7 @@
   },
   "outcome": {
     "draft_state": "STORE_DRAFT_COMPLETE",
-    "status": "CERTIFICATION_REVIEW_GATES_PRESERVED",
+    "status": "RUNTIME_QA_REQUIRED",
     "teacher_data_status": "MULTI_PRODUCT_MSIX_GAME_ROUTE_VERIFIED"
   }
 }

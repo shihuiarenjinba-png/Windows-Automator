@@ -353,7 +353,7 @@ class LiveDraftTests(unittest.TestCase):
         mapping = json.loads((root / "docs" / "PARTNER_CENTER_MAP.json").read_text(encoding="utf-8"))
         game = mapping["routes"]["msix_pwa_game"]
         self.assertFalse(game["live_write_supported"])
-        self.assertEqual(game["hold_code"], "CERTIFICATION_REVIEW_GATES_PRESERVED")
+        self.assertEqual(game["hold_code"], "RUNTIME_QA_REQUIRED_POLICY_BLOCK")
         self.assertEqual(game["section_verification"]["packages_save"], "VERIFIED_MANUAL_SAVE")
         self.assertTrue(game["selectors"]["packages_warning_alert"]["verified"])
         self.assertFalse(game["selectors"]["packages_validation_state"]["verified"])
