@@ -11,6 +11,7 @@ from store_manager.live_draft import (
     PlaywrightPartnerCenterPort,
     SelectorMap,
     SubmissionStateObservation,
+    SubmissionStateResult,
     classify_existing_product_submission_state,
 )
 
@@ -65,6 +66,22 @@ class _InitialSubmissionPage:
         item = _ReadOnlyLocator(visible=visible)
         return _ReadOnlyLocator((item,) if exact and visible else ())
 
+
+class _StartButton:
+    def __init__(self): self.clicked=0
+    def count(self): return 1
+    def is_visible(self): return True
+    def click(self,timeout=None): self.clicked+=1
+
+class _StartPage:
+    def __init__(self):
+        self.url="https://partner.microsoft.com/en-us/dashboard/products/9P99MJX1R4V6/overview"
+        self.button=_StartButton()
+    def get_by_text(self,text,exact=True):
+        if text=="Start submission" and exact: return self.button
+        return _ReadOnlyLocator()
+    def locator(self,selector): return _ReadOnlyLocator()
+    def wait_for_timeout(self,ms): return None
 
 class ExistingProductSubmissionStateTests(unittest.TestCase):
     def test_existing_product_without_package_or_draft_is_initial_submission(self):
@@ -136,6 +153,51 @@ class ExistingProductSubmissionStateTests(unittest.TestCase):
                 result = classify_existing_product_submission_state(observation)
                 self.assertEqual(result.state, UNKNOWN_PARTNER_CENTER_STATE)
                 self.assertEqual(result.hold_code, "HOLD_UNKNOWN_SUBMISSION_STATE")
+
+    def test_start_initial_submission_creates_only_draft_after_exact_recheck(self):
+        page=_StartPage()
+        port=PlaywrightPartnerCenterPort(
+            page,
+            SelectorMap({"schema_version":3,"routes":{}}),
+            Path("."),
+        )
+        states=iter((
+            SubmissionStateResult(
+                EXISTING_PRODUCT_INITIAL_SUBMISSION,
+                required_submission_kind="new",
+                hold_code="HOLD_INITIAL_SUBMISSION_ROUTE_REQUIRED",
+            ),
+            SubmissionStateResult(
+                EXISTING_PRODUCT_DRAFT_PRESENT,
+                draft_id="12345",
+                draft_url="https://partner.microsoft.com/en-us/dashboard/products/9P99MJX1R4V6/submissions/12345",
+            ),
+        ))
+        port.inspect_existing_product_submission_state=lambda product: next(states)
+        product=ProductInput(
+            "app","Folder Automation Engine","Offline utility",
+            store_product_id="9P99MJX1R4V6",
+            submission_kind="new",
+        )
+        context=port.start_initial_submission_draft(product)
+        self.assertEqual(context.draft_id,"12345")
+        self.assertEqual(page.button.clicked,1)
+
+    def test_start_initial_submission_rejects_wrong_kind_before_click(self):
+        page=_StartPage()
+        port=PlaywrightPartnerCenterPort(
+            page,
+            SelectorMap({"schema_version":3,"routes":{}}),
+            Path("."),
+        )
+        product=ProductInput(
+            "app","Folder Automation Engine","Offline utility",
+            store_product_id="9P99MJX1R4V6",
+            submission_kind="update",
+        )
+        with self.assertRaisesRegex(LiveGateError,"submission_kind=new"):
+            port.start_initial_submission_draft(product)
+        self.assertEqual(page.button.clicked,0)
 
     def test_live_adapter_reads_initial_state_and_never_needs_a_click_method(self):
         page = _InitialSubmissionPage()
