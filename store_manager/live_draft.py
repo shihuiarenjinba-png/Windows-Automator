@@ -937,6 +937,38 @@ class PlaywrightPartnerCenterPort:
         )
         return classify_existing_product_submission_state(observation)
 
+    def start_initial_submission_draft(self, product: ProductInput) -> DraftContext:
+        """Create only the first draft for an already-reserved Store product.
+
+        Preconditions are re-read immediately before the click. This method does
+        not upload a package, edit pricing, submit certification, or publish.
+        """
+        if product.submission_kind != "new":
+            raise LiveGateError("initial submission start requires submission_kind=new")
+        before = self.inspect_existing_product_submission_state(product)
+        if before.state != EXISTING_PRODUCT_INITIAL_SUBMISSION:
+            raise LiveGateError(
+                f"HOLD_INITIAL_SUBMISSION_STATE_CHANGED: expected {EXISTING_PRODUCT_INITIAL_SUBMISSION}, got {before.state}"
+            )
+        button = self.page.get_by_text("Start submission", exact=True)
+        if button.count() != 1 or not button.is_visible():
+            raise LiveGateError("expected exactly one visible Start submission control")
+        try:
+            button.click(timeout=30_000)
+            self._assert_authenticated()
+            self.page.wait_for_timeout(1000)
+        except GlobalAuthError:
+            raise
+        except Exception as exc:
+            raise AmbiguousWriteError("Start submission result is unknown") from exc
+
+        after = self.inspect_existing_product_submission_state(product)
+        if after.state != EXISTING_PRODUCT_DRAFT_PRESENT or not after.draft_id:
+            raise AmbiguousWriteError(
+                f"Start submission may have changed Partner Center but draft could not be reconciled ({after.state})"
+            )
+        return DraftContext(product.store_product_id, after.draft_id, after.draft_url)
+
     def verify_product_and_draft(self, product: ProductInput) -> DraftContext:
         result = self.inspect_existing_product_submission_state(product)
         if result.state == EXISTING_PRODUCT_INITIAL_SUBMISSION:
