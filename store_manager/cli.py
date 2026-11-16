@@ -27,6 +27,14 @@ def main():
     s.add_argument("--cdp-url",required=True,help="CDP endpoint for one already-authenticated Partner Center tab")
     s.add_argument("--selector-map",default=str(Path(__file__).resolve().parents[1]/"docs"/"PARTNER_CENTER_MAP.json"))
     s.add_argument("--evidence-dir",default="partner-center-evidence")
+    d=sp.add_parser("start-initial-submission")
+    d.add_argument("--input",required=True,help="Prepared ProductInput JSON")
+    d.add_argument("--job",required=True,help="Owner-authorized initial-submission job JSON")
+    d.add_argument("--output",required=True,help="Initial draft creation receipt JSON")
+    d.add_argument("--cdp-url",required=True,help="CDP endpoint for one already-authenticated Partner Center tab")
+    d.add_argument("--confirm-start-submission",action="store_true",help="Action-time approval for Start submission only")
+    d.add_argument("--selector-map",default=str(Path(__file__).resolve().parents[1]/"docs"/"PARTNER_CENTER_MAP.json"))
+    d.add_argument("--evidence-dir",default="partner-center-evidence")
     n=sp.add_parser("night-run"); n.add_argument("--queue",required=True); n.add_argument("--json-report",required=True); n.add_argument("--markdown-report",required=True)
     n.add_argument("--execution-mode",choices=("dry_run","live"),default="dry_run")
     n.add_argument("--confirm-live-draft",action="store_true",help="Explicitly authorize Partner Center package upload and Save draft only")
@@ -131,6 +139,62 @@ def main():
         Path(a.output).parent.mkdir(parents=True,exist_ok=True)
         Path(a.output).write_text(json.dumps(receipt,ensure_ascii=False,indent=2)+"\n",encoding="utf-8")
         print(json.dumps({"status":status,"submission_state":result.state,"output":a.output},ensure_ascii=False))
+        return
+    if a.cmd=="start-initial-submission":
+        if not a.confirm_start_submission:
+            ap.error("start-initial-submission requires --confirm-start-submission at action time")
+        product=ProductInput.load(a.input)
+        job=json.loads(Path(a.job).read_text(encoding="utf-8"))
+        if job.get("schema_version")!="existing-store-initial-submission-start/1":
+            raise SystemExit("unsupported initial submission job schema")
+        expected=job.get("expected") or {}
+        permissions=job.get("permissions") or {}
+        exact_permissions={
+            "read_partner_center":True,
+            "create_product":False,
+            "start_submission":True,
+            "upload_package":False,
+            "edit_pricing":False,
+            "submit_certification":False,
+            "publish":False,
+        }
+        if permissions!=exact_permissions:
+            raise SystemExit("initial submission job permissions are not exact/safe")
+        exact={
+            "store_id":product.store_product_id,
+            "source_sha":product.source_sha,
+            "package_sha256":product.package_sha256,
+            "submission_kind":product.submission_kind,
+        }
+        if any(str(expected.get(k) or "")!=str(v or "") for k,v in exact.items()):
+            raise SystemExit("initial submission job does not match prepared product input")
+        if expected.get("submission_state")!="EXISTING_PRODUCT_INITIAL_SUBMISSION":
+            raise SystemExit("initial submission job is not bound to verified initial state")
+        if job.get("owner_approved") is not True:
+            raise SystemExit("initial submission job is not owner-approved")
+        with LivePlaywrightConnection(a.cdp_url,a.selector_map,a.evidence_dir) as port:
+            context=port.start_initial_submission_draft(product)
+        receipt={
+            "schema_version":"existing-store-initial-submission-start-receipt/1",
+            "status":"INITIAL_SUBMISSION_DRAFT_CREATED",
+            "store_id":product.store_product_id,
+            "source_sha":product.source_sha,
+            "package_sha256":product.package_sha256,
+            "submission_kind":product.submission_kind,
+            "draft_id":context.draft_id,
+            "draft_url":context.draft_url,
+            "created_or_reserved_product":False,
+            "submission_started":True,
+            "start_submission_clicked":True,
+            "start_update_clicked":False,
+            "package_uploaded":False,
+            "pricing_changed":False,
+            "submitted":False,
+            "published":False,
+        }
+        Path(a.output).parent.mkdir(parents=True,exist_ok=True)
+        Path(a.output).write_text(json.dumps(receipt,ensure_ascii=False,indent=2)+"\n",encoding="utf-8")
+        print(json.dumps({"status":receipt["status"],"draft_id":context.draft_id,"output":a.output},ensure_ascii=False))
         return
     raw=json.loads(Path(a.queue).read_text(encoding="utf-8")); products=[ProductInput.from_dict(x) for x in raw]
     if a.execution_mode=="live":
