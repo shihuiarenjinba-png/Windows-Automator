@@ -143,7 +143,11 @@ def main():
     if a.cmd=="start-initial-submission":
         if not a.confirm_start_submission:
             ap.error("start-initial-submission requires --confirm-start-submission at action time")
-        product=ProductInput.load(a.input)
+        raw_input=json.loads(Path(a.input).read_text(encoding="utf-8"))
+        if raw_input.get("schema_version")=="windows-all-auto/store-automator-input-1":
+            product=ProductInput.from_dict(raw_input.get("windows_automator_input") or {})
+        else:
+            product=ProductInput.from_dict(raw_input)
         job=json.loads(Path(a.job).read_text(encoding="utf-8"))
         if job.get("schema_version")!="existing-store-initial-submission-start/1":
             raise SystemExit("unsupported initial submission job schema")
