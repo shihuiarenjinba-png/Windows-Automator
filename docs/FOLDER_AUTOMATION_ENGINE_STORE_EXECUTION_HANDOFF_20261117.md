@@ -157,23 +157,48 @@ Never retry Start submission from this run.
 
 ## Stage 3 — bind the recovered Draft
 
-After the reconciliation receipt proves the Draft, bind the Draft ID/URL to the Store handoff through Windows-all-auto.
+After the reconciliation receipt proves the Draft, bind the Draft ID/URL to the Store handoff through the dedicated Windows-all-auto read-only recovery helper:
 
-If the existing `apply_initial_submission_receipt.py` contract accepts only an initial-start receipt, either:
+```powershell
+$allAuto = 'C:\\Users\\aaron\\Desktop\\portfolio-audit\\_task_worktrees\\Windows-all-auto'
+$folderRepo = 'C:\\Users\\aaron\\Desktop\\portfolio-audit\\_task_worktrees\\folder-automation-engine'
+$work = 'C:\\Users\\aaron\\Desktop\\portfolio-audit\\STORE_UPLOAD_ASSETS_20261019\\FolderAutomationEngine\\local-store-preflight-20261116'
+$handoff = Join-Path $folderRepo 'store\\AUTOMATION_UPLOADER_HANDOFF_20261115.json'
+$reconcileReceipt = Join-Path $work 'initial-submission-reconcile-receipt-20261117.json'
+$handoffAfterDraft = Join-Path $work 'store-handoff-after-recovered-initial-draft.json'
 
-1. normalize the read-only recovered receipt to the same immutable Draft binding contract without fabricating a write, or
-2. add a dedicated `apply_recovered_initial_submission_receipt.py` helper plus tests.
+Set-Location $allAuto
+python .\\scripts\\apply_recovered_initial_submission_receipt.py `
+  --handoff $handoff `
+  --receipt $reconcileReceipt `
+  --output $handoffAfterDraft
+```
 
-The final handoff must record the recovered Draft while preserving:
+The dedicated helper requires:
 
-- `submission_started` as historical/manual owner action
+- receipt schema `existing-store-initial-submission-reconcile-receipt/1`
+- status `INITIAL_SUBMISSION_DRAFT_PRESENT_RECOVERED`
+- state `EXISTING_PRODUCT_DRAFT_PRESENT`
+- exact Store ID
+- numeric Draft ID
+- exact Draft URL for that Store ID/Draft ID
+- `write_performed=false`
+- `start_submission_clicked=false`
+- `package_uploaded=false`
+- `pricing_changed=false`
+- `submitted=false`
+- `published=false`
+
+It records `initial_submission_start_source=owner_manual_reconciled` and never pretends that Windows-Automator clicked Start submission.
+
+The final handoff must preserve:
+
+- manual owner Start submission as historical state
 - no automated Start click
 - no package upload
 - no pricing write
 - no certification
 - no publish
-
-Do not mark a write that the automation did not perform.
 
 ## Stage 4 — read-only Store-field collection
 
