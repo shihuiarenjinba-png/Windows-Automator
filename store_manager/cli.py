@@ -7,6 +7,7 @@ from .live_draft import (
     LiveDraftWorkflow,
     LivePlaywrightConnection,
     UNKNOWN_PARTNER_CENTER_STATE,
+    reconcile_ambiguous_initial_submission,
 )
 from .github_context import fetch_context
 from .ollama import complete_product
@@ -27,6 +28,12 @@ def main():
     s.add_argument("--cdp-url",required=True,help="CDP endpoint for one already-authenticated Partner Center tab")
     s.add_argument("--selector-map",default=str(Path(__file__).resolve().parents[1]/"docs"/"PARTNER_CENTER_MAP.json"))
     s.add_argument("--evidence-dir",default="partner-center-evidence")
+    r=sp.add_parser("reconcile-initial-submission-attempt")
+    r.add_argument("--input",required=True,help="Prepared ProductInput JSON")
+    r.add_argument("--output",required=True,help="Read-only reconciliation receipt JSON")
+    r.add_argument("--cdp-url",required=True,help="CDP endpoint for one already-authenticated Partner Center tab")
+    r.add_argument("--selector-map",default=str(Path(__file__).resolve().parents[1]/"docs"/"PARTNER_CENTER_MAP.json"))
+    r.add_argument("--evidence-dir",default="partner-center-evidence")
     d=sp.add_parser("start-initial-submission")
     d.add_argument("--input",required=True,help="Prepared ProductInput JSON")
     d.add_argument("--job",required=True,help="Owner-authorized initial-submission job JSON")
@@ -139,6 +146,35 @@ def main():
         Path(a.output).parent.mkdir(parents=True,exist_ok=True)
         Path(a.output).write_text(json.dumps(receipt,ensure_ascii=False,indent=2)+"\n",encoding="utf-8")
         print(json.dumps({"status":status,"submission_state":result.state,"output":a.output},ensure_ascii=False))
+        return
+    if a.cmd=="reconcile-initial-submission-attempt":
+        product=ProductInput.load(a.input)
+        if not all(str(getattr(product,name,"") or "").strip() for name in (
+            "product_name","store_product_id","identity_name","identity_publisher"
+        )):
+            raise SystemExit("reconciliation requires existing product and exact identity values")
+        with LivePlaywrightConnection(a.cdp_url,a.selector_map,a.evidence_dir) as port:
+            result=port.inspect_existing_product_submission_state(product)
+        status,retry_candidate=reconcile_ambiguous_initial_submission(result)
+        receipt={
+            "schema_version":"existing-store-initial-submission-reconcile-receipt/1",
+            "status":status,
+            "submission_state":result.state,
+            "store_id":product.store_product_id,
+            "draft_id":result.draft_id,
+            "draft_url":result.draft_url,
+            "retry_candidate":retry_candidate,
+            "retry_authorized":False,
+            "write_performed":False,
+            "start_submission_clicked":False,
+            "package_uploaded":False,
+            "pricing_changed":False,
+            "submitted":False,
+            "published":False,
+        }
+        Path(a.output).parent.mkdir(parents=True,exist_ok=True)
+        Path(a.output).write_text(json.dumps(receipt,ensure_ascii=False,indent=2)+"\n",encoding="utf-8")
+        print(json.dumps({"status":status,"submission_state":result.state,"retry_candidate":retry_candidate,"output":a.output},ensure_ascii=False))
         return
     if a.cmd=="start-initial-submission":
         if not a.confirm_start_submission:
