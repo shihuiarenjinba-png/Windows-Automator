@@ -47,6 +47,27 @@ product and requires `EXISTING_PRODUCT_DRAFT_PRESENT` with a non-empty Draft ID.
 If the click result cannot be reconciled exactly, the operation fails closed as an
 ambiguous write and MUST NOT be blindly retried.
 
+After an ambiguous attempt, use the dedicated read-only reconciliation command before
+requesting any new click approval:
+
+```powershell
+pwsh -File .\scripts\reconcile_initial_submission_attempt.ps1 `
+  -Input C:\qa\prepared-product.json `
+  -Output C:\qa\initial-submission-reconcile-receipt.json `
+  -CdpUrl $env:PARTNER_CENTER_CDP_URL
+```
+
+It emits one of:
+
+- `INITIAL_SUBMISSION_DRAFT_PRESENT_RECOVERED` — a Draft already exists; do not click again.
+- `INITIAL_SUBMISSION_NOT_OBSERVED_RETRY_REQUIRES_NEW_APPROVAL` — the product is still in the
+  initial state; a fresh execution-time approval is required before a retry.
+- `HOLD_AMBIGUOUS_WRITE` — state is not exact enough to retry.
+
+The reconciliation path performs no Partner Center write and sets
+`retry_authorized=false` even when the current state would be eligible for a later
+freshly approved retry. Coordinate clicking is not an approved recovery mechanism.
+
 A successful receipt must report `INITIAL_SUBMISSION_DRAFT_CREATED` and must prove
 that package upload, pricing change, certification submission and publication did not
 occur.
