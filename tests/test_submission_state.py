@@ -13,6 +13,7 @@ from store_manager.live_draft import (
     SubmissionStateObservation,
     SubmissionStateResult,
     classify_existing_product_submission_state,
+    reconcile_ambiguous_initial_submission,
 )
 
 
@@ -153,6 +154,37 @@ class ExistingProductSubmissionStateTests(unittest.TestCase):
                 result = classify_existing_product_submission_state(observation)
                 self.assertEqual(result.state, UNKNOWN_PARTNER_CENTER_STATE)
                 self.assertEqual(result.hold_code, "HOLD_UNKNOWN_SUBMISSION_STATE")
+
+    def test_reconcile_ambiguous_attempt_recovers_existing_draft_without_retry(self):
+        status, retry_candidate = reconcile_ambiguous_initial_submission(
+            SubmissionStateResult(
+                EXISTING_PRODUCT_DRAFT_PRESENT,
+                draft_id="12345",
+                draft_url="https://partner.microsoft.com/en-us/dashboard/products/9P99MJX1R4V6/submissions/12345",
+            )
+        )
+        self.assertEqual(status, "INITIAL_SUBMISSION_DRAFT_PRESENT_RECOVERED")
+        self.assertFalse(retry_candidate)
+
+    def test_reconcile_ambiguous_attempt_requires_new_approval_if_still_initial(self):
+        status, retry_candidate = reconcile_ambiguous_initial_submission(
+            SubmissionStateResult(
+                EXISTING_PRODUCT_INITIAL_SUBMISSION,
+                required_submission_kind="new",
+            )
+        )
+        self.assertEqual(status, "INITIAL_SUBMISSION_NOT_OBSERVED_RETRY_REQUIRES_NEW_APPROVAL")
+        self.assertTrue(retry_candidate)
+
+    def test_reconcile_ambiguous_attempt_holds_unknown_state(self):
+        status, retry_candidate = reconcile_ambiguous_initial_submission(
+            SubmissionStateResult(
+                UNKNOWN_PARTNER_CENTER_STATE,
+                hold_code="HOLD_UNKNOWN_SUBMISSION_STATE",
+            )
+        )
+        self.assertEqual(status, "HOLD_AMBIGUOUS_WRITE")
+        self.assertFalse(retry_candidate)
 
     def test_start_initial_submission_creates_only_draft_after_exact_recheck(self):
         page=_StartPage()
