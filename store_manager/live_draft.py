@@ -165,6 +165,20 @@ def classify_existing_product_submission_state(
     )
 
 
+def reconcile_ambiguous_initial_submission(
+    result: SubmissionStateResult,
+) -> tuple[str, bool]:
+    """Classify the safe next step after an ambiguous Start submission attempt.
+
+    This helper is read-only policy. It never authorizes or performs a retry.
+    """
+    if result.state == EXISTING_PRODUCT_DRAFT_PRESENT and result.draft_id:
+        return "INITIAL_SUBMISSION_DRAFT_PRESENT_RECOVERED", False
+    if result.state == EXISTING_PRODUCT_INITIAL_SUBMISSION:
+        return "INITIAL_SUBMISSION_NOT_OBSERVED_RETRY_REQUIRES_NEW_APPROVAL", True
+    return "HOLD_AMBIGUOUS_WRITE", False
+
+
 @dataclass(frozen=True)
 class PackageState:
     validation: str
