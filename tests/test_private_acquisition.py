@@ -1,3 +1,8 @@
+import json
+from pathlib import Path
+import subprocess
+import sys
+import tempfile
 import unittest
 
 from store_manager.private_acquisition import (
@@ -146,6 +151,125 @@ class PrivateAcquisitionTests(unittest.TestCase):
             )
         )
         self.assertEqual(decision.state, HOLD_ZERO_COST_ROUTE)
+
+
+class PrivateAcquisitionCliTests(unittest.TestCase):
+    def test_read_only_cli_writes_immutable_zero_cost_decision(self):
+        root = Path(__file__).resolve().parents[1]
+        with tempfile.TemporaryDirectory() as td:
+            directory = Path(td)
+            observation = directory / "observation.json"
+            output = directory / "decision.json"
+            observation.write_text(
+                json.dumps(
+                    {
+                        "schema_version": "private-store-acquisition-observation/1",
+                        "read_only_observation": True,
+                        "partner_center_write_performed": False,
+                        "private_audience_configured": True,
+                        "test_account_in_private_audience": True,
+                        "store_signed_private_build_published": True,
+                        "current_price_is_free": False,
+                        "free_trial_visible": True,
+                        "free_trial_zero_cost_confirmed": True,
+                        "existing_unredeemed_promo_code_available": False,
+                        "promo_code_generation_available": True,
+                        "temporary_free_change_available": True,
+                        "paid_checkout_required": False,
+                    }
+                ),
+                encoding="utf-8",
+            )
+            result = subprocess.run(
+                [
+                    sys.executable,
+                    str(root / "scripts" / "classify_private_store_acquisition.py"),
+                    "--observation",
+                    str(observation),
+                    "--output",
+                    str(output),
+                ],
+                cwd=root,
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+            self.assertEqual(result.returncode, 0, result.stderr)
+            decision = json.loads(output.read_text(encoding="utf-8"))
+            self.assertEqual(decision["status"], ZERO_COST_FREE_TRIAL)
+            self.assertTrue(decision["acquisition_allowed_now"])
+            self.assertFalse(decision["write_required"])
+            self.assertFalse(decision["partner_center_write_performed"])
+            self.assertFalse(decision["package_uploaded"])
+            self.assertFalse(decision["certification_submitted"])
+            self.assertFalse(decision["published_by_this_command"])
+
+    def test_cli_rejects_non_read_only_observation(self):
+        root = Path(__file__).resolve().parents[1]
+        with tempfile.TemporaryDirectory() as td:
+            directory = Path(td)
+            observation = directory / "observation.json"
+            output = directory / "decision.json"
+            observation.write_text(
+                json.dumps(
+                    {
+                        "schema_version": "private-store-acquisition-observation/1",
+                        "read_only_observation": False,
+                        "partner_center_write_performed": False,
+                    }
+                ),
+                encoding="utf-8",
+            )
+            result = subprocess.run(
+                [
+                    sys.executable,
+                    str(root / "scripts" / "classify_private_store_acquisition.py"),
+                    "--observation",
+                    str(observation),
+                    "--output",
+                    str(output),
+                ],
+                cwd=root,
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+            self.assertNotEqual(result.returncode, 0)
+            self.assertFalse(output.exists())
+
+    def test_cli_refuses_to_overwrite_decision_evidence(self):
+        root = Path(__file__).resolve().parents[1]
+        with tempfile.TemporaryDirectory() as td:
+            directory = Path(td)
+            observation = directory / "observation.json"
+            output = directory / "decision.json"
+            observation.write_text(
+                json.dumps(
+                    {
+                        "schema_version": "private-store-acquisition-observation/1",
+                        "read_only_observation": True,
+                        "partner_center_write_performed": False,
+                    }
+                ),
+                encoding="utf-8",
+            )
+            output.write_text('{"existing":true}\n', encoding="utf-8")
+            result = subprocess.run(
+                [
+                    sys.executable,
+                    str(root / "scripts" / "classify_private_store_acquisition.py"),
+                    "--observation",
+                    str(observation),
+                    "--output",
+                    str(output),
+                ],
+                cwd=root,
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn("refusing to overwrite", result.stdout + result.stderr)
 
 
 if __name__ == "__main__":
