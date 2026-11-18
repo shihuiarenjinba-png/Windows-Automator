@@ -113,6 +113,51 @@ Reference:
 - Microsoft Learn — MSIX visibility / Private audience
 - Microsoft Learn — Generate promotional codes
 
+## Known commercial/distribution facts from the Scheduled repository
+
+Repository evidence already establishes:
+
+- launch model: `FREE`
+- commercial model: `free`
+- strategy: `free_launch`
+- currency: `JPY`
+- planned free trial: `none`
+- target test audience: `PRIVATE_AUDIENCE_TEST`
+
+These are product-plan facts, not proof of the current live Partner Center values.
+
+Therefore the preferred zero-cost path for **Scheduled** is simpler than the generic
+classifier:
+
+1. if the live Store price is already **Free**, keep it Free and use the Private
+   audience Store-signed build for QA after publication;
+2. if the live Store price is paid, stop at
+   `HOLD_PRICE_CHANGE_APPROVAL_REQUIRED`;
+3. do not invent a trial for Scheduled;
+4. promo codes are not the primary path for this free-launch product;
+5. never self-purchase the app.
+
+The repository explicitly says an actual Store price/market change still requires
+owner approval. A `FREE` product plan is not itself authorization to write the
+Partner Center price.
+
+Known unresolved Store-facing items:
+
+- live price and current submission/package state;
+- exact Private audience / Known User Group;
+- test-account membership;
+- public Privacy URL;
+- Support URL;
+- genuine Store screenshots.
+
+The screenshot requirement is intentionally blocked until the Microsoft Store-signed
+build can launch, because Store images must come from the genuine working app rather
+than a mock or the blocked unsigned executable.
+
+Known-facts checkpoint:
+
+`docs/SCHEDULED_API_RUNNER_STORE_OWNER_KNOWN_FACTS_20261118.json`
+
 ## Stage 1 — read-only Partner Center observation
 
 Before any write, inspect the live Scheduled API Runner product.
