@@ -35,5 +35,41 @@
 ## GitHubルール
 main/release直書き禁止。作業ブランチで変更し、Windows GitHub Actionsでテスト。token/secretはcommitしない。
 
+
+## Scheduled API Runner — Private Store署名QA lane
+
+Scheduled API Runnerは、未署名exact EXEのone-shot確認でWindows Application Controlにより起動前ブロックとなり、中央側で
+
+`PRIVATE_STORE_SIGNING_LANE_READY`
+
+まで完了しています。
+
+この製品についてはFolder用handoffを流用しないでください。
+
+専用handoff:
+
+`docs/SCHEDULED_API_RUNNER_STORE_SIGNING_HANDOFF_20261118.md`
+
+read-only観測テンプレート:
+
+`docs/SCHEDULED_API_RUNNER_PRIVATE_ACQUISITION_OBSERVATION_TEMPLATE_20261118.json`
+
+checkpoint:
+
+`docs/SCHEDULED_API_RUNNER_PRIVATE_SIGNING_CHECKPOINT_20261118.json`
+
+zero-cost route classifier:
+
+`scripts/classify_private_store_acquisition.py`
+
+重要:
+
+- Private audienceだけでは有料アプリが無料になるとは限らない。
+- paid checkoutが表示されたら購入せずHOLD。
+- Promo code生成・一時Free変更・package upload・certification・Private publishはそれぞれ別approval。
+- Frozen candidateを再ビルド/差替えしない。
+- 未署名EXEを再起動しない。
+- Store署名済みPrivate版取得後にのみGUI/DPI/HTTPS/CSV/Task Scheduler QAを再開する。
+
 ## 完了報告
 repo / branch / start HEAD / final HEAD / PR / tests / Windows GUI / Partner Center mapping / 実アップロード有無 / HOLDを記録してください。
