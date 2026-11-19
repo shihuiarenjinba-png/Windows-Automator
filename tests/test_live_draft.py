@@ -164,6 +164,39 @@ class StoreDraftLifecycleTests(unittest.TestCase):
             "READY_FOR_CERTIFICATION_REVIEW",
         )
 
+    def test_folder_remaining_sections_fixture_is_bound_to_uploaded_candidate(self):
+        root = Path(__file__).parents[1]
+        fixture = json.loads(
+            (root / "tests" / "fixtures" / "folder_engine_remaining_sections_20261119.json").read_text(encoding="utf-8")
+        )
+        product = fixture["product"]
+        self.assertEqual(product["store_id"], "9P99MJX1R4V6")
+        self.assertEqual(product["draft_id"], "1152921505702423660")
+        self.assertEqual(product["source_sha"], "adfc0d08efb0a94602d5286557d399f9cb28b9dd")
+        self.assertEqual(
+            product["package_sha256"],
+            "3C6BC8C1291450905AE71834F2704A59325D1AAA1C9DE3F064BCB8C7EBCA9FB9",
+        )
+        self.assertEqual(fixture["completed_sections"], {
+            "pricing_availability": "Complete",
+            "packages": "Complete",
+        })
+        self.assertEqual(
+            fixture["iarc"]["legal_attestation"],
+            "OWNER_INPUT_REQUIRED_IARC_LEGAL_ATTESTATION",
+        )
+
+    def test_folder_fixture_never_auto_invents_privacy_url_or_legal_attestation(self):
+        root = Path(__file__).parents[1]
+        fixture = json.loads(
+            (root / "tests" / "fixtures" / "folder_engine_remaining_sections_20261119.json").read_text(encoding="utf-8")
+        )
+        privacy = fixture["properties"]["privacy_policy"]
+        self.assertEqual(privacy["preferred_mode"], "INLINE_TEXT_IF_LIVE_FORM_SUPPORTS_IT")
+        self.assertEqual(privacy["fallback_hold"], "HOLD_PRIVACY_POLICY_PUBLIC_URL_REQUIRED")
+        self.assertFalse(fixture["target"]["certification_executed"])
+        self.assertFalse(fixture["target"]["publish_executed"])
+
     def test_certification_or_publish_execution_is_never_hidden(self):
         complete = StoreDraftRuntimeObservation(
             package_saved=True,
