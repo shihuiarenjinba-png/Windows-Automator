@@ -95,14 +95,13 @@ class StoreDraftLifecycleTests(unittest.TestCase):
             pricing_saved=True,
         )
         self.assertEqual(store_draft_next_state(observation), "PROPERTIES_REQUIRED")
-        self.assertEqual(
-            certification_review_state(
-                draft_state=store_draft_next_state(observation),
-                certification_executed=False,
-                publish_executed=False,
-            ),
-            "STORE_DRAFT_REMAINING_SECTIONS_REQUIRED",
+        review_state = certification_review_state(
+            draft_state=store_draft_next_state(observation),
+            certification_executed=False,
+            publish_executed=False,
         )
+        self.assertEqual(review_state, "PROPERTIES_REQUIRED")
+        self.assertNotEqual(review_state, "READY_FOR_CERTIFICATION_REVIEW")
 
     def test_folder_remaining_sections_advance_in_order(self):
         base = dict(package_saved=True, pricing_saved=True)
