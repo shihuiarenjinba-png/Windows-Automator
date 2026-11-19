@@ -28,6 +28,9 @@ from store_manager.live_draft import (
     restricted_capability_text_retained,
     save_restricted_capability_explanations,
     submission_options_save_succeeded,
+    StoreDraftRuntimeObservation,
+    store_draft_next_state,
+    certification_review_state,
 )
 from store_manager.restricted_capabilities import RestrictedCapabilityJustification
 
@@ -83,6 +86,103 @@ def live_product(root: Path) -> ProductInput:
     product.fields["description"] = FieldValue("description", ValueMode.MANUAL, "Description", "test")
     product.security_package_sha256 = file_sha256(package)
     return product
+
+
+class StoreDraftLifecycleTests(unittest.TestCase):
+    def test_folder_uploaded_package_still_requires_properties(self):
+        observation = StoreDraftRuntimeObservation(
+            package_saved=True,
+            pricing_saved=True,
+        )
+        self.assertEqual(store_draft_next_state(observation), "PROPERTIES_REQUIRED")
+        self.assertEqual(
+            certification_review_state(
+                draft_state=store_draft_next_state(observation),
+                certification_executed=False,
+                publish_executed=False,
+            ),
+            "STORE_DRAFT_REMAINING_SECTIONS_REQUIRED",
+        )
+
+    def test_folder_remaining_sections_advance_in_order(self):
+        base = dict(package_saved=True, pricing_saved=True)
+        self.assertEqual(
+            store_draft_next_state(StoreDraftRuntimeObservation(**base)),
+            "PROPERTIES_REQUIRED",
+        )
+        base["properties_saved"] = True
+        self.assertEqual(
+            store_draft_next_state(StoreDraftRuntimeObservation(**base)),
+            "IARC_REQUIRED",
+        )
+        base["iarc_questionnaire_complete"] = True
+        self.assertEqual(
+            store_draft_next_state(StoreDraftRuntimeObservation(**base)),
+            "IARC_LEGAL_ATTESTATION_REQUIRED",
+        )
+        base["iarc_legal_attestation_confirmed"] = True
+        self.assertEqual(
+            store_draft_next_state(StoreDraftRuntimeObservation(**base)),
+            "IARC_SAVE_REQUIRED",
+        )
+        base["iarc_saved"] = True
+        self.assertEqual(
+            store_draft_next_state(StoreDraftRuntimeObservation(**base)),
+            "LISTING_REQUIRED",
+        )
+        base["listing_saved"] = True
+        self.assertEqual(
+            store_draft_next_state(StoreDraftRuntimeObservation(**base)),
+            "SUBMISSION_OPTIONS_REQUIRED",
+        )
+        base["submission_options_saved"] = True
+        self.assertEqual(
+            store_draft_next_state(StoreDraftRuntimeObservation(**base)),
+            "DRAFT_RECONCILING",
+        )
+
+    def test_only_reloaded_six_of_six_complete_reaches_certification_review(self):
+        observation = StoreDraftRuntimeObservation(
+            package_saved=True,
+            pricing_saved=True,
+            properties_saved=True,
+            iarc_questionnaire_complete=True,
+            iarc_legal_attestation_confirmed=True,
+            iarc_saved=True,
+            listing_saved=True,
+            submission_options_saved=True,
+            overview_reconciled=True,
+            retained_after_reload=True,
+        )
+        draft_state = store_draft_next_state(observation)
+        self.assertEqual(draft_state, "STORE_DRAFT_COMPLETE")
+        self.assertEqual(
+            certification_review_state(
+                draft_state=draft_state,
+                certification_executed=False,
+                publish_executed=False,
+            ),
+            "READY_FOR_CERTIFICATION_REVIEW",
+        )
+
+    def test_certification_or_publish_execution_is_never_hidden(self):
+        complete = StoreDraftRuntimeObservation(
+            package_saved=True,
+            pricing_saved=True,
+            properties_saved=True,
+            iarc_questionnaire_complete=True,
+            iarc_legal_attestation_confirmed=True,
+            iarc_saved=True,
+            listing_saved=True,
+            submission_options_saved=True,
+            overview_reconciled=True,
+            retained_after_reload=True,
+            certification_executed=True,
+        )
+        self.assertEqual(
+            store_draft_next_state(complete),
+            "HOLD_PROHIBITED_ACTION_EXECUTED",
+        )
 
 
 class FakePort:
