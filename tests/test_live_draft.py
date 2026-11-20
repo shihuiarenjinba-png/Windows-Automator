@@ -23,10 +23,14 @@ from store_manager.live_draft import (
     PackageValidationError,
     REQUIRED_SECTIONS,
     SelectorMap,
+    PlaywrightPartnerCenterPort,
     normalize_partner_center_state,
     restricted_capability_text_retained,
     save_restricted_capability_explanations,
     submission_options_save_succeeded,
+    StoreDraftRuntimeObservation,
+    store_draft_next_state,
+    certification_review_state,
 )
 from store_manager.restricted_capabilities import RestrictedCapabilityJustification
 
@@ -84,6 +88,135 @@ def live_product(root: Path) -> ProductInput:
     return product
 
 
+class StoreDraftLifecycleTests(unittest.TestCase):
+    def test_folder_uploaded_package_still_requires_properties(self):
+        observation = StoreDraftRuntimeObservation(
+            package_saved=True,
+            pricing_saved=True,
+        )
+        self.assertEqual(store_draft_next_state(observation), "PROPERTIES_REQUIRED")
+        review_state = certification_review_state(
+            draft_state=store_draft_next_state(observation),
+            certification_executed=False,
+            publish_executed=False,
+        )
+        self.assertEqual(review_state, "PROPERTIES_REQUIRED")
+        self.assertNotEqual(review_state, "READY_FOR_CERTIFICATION_REVIEW")
+
+    def test_folder_remaining_sections_advance_in_order(self):
+        base = dict(package_saved=True, pricing_saved=True)
+        self.assertEqual(
+            store_draft_next_state(StoreDraftRuntimeObservation(**base)),
+            "PROPERTIES_REQUIRED",
+        )
+        base["properties_saved"] = True
+        self.assertEqual(
+            store_draft_next_state(StoreDraftRuntimeObservation(**base)),
+            "IARC_REQUIRED",
+        )
+        base["iarc_questionnaire_complete"] = True
+        self.assertEqual(
+            store_draft_next_state(StoreDraftRuntimeObservation(**base)),
+            "IARC_LEGAL_ATTESTATION_REQUIRED",
+        )
+        base["iarc_legal_attestation_confirmed"] = True
+        self.assertEqual(
+            store_draft_next_state(StoreDraftRuntimeObservation(**base)),
+            "IARC_SAVE_REQUIRED",
+        )
+        base["iarc_saved"] = True
+        self.assertEqual(
+            store_draft_next_state(StoreDraftRuntimeObservation(**base)),
+            "LISTING_REQUIRED",
+        )
+        base["listing_saved"] = True
+        self.assertEqual(
+            store_draft_next_state(StoreDraftRuntimeObservation(**base)),
+            "SUBMISSION_OPTIONS_REQUIRED",
+        )
+        base["submission_options_saved"] = True
+        self.assertEqual(
+            store_draft_next_state(StoreDraftRuntimeObservation(**base)),
+            "DRAFT_RECONCILING",
+        )
+
+    def test_only_reloaded_six_of_six_complete_reaches_certification_review(self):
+        observation = StoreDraftRuntimeObservation(
+            package_saved=True,
+            pricing_saved=True,
+            properties_saved=True,
+            iarc_questionnaire_complete=True,
+            iarc_legal_attestation_confirmed=True,
+            iarc_saved=True,
+            listing_saved=True,
+            submission_options_saved=True,
+            overview_reconciled=True,
+            retained_after_reload=True,
+        )
+        draft_state = store_draft_next_state(observation)
+        self.assertEqual(draft_state, "STORE_DRAFT_COMPLETE")
+        self.assertEqual(
+            certification_review_state(
+                draft_state=draft_state,
+                certification_executed=False,
+                publish_executed=False,
+            ),
+            "READY_FOR_CERTIFICATION_REVIEW",
+        )
+
+    def test_folder_remaining_sections_fixture_is_bound_to_uploaded_candidate(self):
+        root = Path(__file__).parents[1]
+        fixture = json.loads(
+            (root / "tests" / "fixtures" / "folder_engine_remaining_sections_20261119.json").read_text(encoding="utf-8")
+        )
+        product = fixture["product"]
+        self.assertEqual(product["store_id"], "9P99MJX1R4V6")
+        self.assertEqual(product["draft_id"], "1152921505702423660")
+        self.assertEqual(product["source_sha"], "adfc0d08efb0a94602d5286557d399f9cb28b9dd")
+        self.assertEqual(
+            product["package_sha256"],
+            "3C6BC8C1291450905AE71834F2704A59325D1AAA1C9DE3F064BCB8C7EBCA9FB9",
+        )
+        self.assertEqual(fixture["completed_sections"], {
+            "pricing_availability": "Complete",
+            "packages": "Complete",
+        })
+        self.assertEqual(
+            fixture["iarc"]["legal_attestation"],
+            "OWNER_INPUT_REQUIRED_IARC_LEGAL_ATTESTATION",
+        )
+
+    def test_folder_fixture_never_auto_invents_privacy_url_or_legal_attestation(self):
+        root = Path(__file__).parents[1]
+        fixture = json.loads(
+            (root / "tests" / "fixtures" / "folder_engine_remaining_sections_20261119.json").read_text(encoding="utf-8")
+        )
+        privacy = fixture["properties"]["privacy_policy"]
+        self.assertEqual(privacy["preferred_mode"], "INLINE_TEXT_IF_LIVE_FORM_SUPPORTS_IT")
+        self.assertEqual(privacy["fallback_hold"], "HOLD_PRIVACY_POLICY_PUBLIC_URL_REQUIRED")
+        self.assertFalse(fixture["target"]["certification_executed"])
+        self.assertFalse(fixture["target"]["publish_executed"])
+
+    def test_certification_or_publish_execution_is_never_hidden(self):
+        complete = StoreDraftRuntimeObservation(
+            package_saved=True,
+            pricing_saved=True,
+            properties_saved=True,
+            iarc_questionnaire_complete=True,
+            iarc_legal_attestation_confirmed=True,
+            iarc_saved=True,
+            listing_saved=True,
+            submission_options_saved=True,
+            overview_reconciled=True,
+            retained_after_reload=True,
+            certification_executed=True,
+        )
+        self.assertEqual(
+            store_draft_next_state(complete),
+            "HOLD_PROHIBITED_ACTION_EXECUTED",
+        )
+
+
 class FakePort:
     def __init__(self):
         self.uploaded = PackageState("VALID", "COMPLETE")
@@ -136,7 +269,49 @@ class FakeRestrictedCapabilityPort:
         return dict(self.filled),{key:False for key in self.filled}
 
 
+class _IdentityLocator:
+    def __init__(self,count): self._count=count
+    def count(self): return self._count
+
+class _IdentityPage:
+    def __init__(self,texts):
+        self.texts=set(texts)
+        self.url="https://partner.microsoft.com/en-us/dashboard/apps-and-games/overview"
+    def goto(self,url,wait_until=None,timeout=None): self.url=url
+    def locator(self,selector):
+        if selector=="input[type='password']": return _IdentityLocator(0)
+        return _IdentityLocator(0)
+    def get_by_text(self,text,exact=True):
+        return _IdentityLocator(1 if exact and text in self.texts else 0)
+
 class LiveDraftTests(unittest.TestCase):
+    def test_existing_identity_reverify_is_read_only_exact_match(self):
+        values={
+            "Folder Automation Engine",
+            "9P99MJX1R4V6",
+            "OkinawaDesktopTools.FolderAutomationEngine",
+            "CN=46263F21-A700-41DB-8C9B-114C22FB82FC",
+            "OkinawaDesktopTools.FolderAutomationEngine_j8yefg9jgfh58",
+            "S-1-15-2-795676864-310991790-2802347502-2718627192-2651328981-310414558-459028798",
+        }
+        page=_IdentityPage(values)
+        port=PlaywrightPartnerCenterPort(
+            page,
+            SelectorMap({"schema_version":3,"routes":{}}),
+            Path("."),
+        )
+        result=port.verify_existing_identity_values(
+            product_name="Folder Automation Engine",
+            store_product_id="9P99MJX1R4V6",
+            identity_name="OkinawaDesktopTools.FolderAutomationEngine",
+            identity_publisher="CN=46263F21-A700-41DB-8C9B-114C22FB82FC",
+            package_family_name="OkinawaDesktopTools.FolderAutomationEngine_j8yefg9jgfh58",
+            package_sid="S-1-15-2-795676864-310991790-2802347502-2718627192-2651328981-310414558-459028798",
+        )
+        self.assertEqual(result["status"],"EXISTING_IDENTITY_EXACT_MATCH")
+        self.assertTrue(result["partner_center_reverified"])
+        self.assertIn("/products/9P99MJX1R4V6/identity",page.url)
+
     def test_restricted_capability_workflow_fills_saves_and_reload_verifies(self):
         with tempfile.TemporaryDirectory() as directory:
             product=live_product(Path(directory))

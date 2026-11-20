@@ -1,0 +1,140 @@
+{
+  "schema_version": "folder-engine-remaining-store-sections/1",
+  "product": {
+    "name": "Folder Automation Engine",
+    "store_id": "9P99MJX1R4V6",
+    "draft_id": "1152921505702423660",
+    "source_sha": "adfc0d08efb0a94602d5286557d399f9cb28b9dd",
+    "package_sha256": "3C6BC8C1291450905AE71834F2704A59325D1AAA1C9DE3F064BCB8C7EBCA9FB9",
+    "exe_sha256": "DE6894AE39CBE0FBE1889B4AA005E500F30A2EF95EE67403DDFB210DBCFB9F18",
+    "version": "1.0.0.0",
+    "architecture": "X64"
+  },
+  "completed_sections": {
+    "pricing_availability": "Complete",
+    "packages": "Complete"
+  },
+  "properties": {
+    "preferred_primary_category": "Utilities & tools",
+    "category_requires_live_exact_option": true,
+    "accesses_collects_or_transmits_personal_information": "YES",
+    "personal_information_reason": "User-selected file paths, file names, file-system metadata and file contents may contain personal information. The implemented app does not transmit them externally.",
+    "privacy_policy": {
+      "source": "store/PRIVACY_POLICY.md",
+      "preferred_mode": "INLINE_TEXT_IF_LIVE_FORM_SUPPORTS_IT",
+      "fallback_hold": "HOLD_PRIVACY_POLICY_PUBLIC_URL_REQUIRED"
+    },
+    "implementation_facts": {
+      "local_file_folder_access": true,
+      "external_app_controlled_network_cloud": false,
+      "external_account_login": false,
+      "camera": false,
+      "microphone": false,
+      "location": false,
+      "driver_or_service_dependency": false,
+      "restricted_capabilities": [
+        "runFullTrust"
+      ]
+    },
+    "system_requirements": {
+      "device_family": "Windows.Desktop",
+      "architecture": "x64",
+      "minimum_windows_version": "10.0.19041.0"
+    }
+  },
+  "iarc": {
+    "current_questions_must_be_observed_live": true,
+    "content_facts": {
+      "violence": false,
+      "blood_or_gore": false,
+      "sexual_content": false,
+      "nudity": false,
+      "strong_language": false,
+      "drugs_alcohol_tobacco": false,
+      "gambling": false,
+      "simulated_gambling": false,
+      "loot_boxes": false,
+      "user_generated_social_content": false,
+      "public_chat_or_online_communication": false,
+      "location_sharing": false,
+      "in_app_purchases": false,
+      "external_online_content_feed": false
+    },
+    "legal_attestation": "OWNER_INPUT_REQUIRED_IARC_LEGAL_ATTESTATION"
+  },
+  "store_listings": {
+    "developed_by": "Okinawa Desktop Tools",
+    "locales": {
+      "ja-JP": {
+        "short_description": "条件に合うローカルファイルを、試運転で確認してから安全にコピー・移動するWindowsアプリです。",
+        "description": "Folder Automation Engineは、選択したフォルダー内のファイルを、ファイル名パターン（例：*.pdf）に従って別のフォルダーへコピーまたは移動するオフラインツールです。\n\nメインフォルダー、入力先、保存先、条件を設定し、書き込みを行わない「変更せず確認」で対象を確認してから、明示的な確認操作で1回実行します。最大10件の規則を設定でき、設定JSONを任意の場所へ新規保存して、後から読み込めます。読み込み後や対象ファイルの変更後は、再度プレビューが必要です。\n\n既存の保存先ファイルは上書きしません。任意の自動整理機能は、承認済みの規則と安定した入力だけを処理し、停止操作またはアプリ終了で停止します。アプリは外部サービスへデータを送信せず、広告・分析・アカウントログインも使用しません。",
+        "features": [
+          "書き込みを行わないプレビュー",
+          "明示確認後の1回コピー／移動",
+          "最大10件のファイル名規則",
+          "既存ファイルを上書きしない安全設計",
+          "設定JSONの保存と安全な再読み込み",
+          "任意のフォルダー自動整理と停止",
+          "日本語／英語UIとローカル言語設定保存",
+          "外部通信・広告・分析なし"
+        ],
+        "screenshots": [
+          {
+            "file_name": "folder-automation-engine-store-ja-01-setup.png",
+            "source_run_id": 44269998298,
+            "exact_candidate_source_sha": "adfc0d08efb0a94602d5286557d399f9cb28b9dd",
+            "minimum_dimensions": "1366x768",
+            "owner_visual_approved": true
+          }
+        ]
+      },
+      "en-US": {
+        "short_description": "Preview, then safely copy or move local files by filename rules—fully offline on Windows.",
+        "description": "Folder Automation Engine is an offline Windows tool for copying or moving files from a selected folder according to deterministic filename patterns such as *.pdf.\n\nChoose a root folder, input and destination folders, and rules. Review a no-write Preview without changes, then explicitly confirm a one-time operation. Up to 10 rules are supported. You can save a new configuration JSON file in a location you choose and safely load it later.\n\nExisting destination files are never overwritten. Optional automatic organizing uses the approved rules and processes stable input only; it stops when requested or when the app closes. The app has no external data transmission, ads, analytics or account sign-in.",
+        "features": [
+          "No-write preview before processing",
+          "Explicitly confirmed one-time copy or move",
+          "Up to 10 filename rules",
+          "No overwrite of existing destination files",
+          "Save and safely reload configuration JSON",
+          "Optional automatic organizing with a clear stop action",
+          "Japanese and English UI with local language preference",
+          "No external network communication, ads or analytics"
+        ],
+        "screenshots": [
+          {
+            "file_name": "folder-automation-engine-store-en-01-setup.png",
+            "source_run_id": 44269998298,
+            "exact_candidate_source_sha": "adfc0d08efb0a94602d5286557d399f9cb28b9dd",
+            "minimum_dimensions": "1366x768",
+            "owner_visual_approved": true
+          }
+        ]
+      }
+    }
+  },
+  "submission_options": {
+    "publishing_hold": "manual_publish",
+    "certification_notes": "Folder Automation Engine is an offline Windows desktop file-organization utility. It does not require an account or network connection. To test it, select a disposable local root folder containing separate input and destination subfolders, choose a filename pattern, run Preview without changes, then Confirm and run. Existing destination files are not overwritten. Optional automatic organizing runs only while the app is open.",
+    "restricted_capability": {
+      "name": "runFullTrust",
+      "package_sha256": "3C6BC8C1291450905AE71834F2704A59325D1AAA1C9DE3F064BCB8C7EBCA9FB9",
+      "explanation": "Folder Automation Engine is a packaged Win32 desktop app. runFullTrust is required so the desktop executable can work with folders explicitly selected by the user, perform local copy or move operations, keep local processing state, and run the optional in-process folder watcher while the app is open. It is not used for administrator elevation or to modify or bypass Windows security settings.",
+      "owner_confirmed": true
+    }
+  },
+  "target": {
+    "required_complete_sections": [
+      "pricing_availability",
+      "properties",
+      "age_ratings",
+      "packages",
+      "store_listings",
+      "submission_options"
+    ],
+    "final_state": "STORE_DRAFT_COMPLETE",
+    "certification_review_state": "READY_FOR_CERTIFICATION_REVIEW",
+    "certification_executed": false,
+    "publish_executed": false
+  }
+}

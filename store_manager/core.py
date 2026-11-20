@@ -43,6 +43,10 @@ class ProductInput:
     price_mode:str="manual"
     price_value:str=""
     market_preset:str=""
+    commercial_approval_required:bool=False
+    price_confirmed:bool=False
+    trial_confirmed:bool=False
+    commercial_approved_by:str=""
     fields:dict[str,FieldValue]=field(default_factory=dict)
     trailers:list[TrailerAsset]=field(default_factory=list)
     hero_art_path:str=""
@@ -240,6 +244,45 @@ def apply_fixed_rules(p:ProductInput):
 
 def validate_product(p:ProductInput):
     out=[]
+    if p.commercial_approval_required:
+        approved_by=str(p.commercial_approved_by or "").strip()
+        if p.price_mode not in {"free","paid"}:
+            out.append(Finding("COMMERCIAL_PRICE_MODE_REQUIRED",
+                               "Commercial profile requires explicit free or paid pricing",
+                               Severity.HOLD,"price_mode"))
+        if not approved_by:
+            out.append(Finding("COMMERCIAL_APPROVER_REQUIRED",
+                               "Commercial pricing/trial requires an explicit owner approval source",
+                               Severity.HOLD,"commercial_approved_by"))
+        if p.price_confirmed is not True:
+            out.append(Finding("COMMERCIAL_PRICE_CONFIRM_REQUIRED",
+                               "Commercial price choice must be owner-confirmed",
+                               Severity.HOLD,"price_confirmed"))
+        if p.price_mode=="paid" and not str(p.price_value or "").strip():
+            out.append(Finding("PAID_PRICE_VALUE_REQUIRED",
+                               "Paid Store product requires an exact live Partner Center price/tier",
+                               Severity.HOLD,"price_value"))
+        if p.price_mode=="free" and str(p.price_value or "").strip():
+            out.append(Finding("FREE_PRICE_VALUE_MUST_BE_EMPTY",
+                               "Free Store product must not carry a paid price/tier",
+                               Severity.HOLD,"price_value"))
+
+        trial_field=p.fields.get("free_trial")
+        trial_value=str(trial_field.value if trial_field else "none")
+        if trial_value!="none":
+            if p.price_mode!="paid":
+                out.append(Finding("TRIAL_REQUIRES_PAID_PRODUCT",
+                                   "A time-limited free trial is valid only for a paid product",
+                                   Severity.HOLD,"free_trial"))
+            if p.trial_confirmed is not True:
+                out.append(Finding("COMMERCIAL_TRIAL_CONFIRM_REQUIRED",
+                                   "Non-default free trial must be owner-confirmed",
+                                   Severity.HOLD,"trial_confirmed"))
+            if trial_field and trial_field.mode is not ValueMode.MANUAL:
+                out.append(Finding("COMMERCIAL_TRIAL_MUST_BE_MANUAL",
+                                   "Non-default free trial cannot be inferred or AI-selected",
+                                   Severity.HOLD,"free_trial"))
+
     if p.product_type not in {"app","game"}:
         out.append(Finding("TYPE","Product type must be app or game",Severity.HOLD,"product_type"))
         return out
