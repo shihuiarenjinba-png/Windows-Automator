@@ -135,7 +135,7 @@ class FolioCompleteTeacherDataTests(unittest.TestCase):
             "HOLD_PROHIBITED_ACTION_EXECUTED",
         )
 
-    def test_route_map_records_two_products_without_enabling_certification(self):
+    def test_route_map_enables_verified_live_draft_without_enabling_certification(self):
         route = self.mapping["routes"]["msix_pwa_app"]
         self.assertEqual(route["observation_scope"]["observed_product_count"], 2)
         self.assertEqual(
@@ -146,7 +146,11 @@ class FolioCompleteTeacherDataTests(unittest.TestCase):
             route["store_draft_write_supported"],
             "VERIFIED_2_PRODUCT_PROFILE_GATED",
         )
-        self.assertFalse(route["live_write_supported"])
+        self.assertTrue(route["live_write_supported"])
+        self.assertEqual(
+            route["live_write_scope"],
+            "PACKAGES_UPLOAD_SAVE_RELOAD_AND_EXISTING_VERIFIED_STORE_DRAFT_ROUTE",
+        )
         self.assertFalse(route["certification_write_supported"])
         self.assertFalse(route["publish_write_supported"])
         for section in (

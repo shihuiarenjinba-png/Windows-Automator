@@ -61,6 +61,124 @@ class DraftContext:
     draft_url: str
 
 
+EXISTING_PRODUCT_INITIAL_SUBMISSION = "EXISTING_PRODUCT_INITIAL_SUBMISSION"
+EXISTING_PRODUCT_DRAFT_PRESENT = "EXISTING_PRODUCT_DRAFT_PRESENT"
+EXISTING_PRODUCT_UPDATE_AVAILABLE = "EXISTING_PRODUCT_UPDATE_AVAILABLE"
+UNKNOWN_PARTNER_CENTER_STATE = "UNKNOWN_PARTNER_CENTER_STATE"
+
+
+@dataclass(frozen=True)
+class SubmissionStateObservation:
+    """Read-only signals from one existing Partner Center product.
+
+    Buttons are evidence only. No caller may infer permission to click Start
+    submission or Start update from this observation.
+    """
+
+    store_product_id: str
+    existing_product_verified: bool
+    draft_packages_urls: tuple[str, ...] = ()
+    start_submission_visible: bool = False
+    start_update_visible: bool = False
+    current_packages_page_verified: bool = False
+    active_package_count: int | None = None
+
+
+@dataclass(frozen=True)
+class SubmissionStateResult:
+    state: str
+    required_submission_kind: str = ""
+    draft_id: str = ""
+    draft_url: str = ""
+    hold_code: str = ""
+
+
+def classify_existing_product_submission_state(
+    observation: SubmissionStateObservation,
+) -> SubmissionStateResult:
+    """Classify an existing product without starting or updating a submission."""
+
+    product_id = observation.store_product_id.strip()
+    if not product_id or not observation.existing_product_verified:
+        return SubmissionStateResult(
+            UNKNOWN_PARTNER_CENTER_STATE,
+            hold_code="HOLD_UNKNOWN_SUBMISSION_STATE",
+        )
+
+    draft_matches: list[tuple[str, str]] = []
+    for url in observation.draft_packages_urls:
+        match = re.search(
+            rf"/products/{re.escape(product_id)}/submissions/(\d+)/packages(?:$|[?#])",
+            url,
+        )
+        if match:
+            draft_id = match.group(1)
+            draft_matches.append(
+                (
+                    draft_id,
+                    f"{PARTNER_HOST}en-us/dashboard/products/{product_id}/submissions/{draft_id}",
+                )
+            )
+    if len(observation.draft_packages_urls) == 1 and len(draft_matches) == 1:
+        draft_id, draft_url = draft_matches[0]
+        return SubmissionStateResult(
+            EXISTING_PRODUCT_DRAFT_PRESENT,
+            draft_id=draft_id,
+            draft_url=draft_url,
+        )
+    if observation.draft_packages_urls:
+        return SubmissionStateResult(
+            UNKNOWN_PARTNER_CENTER_STATE,
+            hold_code="HOLD_UNKNOWN_SUBMISSION_STATE",
+        )
+
+    initial_submission = (
+        observation.start_submission_visible
+        and not observation.start_update_visible
+        and observation.current_packages_page_verified
+        and observation.active_package_count == 0
+    )
+    if initial_submission:
+        return SubmissionStateResult(
+            EXISTING_PRODUCT_INITIAL_SUBMISSION,
+            required_submission_kind="new",
+            hold_code="HOLD_INITIAL_SUBMISSION_ROUTE_REQUIRED",
+        )
+
+    update_available = (
+        observation.start_update_visible
+        and not observation.start_submission_visible
+        and observation.current_packages_page_verified
+        and isinstance(observation.active_package_count, int)
+        and observation.active_package_count > 0
+    )
+    if update_available:
+        return SubmissionStateResult(
+            EXISTING_PRODUCT_UPDATE_AVAILABLE,
+            required_submission_kind="update",
+            hold_code="HOLD_UPDATE_SUBMISSION_ROUTE_REQUIRED",
+        )
+
+    return SubmissionStateResult(
+        UNKNOWN_PARTNER_CENTER_STATE,
+        hold_code="HOLD_UNKNOWN_SUBMISSION_STATE",
+    )
+
+
+def reconcile_ambiguous_initial_submission(
+    result: SubmissionStateResult,
+) -> tuple[str, bool]:
+    """Classify the safe next step after an ambiguous Start submission attempt.
+
+    This helper is read-only policy. It never authorizes or performs a retry.
+    """
+    if result.state == EXISTING_PRODUCT_DRAFT_PRESENT and result.draft_id:
+        return "INITIAL_SUBMISSION_DRAFT_PRESENT_RECOVERED", False
+    if result.state == EXISTING_PRODUCT_INITIAL_SUBMISSION:
+        return "INITIAL_SUBMISSION_NOT_OBSERVED_RETRY_REQUIRES_NEW_APPROVAL", True
+    return "HOLD_AMBIGUOUS_WRITE", False
+
+
 @dataclass(frozen=True)
 class PackageState:
     validation: str
@@ -376,6 +494,7 @@ def submission_options_save_succeeded(
 
 class PartnerCenterPort(Protocol):
     def ensure_route_ready(self, product: ProductInput) -> None: ...
+    def inspect_existing_product_submission_state(self, product: ProductInput) -> SubmissionStateResult: ...
     def verify_product_and_draft(self, product: ProductInput) -> DraftContext: ...
     def upload_package(self, product: ProductInput, context: DraftContext) -> PackageState: ...
     def save_packages(self, product: ProductInput, context: DraftContext) -> None: ...
@@ -552,6 +671,43 @@ def validate_live_gate(product: ProductInput) -> None:
         raise LiveGateError("local package Identity/Publisher/Version does not match the immutable handoff")
 
 
+def accepted_package_validation(product: ProductInput, state: PackageState) -> str:
+    """Accept VALID or the one exact, already owner-confirmed runFullTrust warning.
+
+    validate_live_gate() has already required every manifest restricted capability
+    explanation to be confirmed and bound to this exact package SHA.  No other
+    warning is promoted.
+    """
+
+    if state.validation == "ERROR":
+        raise PackageValidationError(state.error or "Microsoft package validation failed")
+    if state.validation == "VALID":
+        return "VALID"
+    if state.validation == "WARNING":
+        detail = state.warning or "Microsoft package validation returned WARNING"
+        warning_code, capabilities = classify_package_warning(detail)
+        manifest_capabilities = restricted_capabilities_from_package(product.package_path)
+        if (
+            warning_code == "RESTRICTED_CAPABILITY_REVIEW_REQUIRED"
+            and capabilities == ("runFullTrust",)
+            and manifest_capabilities == capabilities
+        ):
+            explanation = product.restricted_capability_justifications.get("runFullTrust")
+            package_sha = file_sha256(product.package_path)
+            if (
+                explanation
+                and explanation.confirmed
+                and explanation.text.strip()
+                and explanation.package_sha256.casefold() == package_sha.casefold()
+            ):
+                return "KNOWN_RUNFULLTRUST_WARNING_ACCEPTED"
+        capability_detail = f" ({', '.join(capabilities)})" if capabilities else ""
+        raise LiveGateError(
+            f"{warning_code}{capability_detail}: {detail}; manual review is required"
+        )
+    raise AmbiguousWriteError(f"package validation is {state.validation}")
+
+
 class LiveDraftWorkflow:
     """Orchestrates one package write and proves it before claiming DRAFT_SAVED.
 
@@ -577,38 +733,38 @@ class LiveDraftWorkflow:
         started_at = utc_now()
         state = self.port.upload_package(product, context)
         upload_completed_at = utc_now()
-        if state.validation == "ERROR":
-            raise PackageValidationError(state.error or "Microsoft package validation failed")
-        if state.validation == "WARNING":
-            detail = state.warning or "Microsoft package validation returned WARNING"
-            warning_code, capabilities = classify_package_warning(detail)
-            capability_detail = f" ({', '.join(capabilities)})" if capabilities else ""
-            raise LiveGateError(f"{warning_code}{capability_detail}: {detail}; manual review is required")
-        if state.validation != "VALID":
-            raise AmbiguousWriteError(f"package validation is {state.validation}")
+        upload_validation = accepted_package_validation(product, state)
+        if upload_validation == "KNOWN_RUNFULLTRUST_WARNING_ACCEPTED":
+            actions.append("packages:known_warning_accepted:runFullTrust")
         if state.section_completion != "COMPLETE":
             raise LiveGateError(f"Packages section is {state.section_completion}")
         self.port.save_packages(product, context)
         actions.append("packages:save_draft")
         verified = self.port.reload_and_verify_package(product, context)
-        if verified.validation != "VALID" or verified.section_completion != "COMPLETE":
-            raise AmbiguousWriteError("saved package could not be proven VALID/COMPLETE after reload")
+        reload_validation = accepted_package_validation(product, verified)
+        if reload_validation == "KNOWN_RUNFULLTRUST_WARNING_ACCEPTED":
+            actions.append("packages:reload_known_warning_verified:runFullTrust")
+        if verified.section_completion != "COMPLETE":
+            raise AmbiguousWriteError("saved package could not be proven Complete after reload")
         sections = self.port.verify_required_sections(product, context)
         if tuple(sections) != template.required_sections:
             raise LiveGateError("required section evidence is incomplete or out of order")
         incomplete = [name for name, status in sections.items() if status not in {"SAVED", "NOT_REQUIRED"}]
         if incomplete:
-            raise LiveGateError("required Store sections are not saved: " + ", ".join(incomplete))
+            actions.append("draft:remaining_sections:" + ",".join(incomplete))
         evidence = self.port.capture_evidence(product, context)
         if not evidence:
             raise AmbiguousWriteError("draft evidence capture is empty")
         completed_at = utc_now()
         details: dict[str, Any] = {
             "execution_mode": "live",
-            "draft_saved": True,
+            "draft_saved": not incomplete,
+            "draft_complete": not incomplete,
+            "package_saved": True,
             "save_verified_after_reload": True,
             "package_uploaded": True,
             "package_validation": verified.validation,
+            "package_validation_classification": reload_validation,
             "package_section_completion": verified.section_completion,
             "package_warning": verified.warning,
             "package_error": verified.error,
@@ -625,6 +781,7 @@ class LiveDraftWorkflow:
             "immutable_package_sha256": product.package_sha256 or package_sha,
             "live_adapter": template.live_adapter,
             "required_sections": list(template.required_sections),
+            "remaining_sections": incomplete,
             "identity": {
                 "name": product.identity_name,
                 "publisher": product.identity_publisher,
@@ -640,7 +797,12 @@ class LiveDraftWorkflow:
             "certified": False,
             "published": False,
         }
-        return UploadOutcome("DRAFT_SAVED", actions, details)
+        status = (
+            "DRAFT_SAVED"
+            if not incomplete
+            else "PACKAGE_SAVED_STORE_DRAFT_REMAINING_SECTIONS_REQUIRED"
+        )
+        return UploadOutcome(status, actions, details)
 
 
 class SelectorMap:
@@ -732,7 +894,65 @@ class PlaywrightPartnerCenterPort:
         if locator.count() != 1:
             raise LiveGateError(f"expected exactly one visible text {text!r}; got {locator.count()}")
 
-    def verify_product_and_draft(self, product: ProductInput) -> DraftContext:
+    def _visible_exact_text_count(self, text: str) -> int:
+        return sum(1 for item in self.page.get_by_text(text, exact=True).all() if item.is_visible())
+
+    def _visible_locator_count(self, selector: str) -> int:
+        return sum(1 for item in self.page.locator(selector).all() if item.is_visible())
+
+    def verify_existing_identity_values(
+        self,
+        *,
+        product_name: str,
+        store_product_id: str,
+        identity_name: str,
+        identity_publisher: str,
+        package_family_name: str = "",
+        package_sid: str = "",
+    ) -> dict[str, object]:
+        """Read-only exact-match verification of an existing Partner Center identity.
+
+        This never creates/reserves a product, starts a submission, uploads a
+        package, changes pricing, submits certification, or publishes.
+        """
+        identity_url = f"{PARTNER_HOST}en-us/dashboard/products/{store_product_id}/identity"
+        self._goto(identity_url)
+        required = (
+            ("product_name", product_name),
+            ("store_product_id", store_product_id),
+            ("identity_name", identity_name),
+            ("identity_publisher", identity_publisher),
+        )
+        optional = (
+            ("package_family_name", package_family_name),
+            ("package_sid", package_sid),
+        )
+        matched: list[str] = []
+        for key, value in required:
+            if not str(value or "").strip():
+                raise LiveGateError(f"existing identity verifier requires {key}")
+            self._exact_text_present(str(value))
+            matched.append(key)
+        for key, value in optional:
+            if str(value or "").strip():
+                self._exact_text_present(str(value))
+                matched.append(key)
+        return {
+            "status": "EXISTING_IDENTITY_EXACT_MATCH",
+            "partner_center_reverified": True,
+            "identity_url": identity_url,
+            "matched_fields": matched,
+            "store_product_id": store_product_id,
+            "product_name": product_name,
+            "identity_name": identity_name,
+            "identity_publisher": identity_publisher,
+            "package_family_name": package_family_name,
+            "package_sid": package_sid,
+        }
+
+    def inspect_existing_product_submission_state(self, product: ProductInput) -> SubmissionStateResult:
+        """Read one existing product state without clicking any Start control."""
+
         identity_url = f"{PARTNER_HOST}en-us/dashboard/products/{product.store_product_id}/identity"
         self._goto(identity_url)
         self._exact_text_present(product.product_name)
@@ -742,16 +962,86 @@ class PlaywrightPartnerCenterPort:
 
         overview_url = f"{PARTNER_HOST}en-us/dashboard/products/{product.store_product_id}/overview"
         self._goto(overview_url)
-        packages_link = self._one("overview_packages_link")
-        href = packages_link.get_attribute("href") or ""
-        match = re.search(r"/submissions/(\d+)/packages(?:$|[?#])", href)
-        if not match:
-            raise LiveGateError("an existing draft Packages URL was not found; Start update is not guessed")
-        draft_id = match.group(1)
-        if product.draft_id and product.draft_id != draft_id:
+        draft_packages_urls = tuple(
+            href
+            for link in self.page.locator("a[href]").all()
+            if (href := (link.get_attribute("href") or "").strip())
+            and re.search(
+                rf"/products/{re.escape(product.store_product_id)}/submissions/\d+/packages(?:$|[?#])",
+                href,
+            )
+        )
+        start_submission_visible = self._visible_exact_text_count("Start submission") == 1
+        start_update_visible = self._visible_exact_text_count("Start update") == 1
+
+        current_packages_url = f"{PARTNER_HOST}en-us/dashboard/apps/{product.store_product_id}/managepackages"
+        self._goto(current_packages_url)
+        current_packages_page_verified = (
+            self._visible_exact_text_count("Your active packages are listed below.") == 1
+        )
+        active_package_count = None
+        if current_packages_page_verified:
+            active_package_count = self._visible_locator_count("table tbody tr")
+
+        observation = SubmissionStateObservation(
+            store_product_id=product.store_product_id,
+            existing_product_verified=True,
+            draft_packages_urls=draft_packages_urls,
+            start_submission_visible=start_submission_visible,
+            start_update_visible=start_update_visible,
+            current_packages_page_verified=current_packages_page_verified,
+            active_package_count=active_package_count,
+        )
+        return classify_existing_product_submission_state(observation)
+
+    def start_initial_submission_draft(self, product: ProductInput) -> DraftContext:
+        """Create only the first draft for an already-reserved Store product.
+
+        Preconditions are re-read immediately before the click. This method does
+        not upload a package, edit pricing, submit certification, or publish.
+        """
+        if product.submission_kind != "new":
+            raise LiveGateError("initial submission start requires submission_kind=new")
+        before = self.inspect_existing_product_submission_state(product)
+        if before.state != EXISTING_PRODUCT_INITIAL_SUBMISSION:
+            raise LiveGateError(
+                f"HOLD_INITIAL_SUBMISSION_STATE_CHANGED: expected {EXISTING_PRODUCT_INITIAL_SUBMISSION}, got {before.state}"
+            )
+        button = self.page.get_by_text("Start submission", exact=True)
+        if button.count() != 1 or not button.is_visible():
+            raise LiveGateError("expected exactly one visible Start submission control")
+        try:
+            button.click(timeout=30_000)
+            self._assert_authenticated()
+            self.page.wait_for_timeout(1000)
+        except GlobalAuthError:
+            raise
+        except Exception as exc:
+            raise AmbiguousWriteError("Start submission result is unknown") from exc
+
+        after = self.inspect_existing_product_submission_state(product)
+        if after.state != EXISTING_PRODUCT_DRAFT_PRESENT or not after.draft_id:
+            raise AmbiguousWriteError(
+                f"Start submission may have changed Partner Center but draft could not be reconciled ({after.state})"
+            )
+        return DraftContext(product.store_product_id, after.draft_id, after.draft_url)
+
+    def verify_product_and_draft(self, product: ProductInput) -> DraftContext:
+        result = self.inspect_existing_product_submission_state(product)
+        if result.state == EXISTING_PRODUCT_INITIAL_SUBMISSION:
+            raise LiveGateError(
+                "HOLD_INITIAL_SUBMISSION_ROUTE_REQUIRED: existing product has no active package or draft; "
+                "submission_kind must be new and Start submission is never clicked automatically"
+            )
+        if result.state == EXISTING_PRODUCT_UPDATE_AVAILABLE:
+            raise LiveGateError(
+                "HOLD_UPDATE_SUBMISSION_ROUTE_REQUIRED: Start update is available but is never clicked automatically"
+            )
+        if result.state != EXISTING_PRODUCT_DRAFT_PRESENT:
+            raise LiveGateError("HOLD_UNKNOWN_SUBMISSION_STATE: Partner Center state is not an exact supported state")
+        if product.draft_id and product.draft_id != result.draft_id:
             raise LiveGateError("draft_id does not match the current Partner Center draft")
-        draft_url = f"{PARTNER_HOST}en-us/dashboard/products/{product.store_product_id}/submissions/{draft_id}"
-        return DraftContext(product.store_product_id, draft_id, draft_url)
+        return DraftContext(product.store_product_id, result.draft_id, result.draft_url)
 
     def _read_package_state(self) -> PackageState:
         validation_spec = self.map.exact("packages_validation_state")

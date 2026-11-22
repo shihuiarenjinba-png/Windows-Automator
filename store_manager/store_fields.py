@@ -26,7 +26,7 @@ FIELD_SPECS = (
     StoreFieldSpec("visibility","pricing_availability","Visibility / discoverability","required","fixed",False,True),
     StoreFieldSpec("pricing_model","pricing_availability","Base price mode","required","product",False,True),
     StoreFieldSpec("price_value","pricing_availability","Base price / tier","required_if_paid","product",False,True),
-    StoreFieldSpec("free_trial","pricing_availability","Free trial","optional","fixed",False,True),
+    StoreFieldSpec("free_trial","pricing_availability","Free trial","optional","product",False,True,"Defaults to none, but an owner-confirmed product may explicitly choose a supported trial."),
     StoreFieldSpec("schedule","pricing_availability","Availability schedule","optional","fixed",False,True),
     StoreFieldSpec("organizational_licensing","pricing_availability","Organizational licensing","optional","fixed",False,True),
 

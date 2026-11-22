@@ -1,0 +1,44 @@
+{
+  "schema_version": "scheduled-private-store-signing-checkpoint/1",
+  "recorded_date_jst": "2026-11-18",
+  "product": {
+    "name": "Scheduled API Runner",
+    "store_id": "9PND0HG61XD6",
+    "identity_name": "OkinawaDesktopTools.ScheduledAPIRunner",
+    "version": "1.0.0.0",
+    "architecture": "x64"
+  },
+  "frozen_candidate": {
+    "source_sha": "28ef873ab2ff325b8f26c61a9ba48701280e8290",
+    "workflow_run_id": 44093493317,
+    "artifact_id": 14333575447,
+    "artifact_digest": "sha256:b45d53a0473f5b8cdcac64c1ffdcf12957919da2e5cb846564344d757165afa7",
+    "msix_sha256": "db599cdfa673688e8fe7db70d11acc69010562636c67f4996b4cba36adfd8877",
+    "exe_sha256": "06d3b92bd83281750e5a454f9add6526fa90f6bfc29017fd6919bbeaa64213d9"
+  },
+  "upstream_state": "PRIVATE_STORE_SIGNING_LANE_READY",
+  "code_owner_lane_complete": true,
+  "unsigned_launch_retries_forbidden": true,
+  "partner_center_write_authorized": false,
+  "package_upload_authorized": false,
+  "certification_authorized": false,
+  "private_publish_authorized": false,
+  "promo_code_generation_authorized": false,
+  "temporary_free_price_change_authorized": false,
+  "acquisition_self_payment_authorized": false,
+  "next_action": "READ_ONLY_LIVE_PRIVATE_ACQUISITION_OBSERVATION",
+  "observation_template": "docs/SCHEDULED_API_RUNNER_PRIVATE_ACQUISITION_OBSERVATION_TEMPLATE_20261118.json",
+  "classifier": "scripts/classify_private_store_acquisition.py",
+  "expected_decision_states": [
+    "STORE_SIGNED_PRIVATE_PUBLISH_REQUIRED",
+    "ZERO_COST_ROUTE_PROMO_CODE_EXISTING",
+    "ZERO_COST_ROUTE_FREE_TRIAL",
+    "ZERO_COST_ROUTE_PRIVATE_FREE",
+    "PROMO_CODE_GENERATION_REQUIRES_APPROVAL",
+    "TEMPORARY_FREE_PRIVATE_BETA_REQUIRES_APPROVAL",
+    "HOLD_ZERO_COST_ACQUISITION_PAID_CHECKOUT",
+    "HOLD_PRIVATE_AUDIENCE_NOT_PROVEN",
+    "HOLD_ZERO_COST_ROUTE_UNPROVEN",
+    "HOLD_CONFLICTING_ACQUISITION_EVIDENCE"
+  ]
+}
