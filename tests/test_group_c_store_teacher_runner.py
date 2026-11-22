@@ -24,6 +24,24 @@ class GroupCStoreTeacherRunnerContractTests(unittest.TestCase):
     def test_existing_draft_is_required_for_this_runner(self):
         self.assertIn('EXISTING_PRODUCT_DRAFT_PRESENT', self.text)
         self.assertIn('HOLD_EXISTING_DRAFT_REQUIRED', self.text)
+        self.assertLess(self.text.index('HOLD_EXISTING_DRAFT_REQUIRED'), self.text.index('GROUP_C_TEACHER_PROBE_PASS'))
+
+    def test_read_only_probe_binds_exact_product_identity_source_package_and_draft(self):
+        for hold_code in (
+            "HOLD_STORE_ID_MISMATCH",
+            "HOLD_IDENTITY_NAME_MISMATCH",
+            "HOLD_PUBLISHER_MISMATCH",
+            "HOLD_SOURCE_SHA_MISMATCH",
+            "HOLD_PACKAGE_SHA_MISMATCH",
+            "HOLD_EXACT_DRAFT_ID_REQUIRED",
+            "HOLD_DRAFT_ID_MISMATCH",
+        ):
+            self.assertIn(hold_code, self.text)
+        self.assertIn("$product.draft_id", self.text)
+        self.assertIn("$state.draft_id", self.text)
+        self.assertIn("$identity.store_id", self.text)
+        self.assertIn("$identity.identity_name", self.text)
+        self.assertIn("$identity.publisher", self.text)
 
     def test_formal_input_validate_precedes_live_draft(self):
         self.assertLess(self.text.index("cli validate"), self.text.index("night-run"))
