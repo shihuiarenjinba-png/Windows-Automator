@@ -671,6 +671,43 @@ def validate_live_gate(product: ProductInput) -> None:
         raise LiveGateError("local package Identity/Publisher/Version does not match the immutable handoff")
 
 
+def accepted_package_validation(product: ProductInput, state: PackageState) -> str:
+    """Accept VALID or the one exact, already owner-confirmed runFullTrust warning.
+
+    validate_live_gate() has already required every manifest restricted capability
+    explanation to be confirmed and bound to this exact package SHA.  No other
+    warning is promoted.
+    """
+
+    if state.validation == "ERROR":
+        raise PackageValidationError(state.error or "Microsoft package validation failed")
+    if state.validation == "VALID":
+        return "VALID"
+    if state.validation == "WARNING":
+        detail = state.warning or "Microsoft package validation returned WARNING"
+        warning_code, capabilities = classify_package_warning(detail)
+        manifest_capabilities = restricted_capabilities_from_package(product.package_path)
+        if (
+            warning_code == "RESTRICTED_CAPABILITY_REVIEW_REQUIRED"
+            and capabilities == ("runFullTrust",)
+            and manifest_capabilities == capabilities
+        ):
+            explanation = product.restricted_capability_justifications.get("runFullTrust")
+            package_sha = file_sha256(product.package_path)
+            if (
+                explanation
+                and explanation.confirmed
+                and explanation.text.strip()
+                and explanation.package_sha256.casefold() == package_sha.casefold()
+            ):
+                return "KNOWN_RUNFULLTRUST_WARNING_ACCEPTED"
+        capability_detail = f" ({', '.join(capabilities)})" if capabilities else ""
+        raise LiveGateError(
+            f"{warning_code}{capability_detail}: {detail}; manual review is required"
+        )
+    raise AmbiguousWriteError(f"package validation is {state.validation}")
+
+
 class LiveDraftWorkflow:
     """Orchestrates one package write and proves it before claiming DRAFT_SAVED.
 
@@ -696,38 +733,38 @@ class LiveDraftWorkflow:
         started_at = utc_now()
         state = self.port.upload_package(product, context)
         upload_completed_at = utc_now()
-        if state.validation == "ERROR":
-            raise PackageValidationError(state.error or "Microsoft package validation failed")
-        if state.validation == "WARNING":
-            detail = state.warning or "Microsoft package validation returned WARNING"
-            warning_code, capabilities = classify_package_warning(detail)
-            capability_detail = f" ({', '.join(capabilities)})" if capabilities else ""
-            raise LiveGateError(f"{warning_code}{capability_detail}: {detail}; manual review is required")
-        if state.validation != "VALID":
-            raise AmbiguousWriteError(f"package validation is {state.validation}")
+        upload_validation = accepted_package_validation(product, state)
+        if upload_validation == "KNOWN_RUNFULLTRUST_WARNING_ACCEPTED":
+            actions.append("packages:known_warning_accepted:runFullTrust")
         if state.section_completion != "COMPLETE":
             raise LiveGateError(f"Packages section is {state.section_completion}")
         self.port.save_packages(product, context)
         actions.append("packages:save_draft")
         verified = self.port.reload_and_verify_package(product, context)
-        if verified.validation != "VALID" or verified.section_completion != "COMPLETE":
-            raise AmbiguousWriteError("saved package could not be proven VALID/COMPLETE after reload")
+        reload_validation = accepted_package_validation(product, verified)
+        if reload_validation == "KNOWN_RUNFULLTRUST_WARNING_ACCEPTED":
+            actions.append("packages:reload_known_warning_verified:runFullTrust")
+        if verified.section_completion != "COMPLETE":
+            raise AmbiguousWriteError("saved package could not be proven Complete after reload")
         sections = self.port.verify_required_sections(product, context)
         if tuple(sections) != template.required_sections:
             raise LiveGateError("required section evidence is incomplete or out of order")
         incomplete = [name for name, status in sections.items() if status not in {"SAVED", "NOT_REQUIRED"}]
         if incomplete:
-            raise LiveGateError("required Store sections are not saved: " + ", ".join(incomplete))
+            actions.append("draft:remaining_sections:" + ",".join(incomplete))
         evidence = self.port.capture_evidence(product, context)
         if not evidence:
             raise AmbiguousWriteError("draft evidence capture is empty")
         completed_at = utc_now()
         details: dict[str, Any] = {
             "execution_mode": "live",
-            "draft_saved": True,
+            "draft_saved": not incomplete,
+            "draft_complete": not incomplete,
+            "package_saved": True,
             "save_verified_after_reload": True,
             "package_uploaded": True,
             "package_validation": verified.validation,
+            "package_validation_classification": reload_validation,
             "package_section_completion": verified.section_completion,
             "package_warning": verified.warning,
             "package_error": verified.error,
@@ -744,6 +781,7 @@ class LiveDraftWorkflow:
             "immutable_package_sha256": product.package_sha256 or package_sha,
             "live_adapter": template.live_adapter,
             "required_sections": list(template.required_sections),
+            "remaining_sections": incomplete,
             "identity": {
                 "name": product.identity_name,
                 "publisher": product.identity_publisher,
@@ -759,7 +797,12 @@ class LiveDraftWorkflow:
             "certified": False,
             "published": False,
         }
-        return UploadOutcome("DRAFT_SAVED", actions, details)
+        status = (
+            "DRAFT_SAVED"
+            if not incomplete
+            else "PACKAGE_SAVED_STORE_DRAFT_REMAINING_SECTIONS_REQUIRED"
+        )
+        return UploadOutcome(status, actions, details)
 
 
 class SelectorMap:
