@@ -88,12 +88,20 @@ if (-not $report.results -or $report.results.Count -ne 1) {
   throw "HOLD_LIVE_REPORT_SHAPE_UNKNOWN"
 }
 $result = $report.results[0]
-if ($result.status -ne "DRAFT_SAVED") {
+$allowedStatuses = @(
+  "DRAFT_SAVED",
+  "PACKAGE_SAVED_STORE_DRAFT_REMAINING_SECTIONS_REQUIRED"
+)
+if ($allowedStatuses -notcontains $result.status) {
   throw ("HOLD_LIVE_DRAFT_NOT_SAVED status=" + $result.status)
 }
 if ($result.details.submitted -or $result.details.certified -or $result.details.published) {
   throw "PROHIBITED_CERTIFICATION_OR_PUBLISH_SIDE_EFFECT"
 }
 
-Write-Host ("GROUP_C_LIVE_DRAFT_PASS product=" + $result.product_name)
+if ($result.status -eq "DRAFT_SAVED") {
+  Write-Host ("GROUP_C_LIVE_DRAFT_PASS product=" + $result.product_name)
+} else {
+  Write-Host ("GROUP_C_PACKAGE_SAVED_REMAINING_SECTIONS product=" + $result.product_name)
+}
 Write-Host ("GROUP_C_LIVE_REPORT=" + $liveJson)
