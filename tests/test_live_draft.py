@@ -436,6 +436,48 @@ class LiveDraftTests(unittest.TestCase):
                 LiveDraftWorkflow(port)(product)
             self.assertFalse(port.saved)
 
+    def test_exact_runfulltrust_warning_is_accepted_only_when_package_bound_and_confirmed(self):
+        with tempfile.TemporaryDirectory() as directory:
+            product = live_product(Path(directory))
+            manifest = b'''<?xml version="1.0" encoding="utf-8"?>
+<Package xmlns="http://schemas.microsoft.com/appx/manifest/foundation/windows10"
+ xmlns:rescap="http://schemas.microsoft.com/appx/manifest/foundation/windows10/restrictedcapabilities">
+ <Identity Name="Example.Identity" Publisher="CN=EXAMPLE" Version="1.2.3.4" ProcessorArchitecture="x64" />
+ <Capabilities><rescap:Capability Name="runFullTrust" /></Capabilities>
+</Package>'''
+            with zipfile.ZipFile(product.package_path, "w") as archive:
+                archive.writestr("AppxManifest.xml", manifest)
+            sha = file_sha256(product.package_path)
+            product.security_package_sha256 = sha
+            product.package_sha256 = sha
+            product.restricted_capability_justifications["runFullTrust"] = RestrictedCapabilityJustification(
+                "Confirmed explanation", "owner_input", True, sha
+            )
+            warning = (
+                "Package acceptance validation warning: The following restricted capabilities "
+                "require approval before you can use them in your app: runFullTrust."
+            )
+            port = FakePort()
+            port.uploaded = PackageState("WARNING", "COMPLETE", warning=warning)
+            port.reloaded = PackageState("WARNING", "COMPLETE", warning=warning)
+            port.sections["properties"] = "INCOMPLETE"
+            outcome = LiveDraftWorkflow(port)(product)
+            self.assertEqual(
+                outcome.status,
+                "PACKAGE_SAVED_STORE_DRAFT_REMAINING_SECTIONS_REQUIRED",
+            )
+            self.assertTrue(port.saved)
+            self.assertTrue(outcome.details["package_saved"])
+            self.assertFalse(outcome.details["draft_complete"])
+            self.assertEqual(
+                outcome.details["package_validation_classification"],
+                "KNOWN_RUNFULLTRUST_WARNING_ACCEPTED",
+            )
+            self.assertIn("properties", outcome.details["remaining_sections"])
+            self.assertIn("packages:known_warning_accepted:runFullTrust", outcome.actions)
+            self.assertFalse(outcome.details["submitted"])
+            self.assertFalse(outcome.details["published"])
+
     def test_non_msix_app_routes_cannot_enter_current_live_adapter(self):
         with tempfile.TemporaryDirectory() as directory:
             product = live_product(Path(directory))
@@ -470,13 +512,20 @@ class LiveDraftTests(unittest.TestCase):
             with self.assertRaises(AmbiguousWriteError):
                 LiveDraftWorkflow(port)(product)
 
-    def test_incomplete_required_section_cannot_claim_draft_saved(self):
+    def test_incomplete_required_section_preserves_package_saved_without_claiming_draft_saved(self):
         with tempfile.TemporaryDirectory() as directory:
             product = live_product(Path(directory))
             port = FakePort()
             port.sections["store_listings"] = "INCOMPLETE"
-            with self.assertRaises(LiveGateError):
-                LiveDraftWorkflow(port)(product)
+            outcome = LiveDraftWorkflow(port)(product)
+            self.assertEqual(
+                outcome.status,
+                "PACKAGE_SAVED_STORE_DRAFT_REMAINING_SECTIONS_REQUIRED",
+            )
+            self.assertTrue(outcome.details["package_saved"])
+            self.assertFalse(outcome.details["draft_saved"])
+            self.assertFalse(outcome.details["draft_complete"])
+            self.assertIn("store_listings", outcome.details["remaining_sections"])
 
     def test_queue_maps_live_gate_to_hold_and_ambiguous_to_unknown(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -501,9 +550,11 @@ class LiveDraftTests(unittest.TestCase):
             SelectorMap({"schema_version": 3, "routes": {"msix_pwa_app": {"live_write_supported": True, "selectors": {}}}}).activate("msix_pwa_app")
         self.assertIn("incomplete before upload", str(ctx.exception))
 
-    def test_checked_in_route_registry_is_valid_and_all_routes_fail_closed(self):
+    def test_checked_in_registry_enables_only_verified_msix_app_live_route(self):
         mapping = SelectorMap.load(Path(__file__).parents[1] / "docs" / "PARTNER_CENTER_MAP.json")
-        for route_id in ("msix_pwa_app", "exe_msi_app", "gdk_game", "msix_pwa_game"):
+        mapping.activate("msix_pwa_app")
+        self.assertEqual(mapping.active_route, "msix_pwa_app")
+        for route_id in ("exe_msi_app", "gdk_game", "msix_pwa_game"):
             with self.subTest(route=route_id), self.assertRaisesRegex(LiveGateError, "LIVE_ROUTE_NOT_VERIFIED"):
                 mapping.activate(route_id)
 
