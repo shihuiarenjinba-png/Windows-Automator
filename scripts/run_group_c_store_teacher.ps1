@@ -12,6 +12,7 @@ if (-not $IsWindows) { throw "Windows only" }
 
 $inputPath = (Resolve-Path -LiteralPath $Input).Path
 $identityJobPath = (Resolve-Path -LiteralPath $IdentityJob).Path
+$product = Get-Content -LiteralPath $inputPath -Raw | ConvertFrom-Json
 $outRoot = [System.IO.Path]::GetFullPath($OutputDir)
 New-Item -ItemType Directory -Path $outRoot -Force | Out-Null
 
@@ -35,6 +36,21 @@ if ($identity.status -ne "EXISTING_IDENTITY_EXACT_MATCH") {
 if ($identity.package_uploaded -or $identity.pricing_changed -or $identity.submitted -or $identity.published) {
   throw "Read-only identity step reported an unexpected write."
 }
+if ([string]$identity.store_id -cne [string]$product.store_product_id) {
+  throw "HOLD_STORE_ID_MISMATCH"
+}
+if ([string]$identity.identity_name -cne [string]$product.identity_name) {
+  throw "HOLD_IDENTITY_NAME_MISMATCH"
+}
+if ([string]$identity.publisher -cne [string]$product.identity_publisher) {
+  throw "HOLD_PUBLISHER_MISMATCH"
+}
+if ([string]$identity.source_sha -cne [string]$product.source_sha) {
+  throw "HOLD_SOURCE_SHA_MISMATCH"
+}
+if ([string]$identity.package_sha256 -cne [string]$product.package_sha256) {
+  throw "HOLD_PACKAGE_SHA_MISMATCH"
+}
 
 Write-Host "GROUP_C_TEACHER_STAGE=SUBMISSION_STATE"
 python -m store_manager.cli inspect-existing-submission-state `
@@ -47,9 +63,22 @@ $state = Get-Content -LiteralPath $stateReceipt -Raw | ConvertFrom-Json
 if ($state.package_uploaded -or $state.pricing_changed -or $state.submitted -or $state.published) {
   throw "Read-only submission-state step reported an unexpected write."
 }
+if ([string]$state.store_id -cne [string]$product.store_product_id) {
+  throw "HOLD_STORE_ID_MISMATCH"
+}
+if ($state.submission_state -ne "EXISTING_PRODUCT_DRAFT_PRESENT") {
+  throw ("HOLD_EXISTING_DRAFT_REQUIRED state=" + $state.submission_state)
+}
+$expectedDraftId = [string]$product.draft_id
+if ([string]::IsNullOrWhiteSpace($expectedDraftId)) {
+  throw "HOLD_EXACT_DRAFT_ID_REQUIRED"
+}
+if ([string]$state.draft_id -cne $expectedDraftId) {
+  throw ("HOLD_DRAFT_ID_MISMATCH expected=" + $expectedDraftId + " observed=" + [string]$state.draft_id)
+}
 
 if ($Mode -eq "ReadOnly") {
-  Write-Host ("GROUP_C_TEACHER_PROBE_PASS state=" + $state.submission_state)
+  Write-Host ("GROUP_C_TEACHER_PROBE_PASS state=" + $state.submission_state + " draft=" + [string]$state.draft_id)
   exit 0
 }
 
@@ -69,7 +98,6 @@ if ($LASTEXITCODE -ne 0) {
   throw "HOLD_FORMAL_PRODUCT_INPUT_VALIDATION"
 }
 
-$product = Get-Content -LiteralPath $inputPath -Raw | ConvertFrom-Json
 @($product) | ConvertTo-Json -Depth 30 | Set-Content -LiteralPath $queuePath -Encoding UTF8
 
 Write-Host "GROUP_C_TEACHER_STAGE=LIVE_DRAFT"
