@@ -51,7 +51,7 @@ class FolioMsixAppPreuploadTeacherDataTests(unittest.TestCase):
 
     def test_observed_upload_and_warning_selectors_are_verified(self):
         app_route = self.mapping["routes"]["msix_pwa_app"]
-        self.assertFalse(app_route["live_write_supported"])
+        self.assertTrue(app_route["live_write_supported"])
         for key in (
             "packages_upload_status",
             "packages_warning_alert",
@@ -61,7 +61,7 @@ class FolioMsixAppPreuploadTeacherDataTests(unittest.TestCase):
         ):
             self.assertTrue(app_route["selectors"][key]["verified"], key)
 
-    def test_later_observed_states_do_not_enable_unattended_live_route(self):
+    def test_later_observed_states_enable_only_live_draft_not_certification(self):
         app_route = self.mapping["routes"]["msix_pwa_app"]
         for key in (
             "overview_section_states",
@@ -75,11 +75,11 @@ class FolioMsixAppPreuploadTeacherDataTests(unittest.TestCase):
             "TWO_PRODUCT_FULL_STORE_DRAFT_SAVE_RELOAD_VERIFIED",
         )
         self.assertEqual(app_route["observation_scope"]["observed_product_count"], 2)
-        self.assertFalse(app_route["live_write_supported"])
+        self.assertTrue(app_route["live_write_supported"])
         self.assertFalse(app_route["certification_write_supported"])
         self.assertFalse(app_route["publish_write_supported"])
 
-    def test_packages_save_and_overview_recovery_are_verified_but_route_remains_disabled(self):
+    def test_packages_save_and_overview_recovery_are_verified_for_live_draft(self):
         app_route = self.mapping["routes"]["msix_pwa_app"]
         for key in (
             "packages_section_state",
@@ -88,7 +88,7 @@ class FolioMsixAppPreuploadTeacherDataTests(unittest.TestCase):
             "product_overview_recovery_success",
         ):
             self.assertTrue(app_route["selectors"][key]["verified"], key)
-        self.assertFalse(app_route["live_write_supported"])
+        self.assertTrue(app_route["live_write_supported"])
 
     def test_observed_initial_values_are_not_promoted_to_owner_decisions(self):
         sections = self.fixture["observed_sections"]
