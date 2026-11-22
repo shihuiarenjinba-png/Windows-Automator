@@ -34,8 +34,10 @@ class GroupCStoreTeacherRunnerContractTests(unittest.TestCase):
         self.assertIn("$result.details.submitted", self.text)
         self.assertIn("$result.details.published", self.text)
 
-    def test_live_success_requires_draft_saved(self):
-        self.assertIn('$result.status -ne "DRAFT_SAVED"', self.text)
+    def test_live_success_accepts_package_saved_or_complete_draft(self):
+        self.assertIn('"PACKAGE_SAVED_STORE_DRAFT_REMAINING_SECTIONS_REQUIRED"', self.text)
+        self.assertIn('"DRAFT_SAVED"', self.text)
+        self.assertIn("GROUP_C_PACKAGE_SAVED_REMAINING_SECTIONS", self.text)
         self.assertIn("GROUP_C_LIVE_DRAFT_PASS", self.text)
 
 
