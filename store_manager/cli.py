@@ -56,7 +56,7 @@ def main():
     if a.cmd=="validate":
         fs=validate_product(ProductInput.load(a.input)); [print(f"[{f.severity.value.upper()}] {f.code}: {f.message}") for f in fs]; raise SystemExit(2 if any(f.severity.value in {"hold","fatal"} for f in fs) else 0)
     if a.cmd=="verify-existing-identity":
-        raw=json.loads(Path(a.job).read_text(encoding="utf-8"))
+        raw=json.loads(Path(a.job).read_text(encoding="utf-8-sig"))
         if raw.get("schema_version")!="existing-store-identity-reverify/1":
             raise SystemExit("unsupported identity reverify job schema")
         expected=raw.get("expected") or {}
