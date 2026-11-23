@@ -36,6 +36,13 @@ class DataContractAuditorReadOnlyRunnerTests(unittest.TestCase):
         self.assertIn('encoding="utf-8-sig"', core)
         self.assertIn('encoding="utf-8-sig"', cli)
 
+    def test_submission_probe_records_draft_root_and_http_evidence(self):
+        live = (ROOT / "store_manager" / "live_draft.py").read_text(encoding="utf-8")
+        self.assertIn('"pinned_draft_http_status"', live)
+        self.assertIn('"pinned_draft_root_http_status"', live)
+        self.assertIn('"pinned_draft_root_visible_sections"', live)
+        self.assertIn('"pinned_draft_root_submission_link_count"', live)
+
     def test_submission_probe_emits_diagnostics_and_uses_app_overview(self):
         live = (ROOT / "store_manager" / "live_draft.py").read_text(encoding="utf-8")
         cli = (ROOT / "store_manager" / "cli.py").read_text(encoding="utf-8")
