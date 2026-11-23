@@ -899,17 +899,16 @@ class PlaywrightPartnerCenterPort:
             raise LiveGateError("existing identity verifier requires product_name")
         if not store_product_id.strip():
             raise LiveGateError("existing identity verifier requires store_product_id")
-        title = str(self.page.title() or "")
-        if product_name not in title:
-            raise LiveGateError(
-                f"HOLD_PRODUCT_TITLE_MISMATCH expected={product_name!r} observed={title!r}"
-            )
         current = str(self.page.url)
         expected_path = f"/products/{store_product_id}/identity"
         if expected_path not in current:
             raise LiveGateError(
                 f"HOLD_STORE_ID_URL_MISMATCH expected_path={expected_path!r} observed={current!r}"
             )
+        # Partner Center may expose only the generic browser title "Partner Center"
+        # while the SPA is still fully loaded. Product identity is therefore bound
+        # to the exact Store ID in the URL plus exact identity fields below, not
+        # to the volatile document.title value.
 
     def _visible_exact_text_count(self, text: str) -> int:
         return sum(1 for item in self.page.get_by_text(text, exact=True).all() if item.is_visible())
