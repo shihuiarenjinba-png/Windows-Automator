@@ -36,6 +36,13 @@ class DataContractAuditorReadOnlyRunnerTests(unittest.TestCase):
         self.assertIn('encoding="utf-8-sig"', core)
         self.assertIn('encoding="utf-8-sig"', cli)
 
+    def test_partner_center_opener_skips_first_run_and_retries_cdp(self):
+        helper = (ROOT / "scripts" / "open_data_contract_partner_center_cdp.ps1").read_text(encoding="utf-8")
+        self.assertIn("--no-first-run", helper)
+        self.assertIn("--no-default-browser-check", helper)
+        self.assertIn("for ($Attempt = 1; $Attempt -le 20; $Attempt++)", helper)
+        self.assertIn("Do NOT sign into Edge itself", helper)
+
     def test_isolated_partner_center_profile_helper(self):
         helper = (ROOT / "scripts" / "open_data_contract_partner_center_cdp.ps1").read_text(encoding="utf-8")
         self.assertIn("StoreAutomationEdge-DataContractAuditor", helper)
