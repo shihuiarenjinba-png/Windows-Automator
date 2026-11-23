@@ -857,6 +857,7 @@ class PlaywrightPartnerCenterPort:
         self.map = selector_map
         self.evidence_dir = Path(evidence_dir)
         self.timeout_ms = timeout_ms
+        self.last_submission_probe: dict[str, Any] = {}
 
     def ensure_route_ready(self, product: ProductInput) -> None:
         self.map.activate(product.submission_route)
@@ -1028,6 +1029,10 @@ class PlaywrightPartnerCenterPort:
         # draft directly with a read-only GET before relying on overview link
         # discovery. Partner Center may not render a packages link on overview
         # even though the existing draft is valid.
+        self.last_submission_probe = {
+            "pinned_draft_id": str(product.draft_id or "").strip(),
+            "product_type": product.product_type,
+        }
         if str(product.draft_id or "").strip():
             expected_draft_id = str(product.draft_id).strip()
             known_packages_url = (
@@ -1036,16 +1041,29 @@ class PlaywrightPartnerCenterPort:
             )
             self._goto(known_packages_url)
             current = str(self.page.url)
+            try:
+                observed_title = str(self.page.title() or "")
+            except Exception:
+                observed_title = ""
             exact_path = (
                 f"/products/{product.store_product_id}/submissions/"
                 f"{expected_draft_id}/packages"
             )
             exact_url_retained = exact_path in current
-            packages_signal = (
-                self._visible_exact_text_count("Packages") >= 1
-                or self.page.locator('input[type="file"]').count() >= 1
-            )
+            packages_label_count = self._visible_exact_text_count("Packages")
+            file_input_count = self.page.locator('input[type="file"]').count()
+            packages_signal = packages_label_count >= 1 or file_input_count >= 1
+            self.last_submission_probe.update({
+                "pinned_draft_requested_url": known_packages_url,
+                "pinned_draft_observed_url": current,
+                "pinned_draft_observed_title": observed_title,
+                "pinned_draft_exact_url_retained": exact_url_retained,
+                "pinned_draft_packages_label_count": packages_label_count,
+                "pinned_draft_file_input_count": file_input_count,
+                "pinned_draft_packages_signal": packages_signal,
+            })
             if exact_url_retained and packages_signal:
+                self.last_submission_probe["classification_source"] = "PINNED_DRAFT_DIRECT_READONLY"
                 return SubmissionStateResult(
                     EXISTING_PRODUCT_DRAFT_PRESENT,
                     draft_id=expected_draft_id,
@@ -1055,8 +1073,13 @@ class PlaywrightPartnerCenterPort:
                     ),
                 )
 
-        overview_url = f"{PARTNER_HOST}en-us/dashboard/products/{product.store_product_id}/overview"
+        if product.product_type == "app":
+            overview_url = f"{PARTNER_HOST}en-us/dashboard/apps/{product.store_product_id}/overview"
+        else:
+            overview_url = f"{PARTNER_HOST}en-us/dashboard/products/{product.store_product_id}/overview"
         self._goto(overview_url)
+        self.last_submission_probe["overview_requested_url"] = overview_url
+        self.last_submission_probe["overview_observed_url"] = str(self.page.url)
         draft_packages_urls = tuple(
             href
             for link in self.page.locator("a[href]").all()
@@ -1068,6 +1091,11 @@ class PlaywrightPartnerCenterPort:
         )
         start_submission_visible = self._visible_exact_text_count("Start submission") == 1
         start_update_visible = self._visible_exact_text_count("Start update") == 1
+        self.last_submission_probe.update({
+            "overview_draft_packages_url_count": len(draft_packages_urls),
+            "start_submission_visible": start_submission_visible,
+            "start_update_visible": start_update_visible,
+        })
 
         current_packages_url = f"{PARTNER_HOST}en-us/dashboard/apps/{product.store_product_id}/managepackages"
         self._goto(current_packages_url)
@@ -1077,6 +1105,12 @@ class PlaywrightPartnerCenterPort:
         active_package_count = None
         if current_packages_page_verified:
             active_package_count = self._visible_locator_count("table tbody tr")
+        self.last_submission_probe.update({
+            "current_packages_requested_url": current_packages_url,
+            "current_packages_observed_url": str(self.page.url),
+            "current_packages_page_verified": current_packages_page_verified,
+            "active_package_count": active_package_count,
+        })
 
         observation = SubmissionStateObservation(
             store_product_id=product.store_product_id,
@@ -1087,7 +1121,10 @@ class PlaywrightPartnerCenterPort:
             current_packages_page_verified=current_packages_page_verified,
             active_package_count=active_package_count,
         )
-        return classify_existing_product_submission_state(observation)
+        result = classify_existing_product_submission_state(observation)
+        self.last_submission_probe["classification_source"] = "OVERVIEW_AND_CURRENT_PACKAGES"
+        self.last_submission_probe["classified_state"] = result.state
+        return result
 
     def start_initial_submission_draft(self, product: ProductInput) -> DraftContext:
         """Create only the first draft for an already-reserved Store product.
