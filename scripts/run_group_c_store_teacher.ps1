@@ -1,5 +1,5 @@
 param(
-  [Parameter(Mandatory=$true)][string]$Input,
+  [Parameter(Mandatory=$true)][Alias("Input")][string]$ProductInput,
   [Parameter(Mandatory=$true)][string]$IdentityJob,
   [Parameter(Mandatory=$true)][string]$CdpUrl,
   [Parameter(Mandatory=$true)][string]$OutputDir,
@@ -12,7 +12,7 @@ $ErrorActionPreference = "Stop"
 $RunningOnWindows = ($env:OS -eq "Windows_NT") -or ([Environment]::OSVersion.Platform -eq [PlatformID]::Win32NT)
 if (-not $RunningOnWindows) { throw "Windows only" }
 
-$inputPath = (Resolve-Path -LiteralPath $Input).Path
+$inputPath = (Resolve-Path -LiteralPath $ProductInput).Path
 $identityJobPath = (Resolve-Path -LiteralPath $IdentityJob).Path
 $product = Get-Content -LiteralPath $inputPath -Raw | ConvertFrom-Json
 $outRoot = [System.IO.Path]::GetFullPath($OutputDir)
