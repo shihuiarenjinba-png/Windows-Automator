@@ -81,7 +81,8 @@ $Product = [ordered]@{
     draft_id = $ExpectedDraftId
     certification_gate = "HOLD"
 }
-$Product | ConvertTo-Json -Depth 20 | Set-Content -LiteralPath $ProductPath -Encoding UTF8
+$Utf8NoBom = New-Object System.Text.UTF8Encoding($false)
+[System.IO.File]::WriteAllText($ProductPath, ($Product | ConvertTo-Json -Depth 20), $Utf8NoBom)
 
 $IdentityJob = [ordered]@{
     schema_version = "existing-store-identity-reverify/1"
@@ -105,7 +106,7 @@ $IdentityJob = [ordered]@{
         publish = $false
     }
 }
-$IdentityJob | ConvertTo-Json -Depth 20 | Set-Content -LiteralPath $IdentityJobPath -Encoding UTF8
+[System.IO.File]::WriteAllText($IdentityJobPath, ($IdentityJob | ConvertTo-Json -Depth 20), $Utf8NoBom)
 
 $Teacher = Join-Path $PSScriptRoot "run_group_c_store_teacher.ps1"
 $TeacherArgs = @{
