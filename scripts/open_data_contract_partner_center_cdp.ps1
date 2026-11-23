@@ -9,12 +9,14 @@ Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 
 $EdgeCandidates = @(
-    (Join-Path ${env:ProgramFiles(x86)} "Microsoft\Edge\Application\msedge.exe"),
-    (Join-Path $env:ProgramFiles "Microsoft\Edge\Application\msedge.exe")
-) | Where-Object { Test-Path -LiteralPath $_ }
+    @(
+        (Join-Path ${env:ProgramFiles(x86)} "Microsoft\Edge\Application\msedge.exe")
+        (Join-Path $env:ProgramFiles "Microsoft\Edge\Application\msedge.exe")
+    ) | Where-Object { Test-Path -LiteralPath $_ }
+)
 
 if (-not $EdgeCandidates) { throw "Microsoft Edge executable was not found." }
-$Edge = $EdgeCandidates[0]
+$Edge = [string]$EdgeCandidates[0]
 $Profile = Join-Path $env:LOCALAPPDATA "StoreAutomationEdge-DataContractAuditor"
 
 & $Edge ("--remote-debugging-port=" + $Port) ("--user-data-dir=" + $Profile) $Url | Out-Null
