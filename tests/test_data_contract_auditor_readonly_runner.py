@@ -39,9 +39,10 @@ class DataContractAuditorReadOnlyRunnerTests(unittest.TestCase):
     def test_identity_verifier_uses_title_url_and_exact_visible_fields(self):
         live = (ROOT / "store_manager" / "live_draft.py").read_text(encoding="utf-8")
         self.assertIn("_verify_identity_page_context", live)
-        self.assertIn("self.page.title()", live)
+        self.assertNotIn("HOLD_PRODUCT_TITLE_MISMATCH", live)
         self.assertIn('expected_path = f"/products/{store_product_id}/identity"', live)
         self.assertIn("visible < 1", live)
+        self.assertIn("volatile document.title", live)
 
     def test_cli_reports_expired_partner_center_auth_cleanly(self):
         cli = (ROOT / "store_manager" / "cli.py").read_text(encoding="utf-8")
