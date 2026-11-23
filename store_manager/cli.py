@@ -5,6 +5,7 @@ from .core import ProductInput,apply_fixed_rules,validate_product,run_queue,Queu
 from .partner_center import dryrun_uploader
 from .live_draft import (
     LiveDraftWorkflow,
+    LiveGateError,
     LivePlaywrightConnection,
     UNKNOWN_PARTNER_CENTER_STATE,
     reconcile_ambiguous_initial_submission,
@@ -83,6 +84,8 @@ def main():
                 )
         except GlobalAuthError:
             raise SystemExit("OWNER_SIGN_IN_REQUIRED_PARTNER_CENTER")
+        except LiveGateError as exc:
+            raise SystemExit(f"HOLD_PARTNER_CENTER_IDENTITY_REVERIFY: {exc}")
         receipt={
             "schema_version":"existing-store-identity-reverify-receipt/1",
             "status":verified["status"],
