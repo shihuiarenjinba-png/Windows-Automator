@@ -36,6 +36,14 @@ class DataContractAuditorReadOnlyRunnerTests(unittest.TestCase):
         self.assertIn('encoding="utf-8-sig"', core)
         self.assertIn('encoding="utf-8-sig"', cli)
 
+    def test_submission_probe_emits_diagnostics_and_uses_app_overview(self):
+        live = (ROOT / "store_manager" / "live_draft.py").read_text(encoding="utf-8")
+        cli = (ROOT / "store_manager" / "cli.py").read_text(encoding="utf-8")
+        self.assertIn('f"{PARTNER_HOST}en-us/dashboard/apps/{product.store_product_id}/overview"', live)
+        self.assertIn('"pinned_draft_observed_url"', live)
+        self.assertIn('"current_packages_page_verified"', live)
+        self.assertIn('"probe":probe', cli)
+
     def test_identity_locator_compatibility_is_guarded(self):
         live = (ROOT / "store_manager" / "live_draft.py").read_text(encoding="utf-8")
         self.assertIn('getattr(locator, "all", None)', live)
