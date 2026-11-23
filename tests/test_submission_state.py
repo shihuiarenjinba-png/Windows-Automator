@@ -52,6 +52,8 @@ class _InitialSubmissionPage:
         self.visited.append(url)
 
     def locator(self, selector):
+        if selector == 'input[type="file"]' and "/submissions/" in self.url and "/packages" in self.url:
+            return _ReadOnlyLocator((_ReadOnlyLocator(),))
         if selector in {"input[type='password']", "a[href]", "table tbody tr"}:
             return _ReadOnlyLocator()
         return _ReadOnlyLocator()
@@ -60,6 +62,8 @@ class _InitialSubmissionPage:
         visible = False
         if "/identity" in self.url:
             visible = text in self.identity_values
+        elif "/submissions/" in self.url and "/packages" in self.url:
+            visible = text == "Packages"
         elif "/overview" in self.url:
             visible = text == "Start submission"
         elif "/managepackages" in self.url:
@@ -185,6 +189,29 @@ class ExistingProductSubmissionStateTests(unittest.TestCase):
         )
         self.assertEqual(status, "HOLD_AMBIGUOUS_WRITE")
         self.assertFalse(retry_candidate)
+
+    def test_pinned_draft_is_verified_by_direct_read_only_packages_probe(self):
+        page = _InitialSubmissionPage()
+        port = PlaywrightPartnerCenterPort(
+            page,
+            SelectorMap({"schema_version": 3, "routes": {}}),
+            Path("."),
+        )
+        product = ProductInput(
+            "app",
+            "Folder Automation Engine",
+            "Offline utility",
+            store_product_id="9P99MJX1R4V6",
+            identity_name="OkinawaDesktopTools.FolderAutomationEngine",
+            identity_publisher="CN=46263F21-A700-41DB-8C9B-114C22FB82FC",
+            submission_kind="new",
+            draft_id="1152921505702219486",
+        )
+        result = port.inspect_existing_product_submission_state(product)
+        self.assertEqual(result.state, EXISTING_PRODUCT_DRAFT_PRESENT)
+        self.assertEqual(result.draft_id, "1152921505702219486")
+        self.assertTrue(page.visited[-1].endswith("/submissions/1152921505702219486/packages"))
+        self.assertFalse(any(url.endswith("/managepackages") for url in page.visited))
 
     def test_start_initial_submission_creates_only_draft_after_exact_recheck(self):
         page=_StartPage()
