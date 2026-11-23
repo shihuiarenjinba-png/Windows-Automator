@@ -244,7 +244,8 @@ class ExistingProductSubmissionStateTests(unittest.TestCase):
         result = port.inspect_existing_product_submission_state(product)
         self.assertEqual(result.state, EXISTING_PRODUCT_DRAFT_PRESENT)
         self.assertEqual(result.draft_id, "1152921505702219486")
-        self.assertTrue(page.visited[-1].endswith("/submissions/1152921505702219486/packages"))
+        self.assertTrue(any(url.endswith("/submissions/1152921505702219486/packages") for url in page.visited))
+        self.assertTrue(page.visited[-1].endswith("/submissions/1152921505702219486"))
         self.assertFalse(any(url.endswith("/managepackages") for url in page.visited))
 
     def test_start_initial_submission_creates_only_draft_after_exact_recheck(self):
