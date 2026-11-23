@@ -29,6 +29,13 @@ class DataContractAuditorReadOnlyRunnerTests(unittest.TestCase):
         self.assertLess(SCRIPT.index("Get-FileHash"), SCRIPT.index("Invoke-RestMethod"))
         self.assertIn("HOLD_PACKAGE_SHA_MISMATCH", SCRIPT)
 
+    def test_json_outputs_are_bom_free_and_python_accepts_utf8_sig(self):
+        self.assertIn("System.Text.UTF8Encoding($false)", SCRIPT)
+        core = (ROOT / "store_manager" / "core.py").read_text(encoding="utf-8")
+        cli = (ROOT / "store_manager" / "cli.py").read_text(encoding="utf-8")
+        self.assertIn('encoding="utf-8-sig"', core)
+        self.assertIn('encoding="utf-8-sig"', cli)
+
     def test_teacher_supports_windows_powershell_51_and_explicit_python(self):
         self.assertIn('$env:OS -eq "Windows_NT"', TEACHER)
         self.assertIn('[string]$PythonExe = "python"', TEACHER)
