@@ -190,6 +190,40 @@ class ExistingProductSubmissionStateTests(unittest.TestCase):
         self.assertEqual(status, "HOLD_AMBIGUOUS_WRITE")
         self.assertFalse(retry_candidate)
 
+    def test_pinned_draft_accepts_packages_title_without_file_input(self):
+        page = _InitialSubmissionPage()
+        page.title = lambda: "Partner Center | Packages"
+        original_locator = page.locator
+        def locator(selector):
+            if selector == 'input[type="file"]':
+                return _ReadOnlyLocator()
+            if selector == "body":
+                class _Body:
+                    def inner_text(self): return "Package submission"
+                return _Body()
+            return original_locator(selector)
+        page.locator = locator
+        port = PlaywrightPartnerCenterPort(
+            page,
+            SelectorMap({"schema_version": 3, "routes": {}}),
+            Path("."),
+        )
+        product = ProductInput(
+            "app",
+            "Folder Automation Engine",
+            "Offline utility",
+            store_product_id="9P99MJX1R4V6",
+            identity_name="OkinawaDesktopTools.FolderAutomationEngine",
+            identity_publisher="CN=46263F21-A700-41DB-8C9B-114C22FB82FC",
+            submission_kind="new",
+            draft_id="1152921505702219486",
+        )
+        result = port.inspect_existing_product_submission_state(product)
+        self.assertEqual(result.state, EXISTING_PRODUCT_DRAFT_PRESENT)
+        self.assertEqual(result.draft_id, "1152921505702219486")
+        self.assertTrue(port.last_submission_probe["pinned_draft_packages_title_signal"])
+        self.assertEqual(port.last_submission_probe["pinned_draft_error_marker"], "")
+
     def test_pinned_draft_is_verified_by_direct_read_only_packages_probe(self):
         page = _InitialSubmissionPage()
         port = PlaywrightPartnerCenterPort(
