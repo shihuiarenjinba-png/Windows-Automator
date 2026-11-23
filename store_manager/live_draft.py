@@ -1052,7 +1052,28 @@ class PlaywrightPartnerCenterPort:
             exact_url_retained = exact_path in current
             packages_label_count = self._visible_exact_text_count("Packages")
             file_input_count = self.page.locator('input[type="file"]').count()
-            packages_signal = packages_label_count >= 1 or file_input_count >= 1
+            try:
+                body_text = self.page.locator("body").inner_text()
+            except Exception:
+                body_text = ""
+            error_markers = (
+                "Page not found",
+                "Something went wrong",
+                "We couldn't find",
+                "We can’t find",
+                "doesn't exist",
+                "does not exist",
+            )
+            error_marker = next(
+                (marker for marker in error_markers if marker.casefold() in body_text.casefold()),
+                "",
+            )
+            packages_title_signal = "packages" in observed_title.casefold()
+            packages_signal = (
+                packages_label_count >= 1
+                or file_input_count >= 1
+                or packages_title_signal
+            )
             self.last_submission_probe.update({
                 "pinned_draft_requested_url": known_packages_url,
                 "pinned_draft_observed_url": current,
@@ -1060,10 +1081,13 @@ class PlaywrightPartnerCenterPort:
                 "pinned_draft_exact_url_retained": exact_url_retained,
                 "pinned_draft_packages_label_count": packages_label_count,
                 "pinned_draft_file_input_count": file_input_count,
+                "pinned_draft_packages_title_signal": packages_title_signal,
+                "pinned_draft_error_marker": error_marker,
                 "pinned_draft_packages_signal": packages_signal,
             })
-            if exact_url_retained and packages_signal:
+            if exact_url_retained and packages_signal and not error_marker:
                 self.last_submission_probe["classification_source"] = "PINNED_DRAFT_DIRECT_READONLY"
+                self.last_submission_probe["classified_state"] = EXISTING_PRODUCT_DRAFT_PRESENT
                 return SubmissionStateResult(
                     EXISTING_PRODUCT_DRAFT_PRESENT,
                     draft_id=expected_draft_id,
