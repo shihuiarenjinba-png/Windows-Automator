@@ -36,6 +36,12 @@ class DataContractAuditorReadOnlyRunnerTests(unittest.TestCase):
         self.assertIn('encoding="utf-8-sig"', core)
         self.assertIn('encoding="utf-8-sig"', cli)
 
+    def test_isolated_partner_center_profile_helper(self):
+        helper = (ROOT / "scripts" / "open_data_contract_partner_center_cdp.ps1").read_text(encoding="utf-8")
+        self.assertIn("StoreAutomationEdge-DataContractAuditor", helper)
+        self.assertIn("[int]$Port = 9223", helper)
+        self.assertIn("9PDL4ZWSB45P/identity", helper)
+
     def test_submission_probe_records_draft_root_and_http_evidence(self):
         live = (ROOT / "store_manager" / "live_draft.py").read_text(encoding="utf-8")
         self.assertIn('"pinned_draft_http_status"', live)
