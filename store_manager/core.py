@@ -99,7 +99,7 @@ class ProductInput:
         }
         return cls(**d)
     @classmethod
-    def load(cls,path): return cls.from_dict(json.loads(Path(path).read_text(encoding="utf-8")))
+    def load(cls,path): return cls.from_dict(json.loads(Path(path).read_text(encoding="utf-8-sig")))
     def save(self,path):
         p=Path(path); p.parent.mkdir(parents=True,exist_ok=True); p.write_text(json.dumps(self.to_dict(),ensure_ascii=False,indent=2),encoding="utf-8")
 @dataclass
