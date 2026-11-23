@@ -1013,6 +1013,37 @@ class PlaywrightPartnerCenterPort:
         self._exact_text_present(product.identity_name)
         self._exact_text_present(product.identity_publisher)
 
+        # If an exact draft_id is already pinned by upstream evidence, probe that
+        # draft directly with a read-only GET before relying on overview link
+        # discovery. Partner Center may not render a packages link on overview
+        # even though the existing draft is valid.
+        if str(product.draft_id or "").strip():
+            expected_draft_id = str(product.draft_id).strip()
+            known_packages_url = (
+                f"{PARTNER_HOST}en-us/dashboard/products/{product.store_product_id}/"
+                f"submissions/{expected_draft_id}/packages"
+            )
+            self._goto(known_packages_url)
+            current = str(self.page.url)
+            exact_path = (
+                f"/products/{product.store_product_id}/submissions/"
+                f"{expected_draft_id}/packages"
+            )
+            exact_url_retained = exact_path in current
+            packages_signal = (
+                self._visible_exact_text_count("Packages") >= 1
+                or self.page.locator('input[type="file"]').count() >= 1
+            )
+            if exact_url_retained and packages_signal:
+                return SubmissionStateResult(
+                    EXISTING_PRODUCT_DRAFT_PRESENT,
+                    draft_id=expected_draft_id,
+                    draft_url=(
+                        f"{PARTNER_HOST}en-us/dashboard/products/"
+                        f"{product.store_product_id}/submissions/{expected_draft_id}"
+                    ),
+                )
+
         overview_url = f"{PARTNER_HOST}en-us/dashboard/products/{product.store_product_id}/overview"
         self._goto(overview_url)
         draft_packages_urls = tuple(
