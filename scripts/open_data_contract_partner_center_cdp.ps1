@@ -19,16 +19,38 @@ if (-not $EdgeCandidates) { throw "Microsoft Edge executable was not found." }
 $Edge = [string]$EdgeCandidates[0]
 $Profile = Join-Path $env:LOCALAPPDATA "StoreAutomationEdge-DataContractAuditor"
 
-& $Edge ("--remote-debugging-port=" + $Port) ("--user-data-dir=" + $Profile) $Url | Out-Null
-Start-Sleep -Seconds 1
+$Args = @(
+    ("--remote-debugging-port=" + $Port),
+    ("--user-data-dir=" + $Profile),
+    "--no-first-run",
+    "--no-default-browser-check",
+    "--new-window",
+    $Url
+)
 
-try {
-    $Version = Invoke-RestMethod -Uri ("http://127.0.0.1:" + $Port + "/json/version") -TimeoutSec 5
-    if (-not $Version.webSocketDebuggerUrl) { throw "CDP endpoint did not expose webSocketDebuggerUrl." }
-    Write-Host "PARTNER_CENTER_CDP=READY"
-    Write-Host ("CDP_URL=http://127.0.0.1:" + $Port)
-    Write-Host ("EDGE_PROFILE=" + $Profile)
-    Write-Host "ACTION=Sign in with the Partner Center account that owns Data Contract Auditor, leave this Edge window open, then rerun ReadOnly using this CDP URL."
-} catch {
-    throw ("PARTNER_CENTER_CDP_UNAVAILABLE: " + $_.Exception.Message)
+$Process = Start-Process -FilePath $Edge -ArgumentList $Args -PassThru
+
+$Version = $null
+$LastError = $null
+for ($Attempt = 1; $Attempt -le 20; $Attempt++) {
+    try {
+        $Version = Invoke-RestMethod -Uri ("http://127.0.0.1:" + $Port + "/json/version") -TimeoutSec 2
+        if ($Version.webSocketDebuggerUrl) { break }
+    } catch {
+        $LastError = $_.Exception.Message
+    }
+
+    if ($Process.HasExited) {
+        throw ("PARTNER_CENTER_EDGE_EXITED code=" + $Process.ExitCode)
+    }
+    Start-Sleep -Milliseconds 500
 }
+
+if (-not $Version -or -not $Version.webSocketDebuggerUrl) {
+    throw ("PARTNER_CENTER_CDP_UNAVAILABLE after retry: " + [string]$LastError)
+}
+
+Write-Host "PARTNER_CENTER_CDP=READY"
+Write-Host ("CDP_URL=http://127.0.0.1:" + $Port)
+Write-Host ("EDGE_PROFILE=" + $Profile)
+Write-Host "ACTION=Do NOT sign into Edge itself. On the Partner Center webpage, sign in with the Microsoft account that owns Data Contract Auditor. Leave this Edge window open, then rerun ReadOnly using this CDP URL."
