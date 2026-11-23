@@ -4,11 +4,13 @@ param(
   [Parameter(Mandatory=$true)][string]$CdpUrl,
   [Parameter(Mandatory=$true)][string]$OutputDir,
   [ValidateSet("ReadOnly","LiveDraft")][string]$Mode = "ReadOnly",
-  [switch]$ConfirmLiveDraft
+  [switch]$ConfirmLiveDraft,
+  [string]$PythonExe = "python"
 )
 
 $ErrorActionPreference = "Stop"
-if (-not $IsWindows) { throw "Windows only" }
+$RunningOnWindows = ($env:OS -eq "Windows_NT") -or ([Environment]::OSVersion.Platform -eq [PlatformID]::Win32NT)
+if (-not $RunningOnWindows) { throw "Windows only" }
 
 $inputPath = (Resolve-Path -LiteralPath $Input).Path
 $identityJobPath = (Resolve-Path -LiteralPath $IdentityJob).Path
@@ -23,7 +25,7 @@ $liveMd = Join-Path $outRoot "live-report.md"
 $queuePath = Join-Path $outRoot "single-product-queue.json"
 
 Write-Host "GROUP_C_TEACHER_STAGE=IDENTITY_REVERIFY"
-python -m store_manager.cli verify-existing-identity `
+& $PythonExe -m store_manager.cli verify-existing-identity `
   --job $identityJobPath `
   --output $identityReceipt `
   --cdp-url $CdpUrl
@@ -53,7 +55,7 @@ if ([string]$identity.package_sha256 -cne [string]$product.package_sha256) {
 }
 
 Write-Host "GROUP_C_TEACHER_STAGE=SUBMISSION_STATE"
-python -m store_manager.cli inspect-existing-submission-state `
+& $PythonExe -m store_manager.cli inspect-existing-submission-state `
   --input $inputPath `
   --output $stateReceipt `
   --cdp-url $CdpUrl
@@ -93,7 +95,7 @@ if (-not $state.submission_kind_matches) {
 }
 
 Write-Host "GROUP_C_TEACHER_STAGE=FORMAL_INPUT_VALIDATE"
-python -m store_manager.cli validate --input $inputPath
+& $PythonExe -m store_manager.cli validate --input $inputPath
 if ($LASTEXITCODE -ne 0) {
   throw "HOLD_FORMAL_PRODUCT_INPUT_VALIDATION"
 }
@@ -101,7 +103,7 @@ if ($LASTEXITCODE -ne 0) {
 @($product) | ConvertTo-Json -Depth 30 | Set-Content -LiteralPath $queuePath -Encoding UTF8
 
 Write-Host "GROUP_C_TEACHER_STAGE=LIVE_DRAFT"
-python -m store_manager.cli night-run `
+& $PythonExe -m store_manager.cli night-run `
   --queue $queuePath `
   --json-report $liveJson `
   --markdown-report $liveMd `
