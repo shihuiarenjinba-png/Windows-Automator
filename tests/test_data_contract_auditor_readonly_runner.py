@@ -33,6 +33,8 @@ class DataContractAuditorReadOnlyRunnerTests(unittest.TestCase):
         self.assertIn('$env:OS -eq "Windows_NT"', TEACHER)
         self.assertIn('[string]$PythonExe = "python"', TEACHER)
         self.assertIn("& $PythonExe -m store_manager.cli", TEACHER)
+        self.assertIn('[Alias("Input")][string]$ProductInput', TEACHER)
+        self.assertIn("ProductInput = $ProductPath", SCRIPT)
 
 
 if __name__ == "__main__":
