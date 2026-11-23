@@ -109,7 +109,7 @@ $IdentityJob | ConvertTo-Json -Depth 20 | Set-Content -LiteralPath $IdentityJobP
 
 $Teacher = Join-Path $PSScriptRoot "run_group_c_store_teacher.ps1"
 $TeacherArgs = @{
-    Input = $ProductPath
+    ProductInput = $ProductPath
     IdentityJob = $IdentityJobPath
     CdpUrl = $CdpUrl
     OutputDir = $OutputDir
