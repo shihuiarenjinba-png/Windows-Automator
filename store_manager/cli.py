@@ -1,7 +1,7 @@
 from __future__ import annotations
 import argparse,json
 from pathlib import Path
-from .core import ProductInput,apply_fixed_rules,validate_product,run_queue,QueuePolicy,render_markdown
+from .core import ProductInput,apply_fixed_rules,validate_product,run_queue,QueuePolicy,render_markdown,GlobalAuthError
 from .partner_center import dryrun_uploader
 from .live_draft import (
     LiveDraftWorkflow,
@@ -71,15 +71,18 @@ def main():
             "publish": False,
         }:
             raise SystemExit("identity reverify job permissions are not read-only")
-        with LivePlaywrightConnection(a.cdp_url,a.selector_map,a.evidence_dir) as port:
-            verified=port.verify_existing_identity_values(
-                product_name=str(expected.get("product_name") or ""),
-                store_product_id=str(expected.get("store_id") or ""),
-                identity_name=str(expected.get("identity_name") or ""),
-                identity_publisher=str(expected.get("publisher") or ""),
-                package_family_name=str(expected.get("package_family_name") or ""),
-                package_sid=str(expected.get("package_sid") or ""),
-            )
+        try:
+            with LivePlaywrightConnection(a.cdp_url,a.selector_map,a.evidence_dir) as port:
+                verified=port.verify_existing_identity_values(
+                    product_name=str(expected.get("product_name") or ""),
+                    store_product_id=str(expected.get("store_id") or ""),
+                    identity_name=str(expected.get("identity_name") or ""),
+                    identity_publisher=str(expected.get("publisher") or ""),
+                    package_family_name=str(expected.get("package_family_name") or ""),
+                    package_sid=str(expected.get("package_sid") or ""),
+                )
+        except GlobalAuthError:
+            raise SystemExit("OWNER_SIGN_IN_REQUIRED_PARTNER_CENTER")
         receipt={
             "schema_version":"existing-store-identity-reverify-receipt/1",
             "status":verified["status"],
