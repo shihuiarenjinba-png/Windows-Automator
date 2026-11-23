@@ -909,7 +909,10 @@ class PlaywrightPartnerCenterPort:
             # controls or asynchronously into the page body. Accept only the
             # exact expected value, never fuzzy matching.
             for selector in ("input", "textarea"):
-                for node in self.page.locator(selector).all():
+                locator = self.page.locator(selector)
+                all_nodes = getattr(locator, "all", None)
+                nodes = all_nodes() if callable(all_nodes) else ()
+                for node in nodes:
                     try:
                         value = node.input_value()
                     except Exception:
@@ -950,7 +953,15 @@ class PlaywrightPartnerCenterPort:
         # to the volatile document.title value.
 
     def _visible_exact_text_count(self, text: str) -> int:
-        return sum(1 for item in self.page.get_by_text(text, exact=True).all() if item.is_visible())
+        locator = self.page.get_by_text(text, exact=True)
+        all_items = getattr(locator, "all", None)
+        if callable(all_items):
+            return sum(1 for item in all_items() if item.is_visible())
+        count = locator.count()
+        if count < 1:
+            return 0
+        visible = getattr(locator, "is_visible", None)
+        return 1 if callable(visible) and visible() else count
 
     def _visible_locator_count(self, selector: str) -> int:
         return sum(1 for item in self.page.locator(selector).all() if item.is_visible())
