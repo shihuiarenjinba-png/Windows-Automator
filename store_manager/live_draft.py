@@ -864,6 +864,13 @@ class PlaywrightPartnerCenterPort:
     def _goto(self, url: str) -> None:
         self.page.goto(url, wait_until="domcontentloaded", timeout=60_000)
         self._assert_authenticated()
+        try:
+            self.page.wait_for_load_state("load", timeout=15_000)
+        except Exception:
+            pass
+        # Partner Center is a SPA; domcontentloaded can fire before identity
+        # fields are hydrated. Exact-value helpers below still fail closed.
+        self.page.wait_for_timeout(500)
 
     def _assert_authenticated(self) -> None:
         current = str(self.page.url)
@@ -889,10 +896,38 @@ class PlaywrightPartnerCenterPort:
             raise LiveGateError(f"expected exactly one {selector_key}; got {locator.count()}")
         return locator
 
-    def _exact_text_present(self, text: str) -> None:
-        visible = self._visible_exact_text_count(text)
-        if visible < 1:
-            raise LiveGateError(f"expected visible exact text {text!r}; got 0 visible matches")
+    def _exact_text_present(self, text: str, timeout_ms: int = 15_000) -> None:
+        deadline = monotonic() + timeout_ms / 1000
+        while monotonic() < deadline:
+            visible = self._visible_exact_text_count(text)
+            if visible >= 1:
+                return
+
+            # Partner Center renders some identity values inside readonly form
+            # controls or asynchronously into the page body. Accept only the
+            # exact expected value, never fuzzy matching.
+            for selector in ("input", "textarea"):
+                for node in self.page.locator(selector).all():
+                    try:
+                        value = node.input_value()
+                    except Exception:
+                        continue
+                    if value == text:
+                        return
+
+            try:
+                body_text = self.page.locator("body").inner_text()
+            except Exception:
+                body_text = ""
+            lines = {line.strip() for line in body_text.splitlines() if line.strip()}
+            if text in lines:
+                return
+
+            self.page.wait_for_timeout(250)
+
+        raise LiveGateError(
+            f"expected exact Partner Center value {text!r}; not observed within {timeout_ms}ms"
+        )
 
     def _verify_identity_page_context(self, product_name: str, store_product_id: str) -> None:
         if not product_name.strip():
