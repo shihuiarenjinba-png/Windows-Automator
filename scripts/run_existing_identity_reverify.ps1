@@ -1,11 +1,13 @@
 param(
   [Parameter(Mandatory=$true)][string]$Job,
   [Parameter(Mandatory=$true)][string]$Output,
-  [Parameter(Mandatory=$true)][string]$CdpUrl
+  [Parameter(Mandatory=$true)][string]$CdpUrl,
+  [string]$PythonExe = "python"
 )
 
 $ErrorActionPreference = "Stop"
-if (-not $IsWindows) { throw "Windows only" }
+$RunningOnWindows = ($env:OS -eq "Windows_NT") -or ([Environment]::OSVersion.Platform -eq [PlatformID]::Win32NT)
+if (-not $RunningOnWindows) { throw "Windows only" }
 $jobPath = (Resolve-Path -LiteralPath $Job).Path
 $outPath = [System.IO.Path]::GetFullPath($Output)
 $outDir = Split-Path -Parent $outPath
@@ -13,7 +15,7 @@ if (-not (Test-Path -LiteralPath $outDir)) {
   New-Item -ItemType Directory -Path $outDir -Force | Out-Null
 }
 
-python -m store_manager.cli verify-existing-identity `
+& $PythonExe -m store_manager.cli verify-existing-identity `
   --job $jobPath `
   --output $outPath `
   --cdp-url $CdpUrl
