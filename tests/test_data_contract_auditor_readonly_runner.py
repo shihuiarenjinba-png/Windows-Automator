@@ -36,6 +36,11 @@ class DataContractAuditorReadOnlyRunnerTests(unittest.TestCase):
         self.assertIn('encoding="utf-8-sig"', core)
         self.assertIn('encoding="utf-8-sig"', cli)
 
+    def test_cli_reports_expired_partner_center_auth_cleanly(self):
+        cli = (ROOT / "store_manager" / "cli.py").read_text(encoding="utf-8")
+        self.assertIn("OWNER_SIGN_IN_REQUIRED_PARTNER_CENTER", cli)
+        self.assertIn("except GlobalAuthError", cli)
+
     def test_teacher_supports_windows_powershell_51_and_explicit_python(self):
         self.assertIn('$env:OS -eq "Windows_NT"', TEACHER)
         self.assertIn('[string]$PythonExe = "python"', TEACHER)
