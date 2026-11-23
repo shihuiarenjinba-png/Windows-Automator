@@ -36,6 +36,11 @@ class DataContractAuditorReadOnlyRunnerTests(unittest.TestCase):
         self.assertIn('encoding="utf-8-sig"', core)
         self.assertIn('encoding="utf-8-sig"', cli)
 
+    def test_identity_locator_compatibility_is_guarded(self):
+        live = (ROOT / "store_manager" / "live_draft.py").read_text(encoding="utf-8")
+        self.assertIn('getattr(locator, "all", None)', live)
+        self.assertIn('getattr(locator, "is_visible", None)', live)
+
     def test_identity_verifier_waits_for_exact_async_partner_values(self):
         live = (ROOT / "store_manager" / "live_draft.py").read_text(encoding="utf-8")
         self.assertIn('for selector in ("input", "textarea")', live)
