@@ -870,7 +870,9 @@ class PlaywrightPartnerCenterPort:
             pass
         # Partner Center is a SPA; domcontentloaded can fire before identity
         # fields are hydrated. Exact-value helpers below still fail closed.
-        self.page.wait_for_timeout(500)
+        wait = getattr(self.page, "wait_for_timeout", None)
+        if callable(wait):
+            wait(500)
 
     def _assert_authenticated(self) -> None:
         current = str(self.page.url)
@@ -923,7 +925,9 @@ class PlaywrightPartnerCenterPort:
             if text in lines:
                 return
 
-            self.page.wait_for_timeout(250)
+            wait = getattr(self.page, "wait_for_timeout", None)
+            if callable(wait):
+                wait(250)
 
         raise LiveGateError(
             f"expected exact Partner Center value {text!r}; not observed within {timeout_ms}ms"
