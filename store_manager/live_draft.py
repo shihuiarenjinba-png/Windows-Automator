@@ -858,12 +858,13 @@ class PlaywrightPartnerCenterPort:
         self.evidence_dir = Path(evidence_dir)
         self.timeout_ms = timeout_ms
         self.last_submission_probe: dict[str, Any] = {}
+        self.last_navigation: dict[str, Any] = {}
 
     def ensure_route_ready(self, product: ProductInput) -> None:
         self.map.activate(product.submission_route)
 
     def _goto(self, url: str) -> None:
-        self.page.goto(url, wait_until="domcontentloaded", timeout=60_000)
+        response = self.page.goto(url, wait_until="domcontentloaded", timeout=60_000)
         self._assert_authenticated()
         try:
             self.page.wait_for_load_state("load", timeout=15_000)
@@ -874,6 +875,16 @@ class PlaywrightPartnerCenterPort:
         wait = getattr(self.page, "wait_for_timeout", None)
         if callable(wait):
             wait(500)
+        try:
+            title = str(self.page.title() or "")
+        except Exception:
+            title = ""
+        self.last_navigation = {
+            "requested_url": url,
+            "observed_url": str(self.page.url),
+            "http_status": getattr(response, "status", None),
+            "title": title,
+        }
 
     def _assert_authenticated(self) -> None:
         current = str(self.page.url)
@@ -1041,10 +1052,8 @@ class PlaywrightPartnerCenterPort:
             )
             self._goto(known_packages_url)
             current = str(self.page.url)
-            try:
-                observed_title = str(self.page.title() or "")
-            except Exception:
-                observed_title = ""
+            observed_title = str(self.last_navigation.get("title") or "")
+            packages_http_status = self.last_navigation.get("http_status")
             exact_path = (
                 f"/products/{product.store_product_id}/submissions/"
                 f"{expected_draft_id}/packages"
@@ -1074,18 +1083,79 @@ class PlaywrightPartnerCenterPort:
                 or file_input_count >= 1
                 or packages_title_signal
             )
+
+            draft_root_url = (
+                f"{PARTNER_HOST}en-us/dashboard/products/{product.store_product_id}/"
+                f"submissions/{expected_draft_id}"
+            )
+            self._goto(draft_root_url)
+            root_observed_url = str(self.page.url)
+            root_title = str(self.last_navigation.get("title") or "")
+            root_http_status = self.last_navigation.get("http_status")
+            try:
+                root_body = self.page.locator("body").inner_text()
+            except Exception:
+                root_body = ""
+            root_error_marker = next(
+                (marker for marker in error_markers if marker.casefold() in root_body.casefold()),
+                "",
+            )
+            section_labels = (
+                "Pricing and availability",
+                "Properties",
+                "Age ratings",
+                "Packages",
+                "Store listings",
+                "Submission options",
+            )
+            visible_sections = tuple(
+                label for label in section_labels
+                if self._visible_exact_text_count(label) >= 1
+            )
+            submission_links = tuple(
+                href
+                for link in self.page.locator("a[href]").all()
+                if (href := (link.get_attribute("href") or "").strip())
+                and f"/products/{product.store_product_id}/submissions/{expected_draft_id}/" in href
+            )
+            root_exact_path = (
+                f"/products/{product.store_product_id}/submissions/{expected_draft_id}"
+            )
+            root_url_retained = root_exact_path in root_observed_url
+            root_signal = (
+                len(visible_sections) >= 2
+                or len(submission_links) >= 1
+            )
+
             self.last_submission_probe.update({
                 "pinned_draft_requested_url": known_packages_url,
                 "pinned_draft_observed_url": current,
                 "pinned_draft_observed_title": observed_title,
+                "pinned_draft_http_status": packages_http_status,
                 "pinned_draft_exact_url_retained": exact_url_retained,
                 "pinned_draft_packages_label_count": packages_label_count,
                 "pinned_draft_file_input_count": file_input_count,
                 "pinned_draft_packages_title_signal": packages_title_signal,
                 "pinned_draft_error_marker": error_marker,
                 "pinned_draft_packages_signal": packages_signal,
+                "pinned_draft_root_requested_url": draft_root_url,
+                "pinned_draft_root_observed_url": root_observed_url,
+                "pinned_draft_root_observed_title": root_title,
+                "pinned_draft_root_http_status": root_http_status,
+                "pinned_draft_root_url_retained": root_url_retained,
+                "pinned_draft_root_visible_sections": list(visible_sections),
+                "pinned_draft_root_submission_link_count": len(submission_links),
+                "pinned_draft_root_error_marker": root_error_marker,
+                "pinned_draft_root_signal": root_signal,
             })
-            if exact_url_retained and packages_signal and not error_marker:
+            if (
+                not error_marker
+                and not root_error_marker
+                and (
+                    (exact_url_retained and packages_signal)
+                    or (root_url_retained and root_signal)
+                )
+            ):
                 self.last_submission_probe["classification_source"] = "PINNED_DRAFT_DIRECT_READONLY"
                 self.last_submission_probe["classified_state"] = EXISTING_PRODUCT_DRAFT_PRESENT
                 return SubmissionStateResult(
