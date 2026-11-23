@@ -36,10 +36,18 @@ class DataContractAuditorReadOnlyRunnerTests(unittest.TestCase):
         self.assertIn('encoding="utf-8-sig"', core)
         self.assertIn('encoding="utf-8-sig"', cli)
 
+    def test_identity_verifier_uses_title_url_and_exact_visible_fields(self):
+        live = (ROOT / "store_manager" / "live_draft.py").read_text(encoding="utf-8")
+        self.assertIn("_verify_identity_page_context", live)
+        self.assertIn("self.page.title()", live)
+        self.assertIn('expected_path = f"/products/{store_product_id}/identity"', live)
+        self.assertIn("visible < 1", live)
+
     def test_cli_reports_expired_partner_center_auth_cleanly(self):
         cli = (ROOT / "store_manager" / "cli.py").read_text(encoding="utf-8")
         self.assertIn("OWNER_SIGN_IN_REQUIRED_PARTNER_CENTER", cli)
         self.assertIn("except GlobalAuthError", cli)
+        self.assertIn("HOLD_PARTNER_CENTER_IDENTITY_REVERIFY", cli)
 
     def test_teacher_supports_windows_powershell_51_and_explicit_python(self):
         self.assertIn('$env:OS -eq "Windows_NT"', TEACHER)
