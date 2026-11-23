@@ -41,6 +41,8 @@ class DataContractAuditorReadOnlyRunnerTests(unittest.TestCase):
         self.assertIn("StoreAutomationEdge-DataContractAuditor", helper)
         self.assertIn("[int]$Port = 9223", helper)
         self.assertIn("9PDL4ZWSB45P/identity", helper)
+        self.assertIn("$EdgeCandidates = @(", helper)
+        self.assertIn("$Edge = [string]$EdgeCandidates[0]", helper)
 
     def test_submission_probe_records_draft_root_and_http_evidence(self):
         live = (ROOT / "store_manager" / "live_draft.py").read_text(encoding="utf-8")
