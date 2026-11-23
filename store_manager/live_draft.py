@@ -890,9 +890,26 @@ class PlaywrightPartnerCenterPort:
         return locator
 
     def _exact_text_present(self, text: str) -> None:
-        locator = self.page.get_by_text(text, exact=True)
-        if locator.count() != 1:
-            raise LiveGateError(f"expected exactly one visible text {text!r}; got {locator.count()}")
+        visible = self._visible_exact_text_count(text)
+        if visible < 1:
+            raise LiveGateError(f"expected visible exact text {text!r}; got 0 visible matches")
+
+    def _verify_identity_page_context(self, product_name: str, store_product_id: str) -> None:
+        if not product_name.strip():
+            raise LiveGateError("existing identity verifier requires product_name")
+        if not store_product_id.strip():
+            raise LiveGateError("existing identity verifier requires store_product_id")
+        title = str(self.page.title() or "")
+        if product_name not in title:
+            raise LiveGateError(
+                f"HOLD_PRODUCT_TITLE_MISMATCH expected={product_name!r} observed={title!r}"
+            )
+        current = str(self.page.url)
+        expected_path = f"/products/{store_product_id}/identity"
+        if expected_path not in current:
+            raise LiveGateError(
+                f"HOLD_STORE_ID_URL_MISMATCH expected_path={expected_path!r} observed={current!r}"
+            )
 
     def _visible_exact_text_count(self, text: str) -> int:
         return sum(1 for item in self.page.get_by_text(text, exact=True).all() if item.is_visible())
@@ -917,9 +934,8 @@ class PlaywrightPartnerCenterPort:
         """
         identity_url = f"{PARTNER_HOST}en-us/dashboard/products/{store_product_id}/identity"
         self._goto(identity_url)
+        self._verify_identity_page_context(product_name, store_product_id)
         required = (
-            ("product_name", product_name),
-            ("store_product_id", store_product_id),
             ("identity_name", identity_name),
             ("identity_publisher", identity_publisher),
         )
@@ -927,7 +943,7 @@ class PlaywrightPartnerCenterPort:
             ("package_family_name", package_family_name),
             ("package_sid", package_sid),
         )
-        matched: list[str] = []
+        matched: list[str] = ["product_name", "store_product_id"]
         for key, value in required:
             if not str(value or "").strip():
                 raise LiveGateError(f"existing identity verifier requires {key}")
@@ -955,8 +971,7 @@ class PlaywrightPartnerCenterPort:
 
         identity_url = f"{PARTNER_HOST}en-us/dashboard/products/{product.store_product_id}/identity"
         self._goto(identity_url)
-        self._exact_text_present(product.product_name)
-        self._exact_text_present(product.store_product_id)
+        self._verify_identity_page_context(product.product_name, product.store_product_id)
         self._exact_text_present(product.identity_name)
         self._exact_text_present(product.identity_publisher)
 
