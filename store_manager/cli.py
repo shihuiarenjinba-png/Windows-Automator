@@ -118,6 +118,7 @@ def main():
             raise SystemExit("submission-state inspection requires existing product and exact identity values")
         with LivePlaywrightConnection(a.cdp_url,a.selector_map,a.evidence_dir) as port:
             result=port.inspect_existing_product_submission_state(product)
+            probe=dict(getattr(port,"last_submission_probe",{}) or {})
         kind_matches=(
             not result.required_submission_kind
             or product.submission_kind==result.required_submission_kind
@@ -140,6 +141,7 @@ def main():
             "store_id":product.store_product_id,
             "draft_id":result.draft_id,
             "draft_url":result.draft_url,
+            "probe":probe,
             "created_or_reserved_product":False,
             "submission_started":False,
             "start_submission_clicked":False,
@@ -151,7 +153,12 @@ def main():
         }
         Path(a.output).parent.mkdir(parents=True,exist_ok=True)
         Path(a.output).write_text(json.dumps(receipt,ensure_ascii=False,indent=2)+"\n",encoding="utf-8")
-        print(json.dumps({"status":status,"submission_state":result.state,"output":a.output},ensure_ascii=False))
+        print(json.dumps({
+            "status":status,
+            "submission_state":result.state,
+            "probe":probe,
+            "output":a.output,
+        },ensure_ascii=False))
         return
     if a.cmd=="reconcile-initial-submission-attempt":
         product=ProductInput.load(a.input)
