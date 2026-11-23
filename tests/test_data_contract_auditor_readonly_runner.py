@@ -36,6 +36,14 @@ class DataContractAuditorReadOnlyRunnerTests(unittest.TestCase):
         self.assertIn('encoding="utf-8-sig"', core)
         self.assertIn('encoding="utf-8-sig"', cli)
 
+    def test_identity_verifier_waits_for_exact_async_partner_values(self):
+        live = (ROOT / "store_manager" / "live_draft.py").read_text(encoding="utf-8")
+        self.assertIn('for selector in ("input", "textarea")', live)
+        self.assertIn("node.input_value()", live)
+        self.assertIn('self.page.locator("body").inner_text()', live)
+        self.assertIn("wait_for_load_state", live)
+        self.assertIn("timeout_ms: int = 15_000", live)
+
     def test_identity_verifier_uses_title_url_and_exact_visible_fields(self):
         live = (ROOT / "store_manager" / "live_draft.py").read_text(encoding="utf-8")
         self.assertIn("_verify_identity_page_context", live)
