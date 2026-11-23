@@ -42,6 +42,7 @@ class DataContractAuditorReadOnlyRunnerTests(unittest.TestCase):
         self.assertIn("node.input_value()", live)
         self.assertIn('self.page.locator("body").inner_text()', live)
         self.assertIn("wait_for_load_state", live)
+        self.assertIn('getattr(self.page, "wait_for_timeout", None)', live)
         self.assertIn("timeout_ms: int = 15_000", live)
 
     def test_identity_verifier_uses_title_url_and_exact_visible_fields(self):
@@ -49,7 +50,7 @@ class DataContractAuditorReadOnlyRunnerTests(unittest.TestCase):
         self.assertIn("_verify_identity_page_context", live)
         self.assertNotIn("HOLD_PRODUCT_TITLE_MISMATCH", live)
         self.assertIn('expected_path = f"/products/{store_product_id}/identity"', live)
-        self.assertIn("visible < 1", live)
+        self.assertIn("visible >= 1", live)
         self.assertIn("volatile document.title", live)
 
     def test_cli_reports_expired_partner_center_auth_cleanly(self):
