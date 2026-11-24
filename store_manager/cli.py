@@ -1,7 +1,7 @@
 from __future__ import annotations
 import argparse,json
 from pathlib import Path
-from .core import ProductInput,apply_fixed_rules,validate_product,run_queue,QueuePolicy,render_markdown
+from .core import ProductInput,apply_fixed_rules,validate_product,run_queue,QueuePolicy,render_markdown,file_sha256
 from .partner_center import dryrun_uploader
 from .live_draft import (
     LiveDraftWorkflow,
@@ -48,6 +48,107 @@ def _load_queue(path_value: str) -> list[ProductInput]:
             raise ValueError(f"existing Draft ID is required for {product.product_name or product.store_product_id}")
     return products
 
+
+def verify_live_report_payload(report: dict, product: ProductInput) -> dict:
+    """Fail closed unless one live result proves the exact existing Draft and package.
+
+    QueueReport.to_dict() flattens ProductResult.details into each result object.
+    This verifier intentionally reads only that canonical top-level shape.
+    """
+
+    if not isinstance(report, dict) or report.get("schema_version") != 2:
+        raise ValueError("unsupported or malformed QueueReport schema")
+    if report.get("stopped_early") is not False:
+        raise ValueError("QueueReport indicates an early stop or omits stopped_early")
+    results = report.get("results")
+    if not isinstance(results, list) or len(results) != 1 or not isinstance(results[0], dict):
+        raise ValueError("live report must contain exactly one result object")
+    summary = report.get("summary")
+    if not isinstance(summary, dict) or summary.get("mode") != "single" or summary.get("total") != 1:
+        raise ValueError("live report summary does not describe exactly one product")
+
+    result = results[0]
+    allowed_statuses = {
+        "DRAFT_SAVED",
+        "PACKAGE_SAVED_STORE_DRAFT_REMAINING_SECTIONS_REQUIRED",
+    }
+    if result.get("status") not in allowed_statuses:
+        raise ValueError(f"live result is not a verified Draft-save status: {result.get('status')!r}")
+
+    package_path = Path(product.package_path).expanduser()
+    if not product.package_path or not package_path.is_file():
+        raise ValueError("the original local package is missing after the upload attempt")
+    expected_sha = str(product.package_sha256 or "").strip().lower()
+    security_sha = str(product.security_package_sha256 or "").strip().lower()
+    actual_sha = file_sha256(package_path).lower()
+    if not expected_sha or len(expected_sha) != 64 or expected_sha != security_sha:
+        raise ValueError("ProductInput package SHA and security-confirmed SHA are missing or inconsistent")
+    if actual_sha != expected_sha:
+        raise ValueError("local package bytes changed during the upload attempt")
+
+    expected_values = {
+        "product_name": product.product_name,
+        "product_id": product.store_product_id,
+        "draft_id": product.draft_id,
+        "package_filename": package_path.name,
+        "source_sha": str(product.source_sha or "").lower(),
+        "source_branch": product.source_branch,
+        "submission_route": product.submission_route,
+        "package_sha256": expected_sha,
+        "immutable_package_sha256": expected_sha,
+    }
+    for key, expected in expected_values.items():
+        observed = result.get(key)
+        if key in {"package_sha256", "immutable_package_sha256", "source_sha"}:
+            observed = str(observed or "").lower()
+        if observed != expected:
+            raise ValueError(f"live result binding mismatch for {key}")
+
+    identity = result.get("identity")
+    if not isinstance(identity, dict):
+        raise ValueError("live result is missing its package Identity binding")
+    expected_identity = {
+        "name": product.identity_name,
+        "publisher": product.identity_publisher,
+        "version": product.package_version,
+    }
+    if identity != expected_identity:
+        raise ValueError("live result Identity/Publisher/Version does not match ProductInput")
+
+    required_true = ("package_uploaded", "package_saved", "save_verified_after_reload")
+    for flag in required_true:
+        if result.get(flag) is not True:
+            raise ValueError(f"live result does not explicitly prove {flag}=true")
+
+    required_false = (
+        "created_or_reserved_product",
+        "submission_started",
+        "start_submission_clicked",
+        "start_update_clicked",
+        "pricing_changed",
+        "submitted",
+        "certified",
+        "published",
+    )
+    for flag in required_false:
+        if result.get(flag) is not False:
+            raise ValueError(f"live result must explicitly prove {flag}=false")
+
+    return {
+        "schema_version": "local-store-upload-verification/1",
+        "status": "LIVE_DRAFT_RECEIPT_VERIFIED",
+        "result_status": result["status"],
+        "product_name": product.product_name,
+        "product_id": product.store_product_id,
+        "draft_id": product.draft_id,
+        "package_filename": package_path.name,
+        "package_sha256": expected_sha,
+        "verified_fields": list(expected_values) + ["identity", *required_true, *required_false],
+        "microsoft_independent_sha256_observed": False,
+        "note": "The local SHA-256 binds the local package selected by this runner; Partner Center UI does not independently expose the uploaded binary digest.",
+    }
+
+
 def main():
     ap=argparse.ArgumentParser(); sp=ap.add_subparsers(dest="cmd",required=True)
     p=sp.add_parser("prepare"); p.add_argument("--input",required=True); p.add_argument("--output",required=True); p.add_argument("--ollama",action="store_true"); p.add_argument("--model",default="qwen3:8b"); p.add_argument("--github-token",default=""); p.add_argument("--github-ref",default="")
@@ -78,6 +179,10 @@ def main():
     d.add_argument("--confirm-start-submission",action="store_true",help="Action-time approval for Start submission only")
     d.add_argument("--selector-map",default=str(Path(__file__).resolve().parents[1]/"docs"/"PARTNER_CENTER_MAP.json"))
     d.add_argument("--evidence-dir",default="partner-center-evidence")
+    qv=sp.add_parser("verify-live-report",help="Verify one local live Draft receipt against ProductInput")
+    qv.add_argument("--report",required=True,type=_nonblank_path)
+    qv.add_argument("--input",required=True,type=_nonblank_path)
+    qv.add_argument("--output",required=True,type=_nonblank_path)
     n=sp.add_parser("night-run"); n.add_argument("--queue",required=True,type=_nonblank_path); n.add_argument("--json-report",required=True,type=_nonblank_path); n.add_argument("--markdown-report",required=True,type=_nonblank_path)
     n.add_argument("--execution-mode",choices=("dry_run","live"),default="dry_run")
     n.add_argument("--confirm-live-draft",action="store_true",help="Explicitly authorize Partner Center package upload and Save draft only")
@@ -91,6 +196,20 @@ def main():
         x.save(a.output); print(a.output); return
     if a.cmd=="validate":
         fs=validate_product(ProductInput.load(a.input)); [print(f"[{f.severity.value.upper()}] {f.code}: {f.message}") for f in fs]; raise SystemExit(2 if any(f.severity.value in {"hold","fatal"} for f in fs) else 0)
+    if a.cmd=="verify-live-report":
+        try:
+            product=ProductInput.load(a.input)
+            report=json.loads(Path(a.report).read_text(encoding="utf-8-sig"))
+            receipt=verify_live_report_payload(report,product)
+            output=Path(a.output)
+            output.parent.mkdir(parents=True,exist_ok=True)
+            with output.open("x",encoding="utf-8") as stream:
+                json.dump(receipt,stream,ensure_ascii=False,indent=2)
+                stream.write("\\n")
+        except (OSError,UnicodeError,ValueError,TypeError) as exc:
+            ap.error(f"live report verification failed: {exc}")
+        print(json.dumps(receipt,ensure_ascii=False,indent=2))
+        return
     if a.cmd=="verify-existing-identity":
         raw=json.loads(Path(a.job).read_text(encoding="utf-8"))
         if raw.get("schema_version")!="existing-store-identity-reverify/1":
