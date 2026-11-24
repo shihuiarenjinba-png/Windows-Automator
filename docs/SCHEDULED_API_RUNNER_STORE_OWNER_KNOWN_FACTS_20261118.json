@@ -1,0 +1,83 @@
+{
+  "schema_version": "scheduled-store-owner-known-facts/1",
+  "recorded_date_jst": "2026-11-18",
+  "product": {
+    "name": "Scheduled API Runner",
+    "store_id": "9PND0HG61XD6",
+    "identity_name": "OkinawaDesktopTools.ScheduledAPIRunner",
+    "version": "1.0.0.0",
+    "architecture": "x64"
+  },
+  "frozen_candidate": {
+    "source_sha": "28ef873ab2ff325b8f26c61a9ba48701280e8290",
+    "workflow_run_id": 44093493317,
+    "artifact_id": 14333575447,
+    "artifact_digest": "sha256:b45d53a0473f5b8cdcac64c1ffdcf12957919da2e5cb846564344d757165afa7",
+    "msix_sha256": "db599cdfa673688e8fe7db70d11acc69010562636c67f4996b4cba36adfd8877",
+    "exe_sha256": "06d3b92bd83281750e5a454f9add6526fa90f6bfc29017fd6919bbeaa64213d9"
+  },
+  "upstream_state": "PRIVATE_STORE_SIGNING_LANE_READY",
+  "commercial_repository_evidence": {
+    "launch_model": "FREE",
+    "commercial_model": "free",
+    "strategy": "free_launch",
+    "currency": "JPY",
+    "free_trial": "none",
+    "actual_store_price_change_authorized": false,
+    "free_price_owner_approval_still_required_if_live_price_is_not_already_free": true
+  },
+  "distribution_repository_evidence": {
+    "audience_target": "PRIVATE_AUDIENCE_TEST",
+    "known_user_group_name": null,
+    "known_user_group_membership": null,
+    "test_account_membership": null
+  },
+  "security_repository_evidence": {
+    "local_file_folder_access": true,
+    "external_network": true,
+    "external_account_required": false,
+    "camera": false,
+    "microphone": false,
+    "location": false,
+    "restricted_capability_runFullTrust": true,
+    "non_microsoft_driver_or_nt_service": false
+  },
+  "listing_repository_evidence": {
+    "ja_en_copy_exists": true,
+    "privacy_policy_text_exists": true,
+    "privacy_public_url_confirmed": false,
+    "support_url_confirmed": false,
+    "genuine_store_screenshots_confirmed": false,
+    "screenshots_blocked_until_store_signed_gui_qa": true
+  },
+  "live_partner_center_fields_still_required": [
+    "current_submission_state",
+    "current_package_state",
+    "current_price",
+    "current_price_is_free",
+    "private_audience_configured",
+    "known_user_group_selected",
+    "test_account_in_private_audience",
+    "store_signed_private_build_published",
+    "privacy_url",
+    "support_url",
+    "store_listing_asset_state"
+  ],
+  "preferred_zero_cost_logic": {
+    "if_live_price_is_already_free": "USE_PRIVATE_FREE_ROUTE_AFTER_PRIVATE_STORE_SIGNED_PUBLISH",
+    "if_live_price_is_paid": "HOLD_PRICE_CHANGE_APPROVAL_REQUIRED",
+    "free_trial_route": "NOT_PLANNED_FOR_SCHEDULED",
+    "promo_code_route": "NOT_PRIMARY_FOR_FREE_LAUNCH",
+    "owner_self_payment": "FORBIDDEN"
+  },
+  "writes_authorized": {
+    "package_upload": false,
+    "price_change": false,
+    "trial_change": false,
+    "known_user_group_create_or_modify": false,
+    "certification": false,
+    "private_publish": false,
+    "promo_code_generation": false,
+    "public_publish": false
+  }
+}

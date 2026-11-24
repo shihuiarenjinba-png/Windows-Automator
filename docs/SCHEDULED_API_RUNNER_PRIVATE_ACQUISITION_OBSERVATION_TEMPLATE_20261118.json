@@ -1,0 +1,36 @@
+{
+  "schema_version": "private-store-acquisition-observation/1",
+  "product": {
+    "name": "Scheduled API Runner",
+    "store_id": "9PND0HG61XD6",
+    "identity_name": "OkinawaDesktopTools.ScheduledAPIRunner",
+    "version": "1.0.0.0",
+    "architecture": "x64"
+  },
+  "frozen_candidate": {
+    "source_sha": "28ef873ab2ff325b8f26c61a9ba48701280e8290",
+    "workflow_run_id": 44093493317,
+    "artifact_id": 14333575447,
+    "artifact_digest": "sha256:b45d53a0473f5b8cdcac64c1ffdcf12957919da2e5cb846564344d757165afa7",
+    "msix_sha256": "db599cdfa673688e8fe7db70d11acc69010562636c67f4996b4cba36adfd8877",
+    "exe_sha256": "06d3b92bd83281750e5a454f9add6526fa90f6bfc29017fd6919bbeaa64213d9"
+  },
+  "precondition_state": "PRIVATE_STORE_SIGNING_LANE_READY",
+  "read_only_observation": true,
+  "partner_center_write_performed": false,
+  "package_uploaded": false,
+  "certification_submitted": false,
+  "published_by_this_observation": false,
+  "private_audience_configured": null,
+  "test_account_in_private_audience": null,
+  "store_signed_private_build_published": null,
+  "current_price_is_free": null,
+  "free_trial_visible": null,
+  "free_trial_zero_cost_confirmed": null,
+  "existing_unredeemed_promo_code_available": null,
+  "promo_code_generation_available": null,
+  "temporary_free_change_available": null,
+  "paid_checkout_required": null,
+  "observation_notes": [],
+  "observed_at_utc": null
+}

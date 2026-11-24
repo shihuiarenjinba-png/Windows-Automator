@@ -2,12 +2,12 @@
   "schema_version": 3,
   "routes": {
     "msix_pwa_app": {
-      "live_write_supported": false,
+      "live_write_supported": true,
       "store_draft_write_supported": "VERIFIED_2_PRODUCT_PROFILE_GATED",
       "certification_write_supported": false,
       "publish_write_supported": false,
       "store_draft_status": "READY_FOR_CERTIFICATION_REVIEW",
-      "observed_at_utc": "2026-11-13T00:30:00Z",
+      "observed_at_utc": "2026-11-22T00:00:00Z",
       "observation_scope": {
         "observed_product_count": 2,
         "products": [
@@ -378,7 +378,13 @@
           ]
         }
       },
-      "hold_code": "READY_FOR_CERTIFICATION_REVIEW_MANUAL_GATE"
+      "hold_code": "READY_FOR_CERTIFICATION_REVIEW_MANUAL_GATE",
+      "live_write_scope": "PACKAGES_UPLOAD_SAVE_RELOAD_AND_EXISTING_VERIFIED_STORE_DRAFT_ROUTE",
+      "live_write_enabled_from_teacher_data": [
+        "Folio AI full Store Draft Save/reload",
+        "Daymark AI full Store Draft Save/reload",
+        "Folder Automation Engine exact package upload/analysis/Save/reload"
+      ]
     },
     "exe_msi_app": {
       "live_write_supported": false,
