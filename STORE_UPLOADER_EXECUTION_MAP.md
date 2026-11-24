@@ -43,7 +43,15 @@ Packages Save (Draft only)
 Overview → same Product/Draft → filename + Validated + Complete
               │
               ▼
-Reload/reopen → package metadata retained → immutable local receipt
+Reload/reopen → package metadata retained
+              │
+              ▼
+Verify flattened live report against ProductInput
+→ rehash local package after run
+→ require exact Product/Draft/Identity/SHA + safety flags
+              │
+              ▼
+Write verification receipt in unique run directory
 ```
 
 ## Identity of an execution
@@ -65,7 +73,9 @@ Partner Center's visible filename and validation state do not prove the binary S
 | Upload and Microsoft analysis | `PlaywrightPartnerCenterPort.upload_package` |
 | Save/reload | `save_packages`, `reload_and_verify_package`, `verify_required_sections` |
 | CLI | `python -m store_manager.cli night-run` |
-| Stable Windows invocation / initialized queue path | `scripts/run_local_store_upload.ps1` |
+| Stable Windows invocation / initialized one-item JSON-array queue | `scripts/run_local_store_upload.ps1` |
+| Post-upload report binding and safety verification | `store_manager.cli verify-live-report` |
+| Immutable per-attempt output isolation | Unique timestamp/GUID child directory + `attempt-manifest.json` |
 | Route teacher from prior success | `STORE_UPLOADER_TEACHER_INDEX.json` |
 
 The adapter in this source snapshot treats Microsoft WARNING as a hold unless product-specific code and selector-map evidence explicitly support it. Never turn a warning into VALID by relabeling.
