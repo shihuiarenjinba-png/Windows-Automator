@@ -33,14 +33,16 @@ Expected result: `LOCAL_STORE_STATUS=READ_ONLY_IDENTITY_AND_DRAFT_VERIFIED`. Thi
 
 ## 4. Queue and `--queue` argument error
 
-Do not copy/paste a `night-run` command that refers to `$queuePath`, `$liveJson`, `$liveMd`, or `$CdpUrl` unless the same shell session initialized them. The Group C wrapper and the included `run_local_store_upload.ps1` initialize these paths from `-OutputDir`; it writes `single-product-queue.json` and verifies it is non-empty before invoking Python.
+Do not copy/paste a `night-run` command that refers to `$queuePath`, `$liveJson`, `$liveMd`, or `$CdpUrl` unless the same shell session initialized them. The Group C wrapper and the included `run_local_store_upload.ps1` initialize these paths from `-OutputDir`; the local runner creates a unique timestamp/GUID child directory for each attempt and writes `single-product-queue.json` there.
 
 The reported error `argument --queue: expected one argument` occurs when PowerShell expands an unset/empty `$queuePath` and the next token (such as `--json-report`) is parsed as the missing argument. Use the wrapper above instead of choosing an arbitrary replacement path. If invoking the CLI manually for offline work, initialize and verify variables first:
 
 ```powershell
-$queuePath = Join-Path $outDir 'single-product-queue.json'
-$liveJson = Join-Path $outDir 'live-report.json'
-$liveMd = Join-Path $outDir 'live-report.md'
+# Use the exact LOCAL_STORE_RUN_DIR printed by that invocation.
+$runDir = 'C:\\path\\to\\store-run\\data-contract-auditor\\<timestamp-guid>'
+$queuePath = Join-Path $runDir 'single-product-queue.json'
+$liveJson = Join-Path $runDir 'live-report.json'
+$liveMd = Join-Path $runDir 'live-report.md'
 if (-not (Test-Path -LiteralPath $queuePath -PathType Leaf)) { throw "Queue file was not generated: $queuePath" }
 ```
 
