@@ -64,4 +64,16 @@ Separately, the Cloud Auto Uploader job remains `upload_approved: false` with a 
 - The wrapper checks read-only Identity and Draft receipts for explicit no-write flags, defaults to ReadOnly, and requires `-ConfirmLiveDraft` for a Draft package write.
 - The execution map and runbook now document per-attempt isolation and post-upload receipt verification. Tests cover flattened versus nested report structure, safety-flag omission/activation, target/Identity/SHA mismatches, and package bytes changing during the attempt.
 
+## Latest verification
+
+GitHub Actions run [#289](https://github.com/shihuiarenjinba/Windows-Automator/actions/runs/45354878346) completed successfully on the current branch. It passed:
+
+- `python -m unittest discover -s tests -v`: 218 tests
+- `python -m compileall -q store_manager tests`
+- JSON parsing for `STORE_UPLOADER_TEACHER_INDEX.json` and `docs/PARTNER_CENTER_MAP.json`
+- PowerShell parser validation for `scripts/run_local_store_upload.ps1`
+- Windows PowerShell single-item queue serialization, JSON-array root check, parse-back and Product/Draft/SHA binding checks
+
+These checks cover code and local input/receipt contracts. They do not exercise a live Partner Center session or prove Microsoft's independent binary digest.
+
 No actual upload, certification, publication, price change, market change, or new Submission was run. GitHub Actions validates code and local receipt logic only; it does not connect to Partner Center or exercise a live write.
