@@ -55,11 +55,13 @@ Separately, the Cloud Auto Uploader job remains `upload_approved: false` with a 
 4. The CDP endpoint is machine/session-local. It is not a cloud endpoint and must not be copied to logs or remote workflow configuration.
 5. The merged/reviewed app route has `live_write_supported=true` but is explicitly profile-gated to the two observed products (Folio AI and Daymark AI). The code accepts only the exact `runFullTrust` warning when the manifest contains only that capability and its owner-confirmed justification is bound to the same package SHA. DCA is not one of the two observed profiles; it must pass its own Identity/Draft, formal-package, security-confirmation, local-QA and immutable-hash gates before a write is eligible.
 
-## Changes made in the dedicated worktree
+## Follow-up hardening implemented in the dedicated worktree
 
-- Added `scripts/run_local_store_upload.ps1` to resolve all paths itself, hash the exact package, verify the existing Identity and Draft, write the single-item queue, and call the existing CLI. Read-only is default; live mode requires an explicit switch.
-- Added strict queue path/file/JSON/list/Product ID/Draft checks to `night-run` so bad queue values stop before browser automation.
-- Added the machine-readable teacher index, execution map and local runbook.
-- Added offline tests for malformed/empty queues and the wrapper's safety contracts.
+- `scripts/run_local_store_upload.ps1` now treats `-OutputDir` as a run root and creates a unique timestamp/GUID child directory for every invocation. It records an `attempt-manifest.json` without the CDP endpoint, keeping reports, queue files, and screenshots from separate attempts isolated.
+- The one-item queue is serialized with `ConvertTo-Json -InputObject @($product)`, checked as a JSON array from its raw delimiters, parsed back, and rebound to the exact Product ID, Draft ID and package SHA before `night-run`. This avoids PowerShell's one-item pipeline/JSON enumeration ambiguity.
+- `store_manager.cli verify-live-report` and `verify_live_report_payload` were added. They validate the flattened `QueueReport.to_dict()` structure, one-result report shape, exact Product/Draft/filename/Identity/source/SHA binding, a post-run local package rehash, successful upload/Save/reload flags, and explicit false values for product creation, submission start, pricing changes, certification and publication.
+- `LiveDraftWorkflow` now records explicit false flags for creating/reserving a product, starting submission/update, and changing pricing. Missing or non-false safety flags fail receipt verification.
+- The wrapper checks read-only Identity and Draft receipts for explicit no-write flags, defaults to ReadOnly, and requires `-ConfirmLiveDraft` for a Draft package write.
+- The execution map and runbook now document per-attempt isolation and post-upload receipt verification. Tests cover flattened versus nested report structure, safety-flag omission/activation, target/Identity/SHA mismatches, and package bytes changing during the attempt.
 
-No actual upload, certification, publication, price change, market change, or new Submission was run.
+No actual upload, certification, publication, price change, market change, or new Submission was run. GitHub Actions validates code and local receipt logic only; it does not connect to Partner Center or exercise a live write.
