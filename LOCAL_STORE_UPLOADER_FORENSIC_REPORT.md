@@ -1,0 +1,61 @@
+# Local Microsoft Store uploader — forensic report
+
+Recorded: 2026-11-24 (JST)  
+Scope: read-only review of prior code, tracked Store route evidence, teacher receipts and the supplied local logs. No Partner Center write was performed.
+
+## Finding: proven upload route
+
+The reusable, previously successful method is a local Playwright client attached over CDP to an already-authenticated Edge/Chromium Partner Center tab. The automation does not log in or handle MFA/CAPTCHA. This finding is supported by:
+
+- `store_manager/live_draft.py`: `LivePlaywrightConnection`, `PlaywrightPartnerCenterPort`, exact selector map, Draft verification, package upload/analysis wait, Save, reload and postcondition checks.
+- `store_manager/cli.py`: `night-run --execution-mode live --confirm-live-draft --cdp-url ...` dispatches to that local adapter.
+- `docs/PARTNER_CENTER_MAP.json`: records the verified app/game routes, exact selectors, observed Microsoft states, reload checks and prohibited controls.
+- `docs/PARTNER_CENTER_MSIX_APP_FOLIO_UPLOAD_20261112.md`: records a successful Folio package upload, known warning classification, Save, reload, and full Store Draft completion. It separately notes earlier chooser timeouts were reconciled before retry.
+- Cross-repository teacher receipts under `Windows-all-auto/ops/`: Folder Automation Engine binds the local package SHA and IDs to `Uploading → Analyzing package → Validated`, Packages Save, same-Draft reload and retained package metadata.
+
+The machine-readable product index is `STORE_UPLOADER_TEACHER_INDEX.json`. Product-specific IDs and package hashes are not promoted to route defaults.
+
+## Evidence strength and limits
+
+| Claim | Evidence | Conclusion |
+|---|---|---|
+| Browser method | Playwright/CDP implementation, live selector map and success reports | Proven route |
+| Folio package upload and full Draft Save/reload | Folio live-operation report and route receipt | Proven at the recorded time |
+| Folder exact binary | Package upload receipt includes filename, SHA-256, Identity, Publisher, Version and X64 | Strongest exact package binding found |
+| Daymark and STRATEGY MARKET US/JP | Partner Center map and product completion reports | Draft package and Save/reload route recorded as complete; per-package SHA was not present in the shared route map reviewed here |
+| Independent SHA from Partner Center | Partner Center UI does not expose the uploaded binary digest | Not observable; only the local pre-upload hash and immutable execution receipt can bind what the automation sent |
+| Certification / publication | Reports and safety fields explicitly say not executed | Not claimed |
+| Raw successful shell transcript | No matching Partner Center command log found in the named Temp files | Exact historical command line remains unverified |
+
+The five historical products in the teacher index are Folder Automation Engine, Folio AI, Daymark AI, STRATEGY MARKET US, and STRATEGY MARKET JP. This reconciles the user's approximate count of four against the currently accessible route/receipt evidence; it does not imply that all five share the same package bytes or product settings.
+
+## Supplied Temp logs
+
+The requested `MITSUKI-20261124-*`, `MITSUKI-20261123-*` and older matching `.log` files were checked for `night-run`, `--queue`, `queuePath`, report arguments, `confirm-live-draft`, CDP argument and Partner Center state terms. They are Office Click-to-Run telemetry logs, not uploader logs; no matching Store command or upload receipt was found. They were not edited. `cv_debug.log` was not treated as Store evidence.
+
+The command error in the supplied request is consistent with PowerShell expanding an unset/empty `$queuePath` so that `--queue` receives the next option token as its value. The user's command itself is the evidence for the error. The current Group C wrapper initializes `$queuePath` to `single-product-queue.json` under its output directory, writes a one-product JSON array after exact identity/Draft checks, then invokes `night-run`. A new generic wrapper with the same initialization and preflight checks is included at `scripts/run_local_store_upload.ps1`.
+
+## Official CLI / direct HTTP alternatives
+
+This investigation found no evidence that `msstore` or a Microsoft Store CLI performed these historical uploads. An absent `Get-Command msstore` result is not treated as historical proof. The reviewed success evidence points to local Playwright/CDP. API or direct HTTP calls are not introduced as a replacement.
+
+## Data Contract Auditor current state
+
+The local read-only records show exact existing Identity values, but the most recent saved `submission-state.json` (`20261123-162718`) is `HOLD_UNKNOWN_SUBMISSION_STATE`; do not treat an earlier read-only classification as current. The local ProductInput records an existing target Draft ID, but the current Partner Center state was not successfully reconciled. A local SHA-256 (`4b373d…fcd46984`) exists for the QA candidate at the configured path, while the formal Store package SHA and package-bound security confirmation are absent. Separately, the Cloud Auto Uploader job still has `upload_approved: false` and a formal SHA placeholder. The QA candidate is not a formal Store package and is not eligible for upload.
+
+## Unresolved
+
+1. The original `C:\Users\aaron\Desktop\Windows-Automator` repository metadata is access-restricted in this session. The existing code snapshot was read from an isolated worktree and the current local scripts from readable source files; no original repo state was modified.
+2. Raw successful process command lines and per-run raw browser logs were not present among the supplied Temp logs.
+3. Per-product SHA-256 values for four historic products are not available in the reviewed common teacher index; do not infer them from filenames.
+4. The CDP endpoint is machine/session-local. It is not a cloud endpoint and must not be copied to logs or remote workflow configuration.
+5. The generic Python adapter in this source revision currently fails closed on package WARNING; an exact warning exception requires an explicitly reviewed product-bound rule. The reviewed `msix_pwa_app` selector map has `live_write_supported=false`, so the live route intentionally fails closed even though historical per-product success reports exist.
+
+## Changes made in the dedicated worktree
+
+- Added `scripts/run_local_store_upload.ps1` to resolve all paths itself, hash the exact package, verify the existing Identity and Draft, write the single-item queue, and call the existing CLI. Read-only is default; live mode requires an explicit switch.
+- Added strict queue path/file/JSON/list/Product ID/Draft checks to `night-run` so bad queue values stop before browser automation.
+- Added the machine-readable teacher index, execution map and local runbook.
+- Added offline tests for malformed/empty queues and the wrapper's safety contracts.
+
+No actual upload, certification, publication, price change, market change, or new Submission was run.

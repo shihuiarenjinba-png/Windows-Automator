@@ -11,6 +11,42 @@ from .live_draft import (
 from .github_context import fetch_context
 from .ollama import complete_product
 
+
+def _nonblank_path(value: str) -> str:
+    if not str(value or "").strip():
+        raise argparse.ArgumentTypeError("path is empty; use the local runner to initialize its paths")
+    return value
+
+
+def _load_queue(path_value: str) -> list[ProductInput]:
+    value = str(path_value or "").strip()
+    if not value:
+        raise ValueError("queue path is empty; initialize it with scripts/run_local_store_upload.ps1")
+    path = Path(value).expanduser()
+    if not path.is_file():
+        raise ValueError(f"queue file does not exist or is not a file: {path}")
+    try:
+        raw = json.loads(path.read_text(encoding="utf-8-sig"))
+    except (OSError, UnicodeError, json.JSONDecodeError) as exc:
+        raise ValueError(f"queue file is unreadable or invalid JSON: {path}") from exc
+    if not isinstance(raw, list) or not raw:
+        raise ValueError("queue must be a non-empty JSON array of ProductInput objects")
+    if any(not isinstance(item, dict) for item in raw):
+        raise ValueError("every queue item must be a ProductInput JSON object")
+    try:
+        products = [ProductInput.from_dict(item) for item in raw]
+    except (KeyError, TypeError, ValueError) as exc:
+        raise ValueError("queue contains an invalid ProductInput object") from exc
+    product_ids = [p.store_product_id.strip() for p in products]
+    if any(not item for item in product_ids):
+        raise ValueError("every queue item must have a Store Product ID")
+    if len(set(product_ids)) != len(product_ids):
+        raise ValueError("queue contains a duplicate Store Product ID; split products into separate runs")
+    for product in products:
+        if not product.draft_id.strip():
+            raise ValueError(f"existing Draft ID is required for {product.product_name or product.store_product_id}")
+    return products
+
 def main():
     ap=argparse.ArgumentParser(); sp=ap.add_subparsers(dest="cmd",required=True)
     p=sp.add_parser("prepare"); p.add_argument("--input",required=True); p.add_argument("--output",required=True); p.add_argument("--ollama",action="store_true"); p.add_argument("--model",default="qwen3:8b"); p.add_argument("--github-token",default=""); p.add_argument("--github-ref",default="")
@@ -35,7 +71,7 @@ def main():
     d.add_argument("--confirm-start-submission",action="store_true",help="Action-time approval for Start submission only")
     d.add_argument("--selector-map",default=str(Path(__file__).resolve().parents[1]/"docs"/"PARTNER_CENTER_MAP.json"))
     d.add_argument("--evidence-dir",default="partner-center-evidence")
-    n=sp.add_parser("night-run"); n.add_argument("--queue",required=True); n.add_argument("--json-report",required=True); n.add_argument("--markdown-report",required=True)
+    n=sp.add_parser("night-run"); n.add_argument("--queue",required=True,type=_nonblank_path); n.add_argument("--json-report",required=True,type=_nonblank_path); n.add_argument("--markdown-report",required=True,type=_nonblank_path)
     n.add_argument("--execution-mode",choices=("dry_run","live"),default="dry_run")
     n.add_argument("--confirm-live-draft",action="store_true",help="Explicitly authorize Partner Center package upload and Save draft only")
     n.add_argument("--cdp-url",default="",help="CDP endpoint for the already-authenticated browser")
@@ -200,7 +236,10 @@ def main():
         Path(a.output).write_text(json.dumps(receipt,ensure_ascii=False,indent=2)+"\n",encoding="utf-8")
         print(json.dumps({"status":receipt["status"],"draft_id":context.draft_id,"output":a.output},ensure_ascii=False))
         return
-    raw=json.loads(Path(a.queue).read_text(encoding="utf-8")); products=[ProductInput.from_dict(x) for x in raw]
+    try:
+        products=_load_queue(a.queue)
+    except ValueError as exc:
+        ap.error(str(exc))
     if a.execution_mode=="live":
         if not a.confirm_live_draft:
             ap.error("live mode requires --confirm-live-draft at action time")
