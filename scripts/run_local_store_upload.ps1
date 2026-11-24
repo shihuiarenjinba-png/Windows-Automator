@@ -168,11 +168,22 @@ if ([string]::IsNullOrWhiteSpace($queueText)) {
   throw "QUEUE_FILE_EMPTY"
 }
 try {
-  $queueData = ConvertFrom-Json -InputObject $queueText -ErrorAction Stop
+  $normalizedQueueText = $queueText.Trim()
+  if (
+    $normalizedQueueText.Length -lt 2 -or
+    -not $normalizedQueueText.StartsWith("[") -or
+    -not $normalizedQueueText.EndsWith("]")
+  ) {
+    throw "QUEUE_ROOT_MUST_BE_JSON_ARRAY"
+  }
+  # ConvertFrom-Json may enumerate a one-element JSON array as one object.
+  # The bracket check proves the serialized root is an array; @() then
+  # normalizes the parsed result for safe one-item count/index checks.
+  $queueData = @(ConvertFrom-Json -InputObject $normalizedQueueText -ErrorAction Stop)
 } catch {
-  throw "QUEUE_FILE_INVALID_JSON"
+  throw "QUEUE_FILE_INVALID_OR_NOT_ARRAY_JSON"
 }
-if ($queueData -isnot [System.Array] -or $queueData.Count -ne 1) {
+if ($queueData.Count -ne 1) {
   throw "QUEUE_MUST_BE_SINGLE_ITEM_JSON_ARRAY"
 }
 if (
