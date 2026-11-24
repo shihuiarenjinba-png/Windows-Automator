@@ -8,4 +8,37 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-      - run: python -m unittest discover -s tests -v
+      - name: Run Python unit tests
+        run: python -m unittest discover -s tests -v
+      - name: Parse Store uploader PowerShell and verify single-item JSON array
+        shell: pwsh
+        run: |
+          $tokens = $null
+          $errors = $null
+          [System.Management.Automation.Language.Parser]::ParseFile(
+            "$PWD/scripts/run_local_store_upload.ps1",
+            [ref]$tokens,
+            [ref]$errors
+          ) | Out-Null
+          if ($errors.Count -gt 0) {
+            $errors | ForEach-Object { Write-Error $_.Message }
+            throw "PowerShell parser rejected run_local_store_upload.ps1"
+          }
+
+          $product = [pscustomobject]@{
+            store_product_id = "9P1234567890"
+            draft_id = "1152921505700000000"
+            package_sha256 = ("a" * 64)
+          }
+          $queueJson = ConvertTo-Json -InputObject @($product) -Depth 40
+          $queue = ConvertFrom-Json -InputObject $queueJson
+          if ($queue -isnot [System.Array] -or $queue.Count -ne 1) {
+            throw "One ProductInput must serialize and parse as a one-item JSON array"
+          }
+          if (
+            $queue[0].store_product_id -ne $product.store_product_id -or
+            $queue[0].draft_id -ne $product.draft_id -or
+            $queue[0].package_sha256 -ne $product.package_sha256
+          ) {
+            throw "Single-item queue changed its Product/Draft/SHA binding"
+          }
