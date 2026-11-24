@@ -117,9 +117,12 @@
     ]
   },
   "current_route_gate": {
-    "msix_pwa_app_live_write_supported_in_reviewed_selector_map": false,
-    "upload_execution_enabled": false,
-    "reason": "reviewed Windows-Automator snapshot deliberately keeps the broad app route disabled; product-specific evidence is not enough to bypass the code gate"
+    "msix_pwa_app_live_write_supported_in_reviewed_selector_map": true,
+    "observed_profile_count": 2,
+    "observed_profiles": ["Folio AI", "Daymark AI"],
+    "data_contract_auditor_is_an_observed_profile": false,
+    "data_contract_auditor_upload_execution_enabled": false,
+    "reason": "route mechanics are enabled for the two observed app profiles; DCA still fails its own unknown-Draft/formal-package/security-confirmation gates"
   },
   "limits": {
     "partner_center_binary_sha256_independently_observed": false,

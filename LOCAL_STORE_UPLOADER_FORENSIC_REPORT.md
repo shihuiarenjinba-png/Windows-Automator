@@ -49,7 +49,7 @@ The local read-only records show exact existing Identity values, but the most re
 2. Raw successful process command lines and per-run raw browser logs were not present among the supplied Temp logs.
 3. Per-product SHA-256 values for four historic products are not available in the reviewed common teacher index; do not infer them from filenames.
 4. The CDP endpoint is machine/session-local. It is not a cloud endpoint and must not be copied to logs or remote workflow configuration.
-5. The generic Python adapter in this source revision currently fails closed on package WARNING; an exact warning exception requires an explicitly reviewed product-bound rule. The reviewed `msix_pwa_app` selector map has `live_write_supported=false`, so the live route intentionally fails closed even though historical per-product success reports exist.
+5. The merged/reviewed app route has `live_write_supported=true` but is explicitly profile-gated to the two observed products (Folio AI and Daymark AI). The code accepts only the exact `runFullTrust` warning when the manifest contains only that capability and its owner-confirmed justification is bound to the same package SHA. DCA is not one of the two observed profiles; it must pass its own Identity/Draft, formal-package, security-confirmation, local-QA and immutable-hash gates before a write is eligible.
 
 ## Changes made in the dedicated worktree
 

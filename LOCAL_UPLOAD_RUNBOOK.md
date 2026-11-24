@@ -1,6 +1,6 @@
 # Local Store Draft upload runbook
 
-This runbook uses the known local Playwright/CDP lane. It requires Windows, Python 3.11+, the project dependencies, and an already-authenticated Partner Center tab. The owner handles login/MFA/CAPTCHA manually; the script does not inspect browser credentials.
+This runbook uses the known local Playwright/CDP lane. It requires Windows, Python 3.11+, the project dependencies, and an already-authenticated Partner Center tab. The owner handles login/MFA/CAPTCHA manually; the script does not inspect browser credentials. The current app selector route is enabled only for the two observed app profiles (Folio AI and Daymark AI); a different product must first pass its product-specific gates and UI/profile review.
 
 ## 1. Prepare the inputs
 
