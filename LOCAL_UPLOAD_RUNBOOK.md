@@ -29,7 +29,7 @@ if ([string]::IsNullOrWhiteSpace($cdpUrl)) { throw 'PARTNER_CENTER_CDP_URL is em
   -Mode ReadOnly
 ```
 
-Expected result: `LOCAL_STORE_STATUS=READ_ONLY_IDENTITY_AND_DRAFT_VERIFIED`. This verifies the configured existing Product/Draft and package digest. It performs no upload.
+Expected result: `LOCAL_STORE_STATUS=READ_ONLY_IDENTITY_AND_DRAFT_VERIFIED`. This verifies the configured existing Product/Draft and package digest. It performs no upload. All receipts are written under a unique timestamp/GUID child directory inside `$outDir`; a new run never overwrites the previous run.
 
 ## 4. Queue and `--queue` argument error
 
@@ -44,7 +44,7 @@ $liveMd = Join-Path $outDir 'live-report.md'
 if (-not (Test-Path -LiteralPath $queuePath -PathType Leaf)) { throw "Queue file was not generated: $queuePath" }
 ```
 
-The queue must be a non-empty JSON array containing a single ProductInput for this wrapper. The Python CLI also rejects blank paths, missing/invalid JSON, non-array/empty contents, duplicate Product IDs, and absent existing Draft IDs.
+The queue must be a non-empty JSON array containing a single ProductInput for this wrapper. The runner uses `ConvertTo-Json -InputObject @($product)` so a one-item queue remains an array rather than being enumerated into a JSON object. It parses the file back and rechecks the Product ID, Draft ID and SHA before invoking Python. The Python CLI also rejects blank paths, missing/invalid JSON, non-array/empty contents, duplicate Product IDs, and absent existing Draft IDs.
 
 ## 5. Live Draft package upload
 
@@ -60,7 +60,7 @@ This is a Partner Center write. Run it only after the formal package and owner d
   -ConfirmLiveDraft
 ```
 
-The script rehashes the package, verifies exact existing identity and Draft, runs product-input validation, generates the queue and then invokes the existing `night-run` route. `-ConfirmLiveDraft` is required at action time. It is not a Certification or Publish approval.
+The script rehashes the package, verifies exact existing identity and Draft, runs product-input validation, generates and re-parses the single-item queue, and then invokes the existing `night-run` route. It runs `verify-live-report` afterwards; that verifier checks the flattened QueueReport result, exact Product/Draft/Identity/filename/SHA binding, an unchanged post-run local package hash, successful upload/Save/reload flags, and explicit false values for product creation, submission start, pricing changes, certification and publication. `-ConfirmLiveDraft` is required at action time. It is not a Certification or Publish approval.
 
 ## 6. Reconcile and recover
 
@@ -68,7 +68,7 @@ The script rehashes the package, verifies exact existing identity and Draft, run
 - Upload/Save timeout: do not rerun upload. First inspect the same Product/Draft read-only; determine whether upload is absent, active, validated, or saved.
 - If Partner Center already shows the package, UI filename/Validated/Complete alone is insufficient to assert SHA identity. Require the matching immutable local attempt receipt; otherwise classify as `RECONCILE_REQUIRED`.
 - Retry only after exact target state is reconciled to prove the prior write did not occur.
-- Retain `identity-reverify.json`, `submission-state.json`, `live-report.json`, `live-report.md`, the queue and screenshot evidence in the restricted local run directory. Redact CDP endpoints and account details before sharing.
+- Retain `attempt-manifest.json`, `identity-reverify.json`, `submission-state.json`, `live-report.json`, `live-report.md`, `live-report-verification.json`, the queue and screenshot evidence in the unique restricted local run directory. The manifest records run ID, target IDs, filename and local SHA but never the CDP endpoint. Redact account details before sharing.
 
 ## 7. Output meaning
 
