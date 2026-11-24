@@ -28,7 +28,9 @@ class LocalStoreUploadRunnerContractTests(unittest.TestCase):
 
     def test_one_item_queue_is_serialized_as_an_array_and_read_back(self):
         self.assertIn("ConvertTo-Json -InputObject @($product) -Depth 40", self.text)
-        self.assertIn("$queueData -isnot [System.Array]", self.text)
+        self.assertIn('$normalizedQueueText.StartsWith("[")', self.text)
+        self.assertIn('$normalizedQueueText.EndsWith("]")', self.text)
+        self.assertIn("$queueData = @(ConvertFrom-Json -InputObject $normalizedQueueText", self.text)
         self.assertIn("$queueData.Count -ne 1", self.text)
         self.assertIn("QUEUE_PRODUCT_BINDING_MISMATCH", self.text)
         self.assertNotIn("@($product) | ConvertTo-Json", self.text)
