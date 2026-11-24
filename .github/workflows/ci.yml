@@ -31,9 +31,18 @@ jobs:
             package_sha256 = ("a" * 64)
           }
           $queueJson = ConvertTo-Json -InputObject @($product) -Depth 40
-          $queue = ConvertFrom-Json -InputObject $queueJson
-          if ($queue -isnot [System.Array] -or $queue.Count -ne 1) {
-            throw "One ProductInput must serialize and parse as a one-item JSON array"
+          $normalizedQueueJson = $queueJson.Trim()
+          if (
+            $normalizedQueueJson.Length -lt 2 -or
+            -not $normalizedQueueJson.StartsWith("[") -or
+            -not $normalizedQueueJson.EndsWith("]")
+          ) {
+            throw "ConvertTo-Json did not preserve the one-item queue as a JSON array: $queueJson"
+          }
+          # ConvertFrom-Json can unwrap one-element arrays; normalize its output.
+          $queue = @(ConvertFrom-Json -InputObject $normalizedQueueJson)
+          if ($queue.Count -ne 1) {
+            throw "One ProductInput must parse as exactly one queue item"
           }
           if (
             $queue[0].store_product_id -ne $product.store_product_id -or
