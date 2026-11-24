@@ -41,7 +41,11 @@ This investigation found no evidence that `msstore` or a Microsoft Store CLI per
 
 ## Data Contract Auditor current state
 
-The local read-only records show exact existing Identity values, but the most recent saved `submission-state.json` (`20261123-162718`) is `HOLD_UNKNOWN_SUBMISSION_STATE`; do not treat an earlier read-only classification as current. The local ProductInput records an existing target Draft ID, but the current Partner Center state was not successfully reconciled. A local SHA-256 (`4b373d…fcd46984`) exists for the QA candidate at the configured path, while the formal Store package SHA and package-bound security confirmation are absent. Separately, the Cloud Auto Uploader job still has `upload_approved: false` and a formal SHA placeholder. The QA candidate is not a formal Store package and is not eligible for upload.
+The local read-only records show exact existing Identity values, but the most recent saved `submission-state.json` (`20261123-162718`) is `HOLD_UNKNOWN_SUBMISSION_STATE`; do not treat an earlier read-only classification as current. The local ProductInput names an existing target Draft ID, but the current Partner Center state was not successfully reconciled.
+
+The configured local candidate was read-only hashed and its ZIP manifest read without launching it. SHA-256 is `4b373d2bc54ecbd3efa0a77a94005007777e66d641fa3908f523ac69fcd46984`; Identity/Publisher/Version/Architecture match the Data Contract Auditor ProductInput. It contains `en-US` and `ja-JP` manifest resources and the four named logo files. However, its embedded source commit is `5a09d81955e25664761ea25ecfb4ebf8d24cea6d`, while the required pinned revision is `107e59f2cbcde9c6ca88cf1aaf3d52262004e6e0`. The local ProductInput has no `security_package_sha256`; owner-approved artwork evidence and certified commercial-license evidence remain absent. The input's `human_local_qa_pass=true` is recorded as a claim, not independently reproduced QA. This candidate therefore is not eligible for upload.
+
+Separately, the Cloud Auto Uploader job remains `upload_approved: false` with a formal SHA placeholder. The pinned GitHub source revision previously inspected did not contain the configured formal MSIX path. Do not substitute this local package or promote its logo files without the required owner approvals.
 
 ## Unresolved
 
