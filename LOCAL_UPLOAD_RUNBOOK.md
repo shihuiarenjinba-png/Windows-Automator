@@ -74,4 +74,6 @@ The script rehashes the package, verifies exact existing identity and Draft, run
 
 ## 7. Output meaning
 
-`DRAFT_SAVED` means the current adapter verified the Store sections it owns after reload. `PACKAGE_SAVED_STORE_DRAFT_REMAINING_SECTIONS_REQUIRED` means the package/Draft step succeeded but other sections remain. Neither means Certified or Published. Microsoft cannot be said to have independently verified our local SHA unless a Microsoft-provided digest exists; current Partner Center UI does not show it.
+`live-report-verification.json` with `status=LIVE_DRAFT_RECEIPT_VERIFIED` means the local verifier accepted the one-result report, exact Product/Draft/Identity/filename/SHA bindings, unchanged post-run local package bytes, and required safety flags.
+
+`DRAFT_SAVED` means the current adapter verified the Store sections it owns after reload. `PACKAGE_SAVED_STORE_DRAFT_REMAINING_SECTIONS_REQUIRED` means the package/Draft step succeeded but other sections remain. Neither means Certified or Published. The verification receipt explicitly records `microsoft_independent_sha256_observed=false`: Partner Center UI does not expose an independently calculated binary digest.
