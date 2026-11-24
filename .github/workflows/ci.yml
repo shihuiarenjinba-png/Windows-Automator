@@ -8,4 +8,50 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-      - run: python -m unittest discover -s tests -v
+      - name: Run Python unit tests
+        run: python -m unittest discover -s tests -v
+      - name: Compile Python modules and validate JSON contracts
+        run: |
+          python -m compileall -q store_manager tests
+          python -c "import json; from pathlib import Path; [json.loads(Path(p).read_text(encoding='utf-8-sig')) for p in ['STORE_UPLOADER_TEACHER_INDEX.json', 'docs/PARTNER_CENTER_MAP.json']]"
+      - name: Parse Store uploader PowerShell and verify single-item JSON array
+        shell: pwsh
+        run: |
+          $tokens = $null
+          $errors = $null
+          [System.Management.Automation.Language.Parser]::ParseFile(
+            "$PWD/scripts/run_local_store_upload.ps1",
+            [ref]$tokens,
+            [ref]$errors
+          ) | Out-Null
+          if ($errors.Count -gt 0) {
+            $errors | ForEach-Object { Write-Error $_.Message }
+            throw "PowerShell parser rejected run_local_store_upload.ps1"
+          }
+
+          $product = [pscustomobject]@{
+            store_product_id = "9P1234567890"
+            draft_id = "1152921505700000000"
+            package_sha256 = ("a" * 64)
+          }
+          $queueJson = ConvertTo-Json -InputObject @($product) -Depth 40
+          $normalizedQueueJson = $queueJson.Trim()
+          if (
+            $normalizedQueueJson.Length -lt 2 -or
+            -not $normalizedQueueJson.StartsWith("[") -or
+            -not $normalizedQueueJson.EndsWith("]")
+          ) {
+            throw "ConvertTo-Json did not preserve the one-item queue as a JSON array: $queueJson"
+          }
+          # ConvertFrom-Json can unwrap one-element arrays; normalize its output.
+          $queue = @(ConvertFrom-Json -InputObject $normalizedQueueJson)
+          if ($queue.Count -ne 1) {
+            throw "One ProductInput must parse as exactly one queue item"
+          }
+          if (
+            $queue[0].store_product_id -ne $product.store_product_id -or
+            $queue[0].draft_id -ne $product.draft_id -or
+            $queue[0].package_sha256 -ne $product.package_sha256
+          ) {
+            throw "Single-item queue changed its Product/Draft/SHA binding"
+          }

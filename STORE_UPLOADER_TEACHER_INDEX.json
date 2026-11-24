@@ -1,0 +1,153 @@
+{
+  "schema_version": "store-uploader-teacher-index/1",
+  "recorded_date_jst": "2026-11-24",
+  "historical_verified_product_count": 5,
+  "execution_method": {
+    "type": "local_playwright_cdp",
+    "browser": "already-authenticated Microsoft Edge or Chromium tab",
+    "authentication_handling": "owner signs in; automation does not read credentials, cookies, or complete MFA/CAPTCHA",
+    "implementation_evidence": [
+      "store_manager/live_draft.py:LivePlaywrightConnection",
+      "store_manager/live_draft.py:PlaywrightPartnerCenterPort",
+      "store_manager/cli.py:night-run",
+      "docs/PARTNER_CENTER_MAP.json"
+    ]
+  },
+  "historical_products": [
+    {
+      "product_name": "Folio AI",
+      "product_id": "9P0VNLJ5FPF5",
+      "submission_id": "1152921505702219486",
+      "route": "msix_pwa_app",
+      "execution_method": "local_playwright_cdp",
+      "package_sha256": null,
+      "status": "PACKAGE_SAVED_AND_FULL_DRAFT_RELOAD_VERIFIED",
+      "certification_executed": false,
+      "publish_executed": false,
+      "evidence": [
+        "docs/PARTNER_CENTER_MSIX_APP_FOLIO_UPLOAD_20261112.md",
+        "docs/PARTNER_CENTER_MAP.json#/routes/msix_pwa_app"
+      ]
+    },
+    {
+      "product_name": "Daymark AI",
+      "product_id": "9PKJ9KMJZBC0",
+      "submission_id": "1152921505702220032",
+      "route": "msix_pwa_app",
+      "execution_method": "local_playwright_cdp",
+      "package_sha256": null,
+      "status": "PACKAGE_SAVED_AND_FULL_DRAFT_RELOAD_VERIFIED",
+      "certification_executed": false,
+      "publish_executed": false,
+      "evidence": ["docs/PARTNER_CENTER_MAP.json#/routes/msix_pwa_app"]
+    },
+    {
+      "product_name": "STRATEGY MARKET US",
+      "product_id": "9PJCWW6G6D42",
+      "submission_id": "1152921505702134687",
+      "route": "msix_pwa_game",
+      "execution_method": "local_playwright_cdp",
+      "package_sha256": null,
+      "status": "STORE_DRAFT_COMPLETE_SAVE_RELOAD_VERIFIED",
+      "certification_executed": false,
+      "publish_executed": false,
+      "evidence": [
+        "docs/PARTNER_CENTER_MAP.json#/routes/msix_pwa_game",
+        "docs/PARTNER_CENTER_MSIX_GAME_COMPLETE_20261115.md"
+      ]
+    },
+    {
+      "product_name": "STRATEGY MARKET JP",
+      "product_id": "9PM2R3N22JX8",
+      "submission_id": "1152921505702134539",
+      "route": "msix_pwa_game",
+      "execution_method": "local_playwright_cdp",
+      "package_sha256": null,
+      "status": "STORE_DRAFT_COMPLETE_SAVE_RELOAD_VERIFIED",
+      "certification_executed": false,
+      "publish_executed": false,
+      "evidence": [
+        "docs/PARTNER_CENTER_MAP.json#/routes/msix_pwa_game",
+        "docs/PARTNER_CENTER_MSIX_GAME_COMPLETE_20261115.md"
+      ]
+    },
+    {
+      "product_name": "Folder Automation Engine",
+      "product_id": "9P99MJX1R4V6",
+      "submission_id": "1152921505702423660",
+      "route": "msix_pwa_app",
+      "execution_method": "local_playwright_cdp",
+      "package_file_name": "FolderAutomationEngine_1.0.0.0_x64_StoreDraft_UNSIGNED.msix",
+      "package_sha256": "3C6BC8C1291450905AE71834F2704A59325D1AAA1C9DE3F064BCB8C7EBCA9FB9",
+      "identity": "OkinawaDesktopTools.FolderAutomationEngine",
+      "publisher": "CN=46263F21-A700-41DB-8C9B-114C22FB82FC",
+      "version": "1.0.0.0",
+      "architecture": "X64",
+      "upload_states": ["Uploading", "Analyzing package", "Validated"],
+      "save_state": "Complete",
+      "reload_verified": true,
+      "status": "PACKAGE_SAVED_STORE_DRAFT_REMAINING_SECTIONS_REQUIRED",
+      "certification_executed": false,
+      "publish_executed": false,
+      "evidence": [
+        "ops/folder_engine_package_upload_receipt_20261119.json",
+        "ops/folder_engine_partner_center_teacher_20261118.json"
+      ]
+    }
+  ],
+  "current_attempt": {
+    "product_name": "Data Contract Auditor",
+    "product_id": "9PDL4ZWSB45P",
+    "submission_id": "1152921505702212222",
+    "package_path": "C:\\Users\\aaron\\Desktop\\DataContractAuditor-QA\\store-output\\20261123-120600-f88e492e\\DataContractSchemaDrift_1.0.0.0_x64.msix",
+    "candidate_sha256_rehashed_locally": "4b373d2bc54ecbd3efa0a77a94005007777e66d641fa3908f523ac69fcd46984",
+    "candidate_source_sha": "5a09d81955e25664761ea25ecfb4ebf8d24cea6d",
+    "required_source_sha": "107e59f2cbcde9c6ca88cf1aaf3d52262004e6e0",
+    "candidate_manifest_identity": {
+      "name": "OkinawaDesktopTools.DataContractAuditor",
+      "publisher": "CN=46263F21-A700-41DB-8C9B-114C22FB82FC",
+      "version": "1.0.0.0",
+      "architecture": "x64"
+    },
+    "candidate_manifest_languages": ["en-US", "ja-JP"],
+    "candidate_package_contains_required_logo_files": [
+      "StoreLogo.png",
+      "Square44x44Logo.png",
+      "Square150x150Logo.png",
+      "Wide310x150Logo.png"
+    ],
+    "owner_approved_artwork_record": false,
+    "commercial_license_evidence_certified": false,
+    "human_local_qa_pass_claimed_by_input": true,
+    "human_local_qa_performed_in_this_review": false,
+    "formal_store_package_sha256": null,
+    "security_package_sha256_confirmed": false,
+    "observed_draft_state": "HOLD_UNKNOWN_SUBMISSION_STATE",
+    "execution_method": "local_playwright_cdp",
+    "status": "HOLD_SOURCE_REVISION_MISMATCH_UNKNOWN_DRAFT_AND_COMMERCIAL_GATES",
+    "upload_approved": false,
+    "certification_executed": false,
+    "publish_executed": false,
+    "evidence": [
+      "uploader/config/data-contract-auditor.job.json",
+      "AppData/Local/OkinawaDesktopTools/DataContractAuditor/partner-center-readonly/20261123-162718/submission-state.json",
+      "AppData/Local/OkinawaDesktopTools/DataContractAuditor/partner-center-readonly/20261123-162718/data-contract-auditor-formal-product-input.json",
+      "AppData/Local/OkinawaDesktopTools/DataContractAuditor/partner-center-readonly/20261123-162718/data-contract-auditor-identity-reverify-job.json"
+    ]
+  },
+  "current_route_gate": {
+    "msix_pwa_app_live_write_supported_in_reviewed_selector_map": true,
+    "observed_profile_count": 2,
+    "observed_profiles": ["Folio AI", "Daymark AI"],
+    "data_contract_auditor_is_an_observed_profile": false,
+    "data_contract_auditor_upload_execution_enabled": false,
+    "reason": "route mechanics are enabled for the two observed app profiles; DCA still fails its own unknown-Draft/formal-package/security-confirmation gates"
+  },
+  "limits": {
+    "partner_center_binary_sha256_independently_observed": false,
+    "historical_package_sha256_known_for_all_products": false,
+    "historical_raw_process_command_log_available": false,
+    "temp_log_match": "MITSUKI-202611*.log files are Office Click-to-Run telemetry, not Store upload execution logs",
+    "certification_or_publish_claimed": false
+  }
+}
