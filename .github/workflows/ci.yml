@@ -10,6 +10,10 @@ jobs:
           python-version: '3.11'
       - name: Run Python unit tests
         run: python -m unittest discover -s tests -v
+      - name: Compile Python modules and validate JSON contracts
+        run: |
+          python -m compileall -q store_manager tests
+          python -c "import json; from pathlib import Path; [json.loads(Path(p).read_text(encoding='utf-8-sig')) for p in ['STORE_UPLOADER_TEACHER_INDEX.json', 'docs/PARTNER_CENTER_MAP.json']]"
       - name: Parse Store uploader PowerShell and verify single-item JSON array
         shell: pwsh
         run: |
